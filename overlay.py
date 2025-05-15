@@ -4,7 +4,7 @@ import blf
 import re
 from time import time
 
-from . addon import prefs
+from . addon import get_prefs
 from . import constants as CC
 from . debug_utils import log, DBG_OVLY
 
@@ -368,7 +368,7 @@ def convert_data_path_to_readable(channel_data_path: str) -> str:
 
 
 def gen_channel_info_line(obj, fcurve):
-    show = prefs().overlay.info_to_display
+    show = get_prefs().overlay.info_to_display
 
     info_str = ""
     if show.object_name:
@@ -392,7 +392,7 @@ def gen_channel_info_line(obj, fcurve):
 
 #     # Only display info if a single channel is selected
 #     if len(selected_channels) == 1:
-#         show = prefs().overlay.info_to_display
+#         show = get_prefs().overlay.info_to_display
 #         obj, fcurve = selected_channels[0]
 #         object_name = obj.name if show.object_name else None
 #         action_name = fcurve.id_data.name if show.action_name else None
@@ -470,7 +470,7 @@ class TextDisplayHandler:
     
     def draw_callback(self, context):
         generate_text_lines = None  # Delete
-        pr = prefs()
+        pr = get_prefs(context)
 
         # Generate the text lines based on the current context
         text_lines = generate_text_lines(context)

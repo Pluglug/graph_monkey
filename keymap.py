@@ -100,3 +100,6 @@ def unregister_keymaps():
     for km in addon_keymaps:
         wm.keyconfigs.addon.keymaps.remove(km)
     addon_keymaps.clear()
+
+
+register, unregister = bpy.utils.register_classes_factory(register_keymaps, unregister_keymaps)
