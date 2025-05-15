@@ -43,22 +43,24 @@ def is_object_displayed(obj, dopesheet, type_filters):
 
 def get_visible_objects(dopesheet):
     type_filters = {
-        'SCENE': dopesheet.show_scenes,
-        'NODETREE': dopesheet.show_nodes,
-        'CAMERA': dopesheet.show_cameras,
-        'LIGHT': dopesheet.show_lights,
-        'MESH': dopesheet.show_meshes,
-        'WORLD': dopesheet.show_worlds,
-        'LINESTYLE': dopesheet.show_linestyles,
-        'MATERIAL': dopesheet.show_materials
+        "SCENE": dopesheet.show_scenes,
+        "NODETREE": dopesheet.show_nodes,
+        "CAMERA": dopesheet.show_cameras,
+        "LIGHT": dopesheet.show_lights,
+        "MESH": dopesheet.show_meshes,
+        "WORLD": dopesheet.show_worlds,
+        "LINESTYLE": dopesheet.show_linestyles,
+        "MATERIAL": dopesheet.show_materials,
     }
     visible_objects = [
-        obj for obj in bpy.context.scene.objects
-        if obj.animation_data and obj.animation_data.action and is_object_displayed(obj, dopesheet, type_filters)
+        obj
+        for obj in bpy.context.scene.objects
+        if obj.animation_data
+        and obj.animation_data.action
+        and is_object_displayed(obj, dopesheet, type_filters)
     ]
     visible_objects.sort(key=lambda obj: obj.name)
     return visible_objects
-
 
 
 # keyframe_helpers.py
@@ -72,5 +74,7 @@ def get_selected_keyframes(keyframe_points):
             "right_handle": keyframe.select_right_handle,
         }
         for keyframe in keyframe_points
-        if keyframe.select_control_point or keyframe.select_left_handle or keyframe.select_right_handle
+        if keyframe.select_control_point
+        or keyframe.select_left_handle
+        or keyframe.select_right_handle
     ]

@@ -4,9 +4,9 @@ import blf
 import re
 from time import time
 
-from . addon import get_prefs
+from .addon import get_prefs
 from . import constants as CC
-from . debug_utils import log, DBG_OVLY
+from .debug_utils import log, DBG_OVLY
 
 
 def blf_size(font_id, size, *args, **kwargs):
@@ -19,10 +19,12 @@ def blf_size(font_id, size, *args, **kwargs):
 # TODO: Utilsへ移動
 def multiton(cls):
     instances = {}
+
     def get_instance(*args, **kwargs):
         if cls not in instances:
             instances[cls] = cls(*args, **kwargs)
         return instances[cls]
+
     return get_instance
 
 
@@ -47,7 +49,7 @@ class Timer:
     # def remaining_percentage(self):
     #     # Transitions from 100 to 0
     #     return max(0, self.remaining_time / self.duration * 100)
-    
+
     def elapsed_ratio(self):
         """Returns the ratio of elapsed time to total duration."""
         return max(0, min(1, (self.duration - self.remaining_time) / self.duration))
@@ -57,13 +59,17 @@ class Timer:
 
 
 def calculate_aligned_position(
-    alignment: str, space_width: float, space_height: float,
-    object_width: float, object_height: float, 
-    offset_x: int, offset_y: int
+    alignment: str,
+    space_width: float,
+    space_height: float,
+    object_width: float,
+    object_height: float,
+    offset_x: int,
+    offset_y: int,
 ) -> tuple[float, float]:
     """
     Calculate the aligned position for an object within a given area based on the alignment and offsets.
-    
+
     Parameters:
         alignment: The object alignment within the area. enum in OVERLAY_ALIGNMENT_ITEMS
         space_width: The width of the area where the object will be displayed.
@@ -79,16 +85,16 @@ def calculate_aligned_position(
     if alignment not in CC.OVERLAY_ALIGNMENT_ITEMS:
         raise ValueError(f"Invalid alignment: {alignment}")
 
-    if 'TOP' in alignment:
+    if "TOP" in alignment:
         y = space_height - object_height - offset_y
-    elif 'BOTTOM' in alignment:
+    elif "BOTTOM" in alignment:
         y = offset_y
     else:  # Center
         y = (space_height - object_height) / 2
 
-    if 'LEFT' in alignment:
+    if "LEFT" in alignment:
         x = offset_x
-    elif 'RIGHT' in alignment:
+    elif "RIGHT" in alignment:
         x = space_width - object_width - offset_x
     else:  # Center
         x = (space_width - object_width) / 2
@@ -98,19 +104,20 @@ def calculate_aligned_position(
 
 class TextPainter:
     """Manage text styles and displey times."""
+
     def __init__(
-        self, 
-        text="DEBUG TEXT", 
-        font_id=0, 
-        size=24, 
+        self,
+        text="DEBUG TEXT",
+        font_id=0,
+        size=24,
         color=(1.0, 1.0, 1.0, 1.0),  # pr.themes[0].view_3d.object_active
-        shadow=True, 
+        shadow=True,
         shadow_color=(0.0, 0.0, 0.0, 1.0),
         shadow_blur=3,
         shadow_offset_x=2,
         shadow_offset_y=2,
         timer_duration=1.0,
-        fade_start_ratio=0.3
+        fade_start_ratio=0.3,
     ):
         self._text = text
         self.font_id = font_id
@@ -129,7 +136,7 @@ class TextPainter:
     @property
     def text(self):
         return self._text
-    
+
     @text.setter
     def text(self, value):
         self._text = value
@@ -138,7 +145,7 @@ class TextPainter:
     @property
     def size(self):
         return self._size
-    
+
     @size.setter
     def size(self, value):
         self._size = value
@@ -149,11 +156,11 @@ class TextPainter:
         """Text dimensions (width, height)"""
         return self._dimensions
 
-    def update_dimensions(self) -> 'TextPainter':
+    def update_dimensions(self) -> "TextPainter":
         blf_size(self.font_id, self.size)
         self._dimensions = blf.dimensions(self.font_id, self.text)
         return self
-    
+
     # def set_timer(self, duration):  # Delete if not needed
     #     self.timer_duration = duration
     #     if self.timer is None:
@@ -162,13 +169,17 @@ class TextPainter:
     #         self.timer.reset(duration)
     #     return self
 
-    def calculate_alpha(self, color: tuple[float, float, float, float]) -> tuple[float, float, float, float]:
+    def calculate_alpha(
+        self, color: tuple[float, float, float, float]
+    ) -> tuple[float, float, float, float]:
         """Calculate alpha based on the timer's remaining time and the fade start ratio."""
         elapsed_ratio = self.timer.elapsed_ratio()
         if elapsed_ratio < self.fade_start_ratio:
             return color
         else:
-            fade_effective_ratio = (elapsed_ratio - self.fade_start_ratio) / (1 - self.fade_start_ratio)
+            fade_effective_ratio = (elapsed_ratio - self.fade_start_ratio) / (
+                1 - self.fade_start_ratio
+            )
             alpha = color[3] * (1 - fade_effective_ratio)
             return color[:3] + (alpha,)
 
@@ -179,16 +190,22 @@ class TextPainter:
 
             if self.shadow:
                 blf.enable(self.font_id, blf.SHADOW)
-                blf.shadow(self.font_id, self.shadow_blur, *self.calculate_alpha(self.shadow_color))
-                blf.shadow_offset(self.font_id, self.shadow_offset_x, self.shadow_offset_y)
+                blf.shadow(
+                    self.font_id,
+                    self.shadow_blur,
+                    *self.calculate_alpha(self.shadow_color),
+                )
+                blf.shadow_offset(
+                    self.font_id, self.shadow_offset_x, self.shadow_offset_y
+                )
             else:
                 blf.disable(self.font_id, blf.SHADOW)
 
             blf.position(self.font_id, x, y, z=0)
             blf.draw(self.font_id, self.text)
-    
+
     @classmethod
-    def from_settings(cls, settings: 'TextOverlaySettings') -> 'TextPainter':
+    def from_settings(cls, settings: "TextOverlaySettings") -> "TextPainter":
         return cls(
             size=settings.size,
             color=settings.color,
@@ -198,38 +215,39 @@ class TextPainter:
             shadow_offset_x=settings.shadow_offset_x,
             shadow_offset_y=settings.shadow_offset_y,
             timer_duration=settings.duration,
-            fade_start_ratio=0.3  # TODO: Make this a setting
+            fade_start_ratio=0.3,  # TODO: Make this a setting
         )
 
     @classmethod
-    def from_settings_and_text(cls, settings: 'TextOverlaySettings', text: str) -> 'TextPainter':
+    def from_settings_and_text(
+        cls, settings: "TextOverlaySettings", text: str
+    ) -> "TextPainter":
         painter = cls.from_settings(settings)
         painter.text = text
         return painter
-    
+
 
 class DrawingSpace:
     def __init__(
-        self, 
+        self,
         space_type: bpy.types.Space,
     ):
         pass
         # 行間のオフセット
         # self.line_offset = 5
-        # alignment='TOP', 
-        # offset_x=10, 
-        # offset_y=10, 
+        # alignment='TOP',
+        # offset_x=10,
+        # offset_y=10,
 
     def generate_text_lines(self, context):
         pass
-
 
 
 # drawing_spaces = {}
 
 
 # bpy.context.space_dataがtp.Spaceのインスタンスなので、マッピングは不要
-# NOTE: The current space, may be None in background-mode, 
+# NOTE: The current space, may be None in background-mode,
 # when the cursor is outside the window or when using menu-search
 # def add_space(id, space_type_name):
 #     space_type = getattr(bpy.types, space_type_name, None)
@@ -240,13 +258,8 @@ class DrawingSpace:
 #     drawing_spaces[id] = DrawingSpace(space_type)
 
 
-
 def _draw_callback(overlay_text):
     pass
-
-
-
-
 
 
 class TextOverlaySettings(bpy.types.PropertyGroup):
@@ -256,39 +269,49 @@ class TextOverlaySettings(bpy.types.PropertyGroup):
         default=True,
     )
     size: bpy.props.IntProperty(
-        name="Font Size", 
+        name="Font Size",
         description="Font size",
-        default=24, min=10, max=50, 
-        options={'SKIP_SAVE'},
+        default=24,
+        min=10,
+        max=50,
+        options={"SKIP_SAVE"},
         # update=,
     )
     color: bpy.props.FloatVectorProperty(
         name="Color",
         description="Color",
         default=(1.0, 1.0, 1.0, 1.0),
-        subtype='COLOR',
-        size=4, min=0.0, max=1.0,
+        subtype="COLOR",
+        size=4,
+        min=0.0,
+        max=1.0,
     )
     alignment: bpy.props.EnumProperty(
         name="Alignment",
         description="Text alignment on area",
         items=CC.OVERLAY_ALIGNMENT_ITEMS,
-        default='TOP',
+        default="TOP",
     )
     duration: bpy.props.FloatProperty(
         name="Duration",
         description="Duration of the text display",
-        default=1.0, min=0.0, subtype='TIME_ABSOLUTE',
+        default=1.0,
+        min=0.0,
+        subtype="TIME_ABSOLUTE",
     )
     offset_x: bpy.props.IntProperty(
-        name="Offset X", description="Offset from area edge",
-        subtype='PIXEL', 
-        default=10, min=0,
+        name="Offset X",
+        description="Offset from area edge",
+        subtype="PIXEL",
+        default=10,
+        min=0,
     )
     offset_y: bpy.props.IntProperty(
-        name="Offset Y", description="Offset from area edge",
-        subtype='PIXEL', 
-        default=10, min=0,
+        name="Offset Y",
+        description="Offset from area edge",
+        subtype="PIXEL",
+        default=10,
+        min=0,
     )
     use_shadow: bpy.props.BoolProperty(
         name="Use Shadow",
@@ -299,26 +322,32 @@ class TextOverlaySettings(bpy.types.PropertyGroup):
         name="Shadow Color",
         description="Shadow color",
         default=(0.0, 0.0, 0.0, 1.0),
-        subtype='COLOR',
-        size=4, min=0.0, max=1.0,
+        subtype="COLOR",
+        size=4,
+        min=0.0,
+        max=1.0,
     )
     shadow_blur: bpy.props.IntProperty(
         name="Shadow Blur",
         description="Shadow blur level. can be 3, 5 or 0",
-        subtype='PIXEL',
-        default=3, min=0, max=5,
+        subtype="PIXEL",
+        default=3,
+        min=0,
+        max=5,
     )
     shadow_offset_x: bpy.props.IntProperty(
         name="Shadow Offset X",
         description="Shadow offset from text",
-        subtype='PIXEL',
-        default=2, min=0,
+        subtype="PIXEL",
+        default=2,
+        min=0,
     )
     shadow_offset_y: bpy.props.IntProperty(
         name="Shadow Offset Y",
         description="Shadow offset from text",
-        subtype='PIXEL',
-        default=2, min=0,
+        subtype="PIXEL",
+        default=2,
+        min=0,
     )
 
     def draw(self, context, layout):
@@ -327,7 +356,7 @@ class TextOverlaySettings(bpy.types.PropertyGroup):
 
         col = layout.column()
 
-        col.label(text="Text Overlay Settings", icon='IMAGE_ALPHA')
+        col.label(text="Text Overlay Settings", icon="IMAGE_ALPHA")
         # layout.prop(self, "show_text")
         col.prop(self, "size")
         col.prop(self, "color")
@@ -345,23 +374,27 @@ class TextOverlaySettings(bpy.types.PropertyGroup):
         sub.prop(self, "shadow_blur")
         sub.prop(self, "shadow_offset_x")
         sub.prop(self, "shadow_offset_y")
-    
+
 
 # function to channel info
 
+
 def convert_data_path_to_readable(channel_data_path: str) -> str:
     DBG_OVLY and log.header(
-        f"convert_data_path_to_readable(\n    '{channel_data_path}')")
+        f"convert_data_path_to_readable(\n    '{channel_data_path}')"
+    )
     replace_list = [
-        ('["', ' '), 
-        ('"].', ' < '), 
-        ('_', ' '), 
-        ]
+        ('["', " "),
+        ('"].', " < "),
+        ("_", " "),
+    ]
     for old, new in replace_list:
         channel_data_path = channel_data_path.replace(old, new)
 
     readable_data_path = re.sub(r"(\.)([A-Z])", r"\1 \2", channel_data_path)
-    readable_data_path = ' '.join(word.capitalize() for word in readable_data_path.split(' '))
+    readable_data_path = " ".join(
+        word.capitalize() for word in readable_data_path.split(" ")
+    )
 
     DBG_OVLY and log(f"readable_data_path: {readable_data_path}")
     return readable_data_path
@@ -386,7 +419,6 @@ def gen_channel_info_line(obj, fcurve):
     return info_str
 
 
-
 # def get_channel_info(visible_objects):
 #     selected_channels = [(obj, fcurve) for obj in visible_objects for fcurve in obj.animation_data.action.fcurves if fcurve.select]
 
@@ -408,9 +440,9 @@ def gen_channel_info_line(obj, fcurve):
 #             info_str += f"< {group_name} >"
 #         if channel_name:
 #             info_str += f" {channel_name} >"
-        
+
 #         info_str = info_str.replace("><", "|")
-        
+
 #         return info_str
 #     return None
 
@@ -449,8 +481,6 @@ class ChannelInfoToDisplay(bpy.types.PropertyGroup):
         col.prop(self, "channel_name")
 
 
-
-
 class TextDisplayHandler:
     def __init__(self):
         self.draw_handler = None
@@ -458,16 +488,17 @@ class TextDisplayHandler:
     def start(self, context):
         if self.draw_handler is None:
             self.draw_handler = bpy.types.SpaceView3D.draw_handler_add(
-                self.draw_callback, (context,), 'WINDOW', 'POST_PIXEL')
+                self.draw_callback, (context,), "WINDOW", "POST_PIXEL"
+            )
 
     def stop(self):
         if self.draw_handler is not None:
-            bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, 'WINDOW')
+            bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
             self.draw_handler = None
 
     def is_active(self):
         return self.draw_handler is not None
-    
+
     def draw_callback(self, context):
         generate_text_lines = None  # Delete
         pr = get_prefs(context)
@@ -485,16 +516,19 @@ class TextDisplayHandler:
 
         # Get the initial value of y_offset
         y_offset = pr.overlay_offset_y
-        
+
         for text in text_lines:
             # Get the screen position for the text based on the alignment
             # x, y = get_screen_position(context, text, pr.overlay_alignment, pr.overlay_offset_x, y_offset, font_id)
 
             x, y = calculate_aligned_position(
-                pr.overlay_alignment, 
-                context.region.width, context.region.height, 
-                blf.dimensions(font_id, text)[0], blf.dimensions(font_id, text)[1], 
-                pr.overlay_offset_x, y_offset
+                pr.overlay_alignment,
+                context.region.width,
+                context.region.height,
+                blf.dimensions(font_id, text)[0],
+                blf.dimensions(font_id, text)[1],
+                pr.overlay_offset_x,
+                y_offset,
             )
 
             # Draw the text at the calculated position
@@ -505,7 +539,7 @@ class TextDisplayHandler:
             text_height = blf.dimensions(font_id, text)[1]
 
             # Adjust y_offset for the next line depending
-            y_offset += (text_height + pr.line_offset)
+            y_offset += text_height + pr.line_offset
 
 
 text_display_handler = TextDisplayHandler()
@@ -513,6 +547,7 @@ text_display_handler = TextDisplayHandler()
 
 class TEXT_OT_activate_handler(bpy.types.Operator):
     """Activate the text display handler"""
+
     bl_idname = "text.activate_handler"
     bl_label = "Activate Text Handler"
 
@@ -523,11 +558,12 @@ class TEXT_OT_activate_handler(bpy.types.Operator):
     # @log_exec
     def execute(self, context):
         text_display_handler.start(context)
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class TEXT_OT_deactivate_handler(bpy.types.Operator):
     """Deactivate the text display handler"""
+
     bl_idname = "text.deactivate_handler"
     bl_label = "Deactivate Text Handler"
 
@@ -538,7 +574,7 @@ class TEXT_OT_deactivate_handler(bpy.types.Operator):
     # @log_exec
     def execute(self, context):
         text_display_handler.stop()
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 # def activate_handler():

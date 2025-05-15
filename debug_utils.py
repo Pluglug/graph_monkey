@@ -35,6 +35,7 @@ class Color(Enum):
     # Add 10 if using background colors
     # ansi(Color.WHITE + 10)
 
+
 class Style(Enum):
     RESET = 0
     BOLD = 1
@@ -43,13 +44,14 @@ class Style(Enum):
     UNDERLINE = 4
     INVERTED = 7
 
+
 def ansi(*styles: Enum) -> str:
     """
     Generate ANSI escape code for given styles.
     :param styles: Enum(int) values from Color or Style
     :return: String containing ANSI escape code
     """
-    return '\033[{}m'.format(";".join(str(color.value) for color in styles))
+    return "\033[{}m".format(";".join(str(color.value) for color in styles))
 
 
 class PrintLog:
@@ -65,7 +67,7 @@ class PrintLog:
             return ""
 
         frame = traceback.extract_stack(None, 4)[0]  # Get caller's frame
-        module_name = frame.filename.split('\\')[-1]
+        module_name = frame.filename.split("\\")[-1]
         return f"{module_name.ljust(10)}: {str(frame.lineno).ljust(4)} {frame.name.ljust(10)}: "
 
     def _log(self, color, *args):
@@ -85,14 +87,14 @@ class PrintLog:
         if title is not None:
             title = str(title)
             header_length = max(len(msg), self.line_length)  # len(title)+8)
-            title_text = title.center(header_length, '-')
+            title_text = title.center(header_length, "-")
         else:
             title_text = "-" * self.line_length
         self._log(ansi(Color.GREEN, Style.BOLD), title_text)
         if msg:
             self._log(ansi(Color.GREEN, Style.BOLD), msg)
         return self
-    
+
     def footer(self, *args):
         """Green text indicating the end of an operation."""
         self.reset_indent()
@@ -110,7 +112,7 @@ class PrintLog:
         """Cyan text indicating the progress of an operation."""
         self._log(ansi(Color.CYAN), *args)
         return self
-    
+
     def error(self, *args):
         """Red text indicating an error that is not fatal."""
         self._log(ansi(Color.RED), *args)
@@ -135,7 +137,7 @@ class PrintLog:
         # 0: get_caller_info, 1: log.get_caller_info, 2: caller
         if len(stack) < 3:
             return "Unknown caller"
-        
+
         frame = stack[2]
         frame_info = inspect.getframeinfo(frame[0])
 
@@ -147,7 +149,7 @@ class PrintLog:
         #     # "code_context": frame_info.code_context
         # }
 
-    # あんまり便利じゃない 
+    # あんまり便利じゃない
     # `log(" " * len(path) + "/".join(path))`とかのほうがシンプルでよい
     # デコレーターとして使えるなら便利かも
     @contextlib.contextmanager
@@ -199,7 +201,7 @@ class PrintLog:
                 return
 
             elapsed = time.time() - self.timer
-            self.log._log(ansi(Color.GREEN), f'Elapsed time: {elapsed:.4f} sec', *args)
+            self.log._log(ansi(Color.GREEN), f"Elapsed time: {elapsed:.4f} sec", *args)
 
         def lap(self, label=None):
             if self.timer is None:
@@ -209,11 +211,11 @@ class PrintLog:
             elapsed_time = self.elapsed()
             self._lap_times.append((label, elapsed_time))
             return elapsed_time
-        
+
         def reset(self):
             self.timer = None
             self._lap_times.clear()
-        
+
         def stop(self, msg="Stopwatch stopped.", *args):
             """Stop the stopwatch and display the total elapsed time."""
             if self.timer is not None:
@@ -221,40 +223,41 @@ class PrintLog:
                 self.timer = None
             else:
                 self.log.warn("Stopwatch is not started.")
-        
+
         def __enter__(self):
             self.start()
             return self
-        
+
         def __exit__(self, exc_type, exc_value, traceback):
             elapsed_time = self.elapsed()
             self.stop()
             return elapsed_time
-        
+
         def __call__(self, func):
             def wrapper(*args, **kwargs):
                 with self:
                     return func(*args, **kwargs)
+
             return wrapper
-        
+
         @property
         def lap_times(self):
             return self._lap_times
-        
+
         @property
         def total_time(self):
             return sum(t for _, t in self._lap_times)
-        
+
         @property
         def average_time(self):
             if not self._lap_times:
                 return 0
             return self.total_time / len(self._lap_times)
-        
+
         @property
         def min_time(self):
             return min(t for _, t in self._lap_times) if self._lap_times else 0
-        
+
         @property
         def max_time(self):
             return max(t for _, t in self._lap_times) if self._lap_times else 0
@@ -304,26 +307,30 @@ class DebugFlagsGroup(PropertyGroup):
         for name in globals():
             if name.startswith("DBG"):
                 setattr(
-                    cls, name, 
+                    cls,
+                    name,
                     BoolProperty(
-                        name=name, 
-                        default=globals()[name], 
-                        update=cls._generate_update_function(name)
-                    )
+                        name=name,
+                        default=globals()[name],
+                        update=cls._generate_update_function(name),
+                    ),
                 )
                 DBG_INIT and log.info("Added debug flag:", name)
 
     @staticmethod
-    def _generate_update_function(name):  # 無理っぽい Sceneへフラグを追加しなければならない
+    def _generate_update_function(
+        name,
+    ):  # 無理っぽい Sceneへフラグを追加しなければならない
         def update(self, context):
             globals()[name] = getattr(self, name)
+
         return update
 
     def draw(self, context, layout):
         """Draw the UI elements for the debug flags."""
         layout.prop(
-            self, "developer_mode", text="Developer Mode", 
-            toggle=True, icon="SCRIPT")
+            self, "developer_mode", text="Developer Mode", toggle=True, icon="SCRIPT"
+        )
 
         if self.developer_mode:
             box = layout.box()
@@ -337,6 +344,7 @@ class DebugFlagsGroup(PropertyGroup):
         for name in globals():
             if name.startswith("DBG"):
                 col.prop(self, name)
+
 
 # def register():
 #     bpy.utils.register_class(DebugFlagsGroup)

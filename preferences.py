@@ -3,20 +3,24 @@ import bpy
 from rna_keymap_ui import draw_kmi
 
 # from . debug import log, DBG_PREFS
-from . debug_utils import log, DBG_PREFS, DebugFlagsGroup
+from .debug_utils import log, DBG_PREFS, DebugFlagsGroup
 
-from . addon import ADDON_ID
+from .addon import ADDON_ID
 
-from . operators.keyframe_moving import GRAPH_OT_monkey_horizontally, GRAPH_OT_monkey_vertically
-from . operators.handle_selection import GRAPH_OT_monkey_handle_selecter
+from .operators.keyframe_moving import (
+    GRAPH_OT_monkey_horizontally,
+    GRAPH_OT_monkey_vertically,
+)
+from .operators.handle_selection import GRAPH_OT_monkey_handle_selecter
 
-from . overlay import TextOverlaySettings, ChannelInfoToDisplay
+from .overlay import TextOverlaySettings, ChannelInfoToDisplay
 
 ops_idnames = [
     GRAPH_OT_monkey_horizontally.bl_idname,
     GRAPH_OT_monkey_vertically.bl_idname,
     GRAPH_OT_monkey_handle_selecter.bl_idname,
 ]
+
 
 class MonKeyPreferences(bpy.types.AddonPreferences):
     bl_idname = ADDON_ID
@@ -25,11 +29,11 @@ class MonKeyPreferences(bpy.types.AddonPreferences):
         name="Tab",
         description="Tab to open",
         items=[
-            ('HowToUse', "How to use", ""),
-            ('KEYMAP', "Keymap", ""),
-            ('OVERLAY', "Overlay", ""),
+            ("HowToUse", "How to use", ""),
+            ("KEYMAP", "Keymap", ""),
+            ("OVERLAY", "Overlay", ""),
         ],
-        default='HowToUse'
+        default="HowToUse",
     )
     overlay: bpy.props.PointerProperty(type=TextOverlaySettings)
     info_to_display: bpy.props.PointerProperty(type=ChannelInfoToDisplay)
@@ -43,15 +47,15 @@ class MonKeyPreferences(bpy.types.AddonPreferences):
         row.prop(self, "tab", expand=True)
 
         box = layout.box()
-        if self.tab == 'HowToUse':
+        if self.tab == "HowToUse":
             self.draw_description(context, box)
-        elif self.tab == 'OVERLAY':
+        elif self.tab == "OVERLAY":
             self.overlay.draw(context, box)
             box.separator()
             self.info_to_display.draw(context, box)
-        elif self.tab == 'KEYMAP':
+        elif self.tab == "KEYMAP":
             self.draw_keymap(context, box)
-    
+
     def draw_description(self, context, layout):
         layout.label(text="TODO: Add description")
 
@@ -60,11 +64,11 @@ class MonKeyPreferences(bpy.types.AddonPreferences):
     def draw_keymap(self, context, layout):
         wm = context.window_manager
         kc = wm.keyconfigs.user
-        km = kc.keymaps.get('Graph Editor')
+        km = kc.keymaps.get("Graph Editor")
 
         if not km:
             return
-        
+
         layout.label(text="MonKey Keymap")
 
         for kmi in km.keymap_items:

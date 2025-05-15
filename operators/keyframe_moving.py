@@ -5,24 +5,22 @@ from .dopesheet_helper import get_visible_objects, get_selected_keyframes
 
 # Keyframe selection moving operators
 
+
 class GRAPH_OT_monkey_horizontally(bpy.types.Operator):
     bl_idname = "graph.monkey_horizontally"
     bl_label = "Move Keyframe Selection Horizontally"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {"REGISTER", "UNDO"}
 
     direction: bpy.props.EnumProperty(  # type: ignore
         name="Direction",
-        items=[
-            ("forward", "Forward", ""),
-            ("backward", "Backward", "")
-        ],
-        default="forward"
+        items=[("forward", "Forward", ""), ("backward", "Backward", "")],
+        default="forward",
     )
     extend: bpy.props.BoolProperty(default=False)  # type: ignore
 
     @classmethod
     def poll(cls, context):
-        return context.area.type == 'GRAPH_EDITOR'
+        return context.area.type == "GRAPH_EDITOR"
         # if context.area.type != 'GRAPH_EDITOR':
         #     return False
 
@@ -34,33 +32,34 @@ class GRAPH_OT_monkey_horizontally(bpy.types.Operator):
         dopesheet = context.space_data.dopesheet
         visible_objects = get_visible_objects(dopesheet)
         if not visible_objects:
-            self.report({'ERROR'}, "There is no object that is displayed and has an action.")
-            return {'CANCELLED'}
+            self.report(
+                {"ERROR"}, "There is no object that is displayed and has an action."
+            )
+            return {"CANCELLED"}
 
         DBG_OPS and log.header("Move Keyframe Selection Horizontally", "EXECUTE")
-        move_keyframe_selection_horizontally(self.direction, self.extend, visible_objects)
+        move_keyframe_selection_horizontally(
+            self.direction, self.extend, visible_objects
+        )
         DBG_OPS and log.footer("Move Keyframe Selection Horizontally")
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class GRAPH_OT_monkey_vertically(bpy.types.Operator):
     bl_idname = "graph.monkey_vertically"
     bl_label = "Move Channel Selection Vertically"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {"REGISTER", "UNDO"}
 
     direction: bpy.props.EnumProperty(  # type: ignore
         name="Direction",
-        items=[
-            ("upward", "Upward", ""),
-            ("downward", "Downward", "")
-        ],
-        default="downward"
+        items=[("upward", "Upward", ""), ("downward", "Downward", "")],
+        default="downward",
     )
     extend: bpy.props.BoolProperty(default=False)  # type: ignore
 
     @classmethod
     def poll(cls, context):
-        return context.area.type == 'GRAPH_EDITOR'
+        return context.area.type == "GRAPH_EDITOR"
         # if context.area.type != 'GRAPH_EDITOR':
         #     return False
 
@@ -72,31 +71,42 @@ class GRAPH_OT_monkey_vertically(bpy.types.Operator):
         dopesheet = context.space_data.dopesheet
         visible_objects = get_visible_objects(dopesheet)
         if not visible_objects:
-            self.report({'ERROR'}, "There is no object that is displayed and has an action.")
-            return {'CANCELLED'}
-        
+            self.report(
+                {"ERROR"}, "There is no object that is displayed and has an action."
+            )
+            return {"CANCELLED"}
+
         DBG_OPS and log.header("Move Channel Selection Vertically", "EXECUTE")
         move_channel_selection_vertically(self.direction, self.extend, visible_objects)
         DBG_OPS and log.footer("Move Channel Selection Vertically")
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 # Helper functions
 
-def move_keyframe_selection_horizontally(direction="forward", extend=False, visible_objects=None):
+
+def move_keyframe_selection_horizontally(
+    direction="forward", extend=False, visible_objects=None
+):
     if visible_objects is None:
         return
 
     for obj in visible_objects:
-        selected_channels = [fcurve for fcurve in obj.animation_data.action.fcurves if fcurve.select]
+        selected_channels = [
+            fcurve for fcurve in obj.animation_data.action.fcurves if fcurve.select
+        ]
 
         if selected_channels:
             process_keyframe_selection_for_horizontal_move(obj, direction, extend)
 
 
-def process_keyframe_selection_for_horizontal_move(obj, direction="forward", extend=False):
+def process_keyframe_selection_for_horizontal_move(
+    obj, direction="forward", extend=False
+):
     if direction not in ("forward", "backward"):
-        raise ValueError("Invalid value for direction. Must be 'forward' or 'backward'.")
+        raise ValueError(
+            "Invalid value for direction. Must be 'forward' or 'backward'."
+        )
 
     action = obj.animation_data.action
 
@@ -150,7 +160,9 @@ def binary_search_keyframe(fcurve, target_frame, direction="forward"):
     return None
 
 
-def move_channel_selection_vertically(direction="downward", extend=False, visible_objects=None):
+def move_channel_selection_vertically(
+    direction="downward", extend=False, visible_objects=None
+):
     if direction not in ("downward", "upward"):
         raise ValueError("Invalid value for direction. Must be 'downward' or 'upward'.")
 
@@ -196,7 +208,10 @@ def process_keyframe_selection_for_vertical_move(fcurve_from, fcurve_to, extend=
     # Move the selection to the nearest keyframes in the new channel
     for item in selected:
         target_keyframes = [
-            min(fcurve_to.keyframe_points, key=lambda k: abs(k.co[0] - item["keyframe"].co[0]))
+            min(
+                fcurve_to.keyframe_points,
+                key=lambda k: abs(k.co[0] - item["keyframe"].co[0]),
+            )
             for item in selected
         ]
 
@@ -211,7 +226,10 @@ def transfer_keyframe_selection(selected, target_keyframes, extend=False):
             keyframe.select_control_point = False
         target_keyframe.select_control_point = item["control_point"]
 
-        if keyframe.interpolation == 'BEZIER' and target_keyframe.interpolation == 'BEZIER':
+        if (
+            keyframe.interpolation == "BEZIER"
+            and target_keyframe.interpolation == "BEZIER"
+        ):
             if item["left_handle"]:
                 target_keyframe.select_left_handle = True
                 if not extend:

@@ -35,5 +35,6 @@ addon.init_addon(
 def register():
     addon.register_modules()
 
+
 def unregister():
     addon.unregister_modules()
