@@ -1,6 +1,8 @@
 import bpy
-from ..debug_utils import log, DBG_OPS
+from ..utils.logging import get_logger
 from .dopesheet_helper import get_visible_objects, get_selected_keyframes
+
+log = get_logger(__name__)
 
 # Keyframe handle selection toggling operator
 

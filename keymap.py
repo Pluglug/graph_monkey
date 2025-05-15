@@ -1,8 +1,10 @@
 import bpy
+from .utils.logging import get_logger
 
 # from . addon import prefs, ADDON_ID
 # from . debug import log, DBG_PREFS
 
+log = get_logger(__name__)
 
 addon_keymaps = []
 

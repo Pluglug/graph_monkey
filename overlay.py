@@ -6,7 +6,9 @@ from time import time
 
 from .addon import get_prefs
 from . import constants as CC
-from .debug_utils import log, DBG_OVLY
+from .utils.logging import get_logger
+
+log = get_logger(__name__)
 
 
 def blf_size(font_id, size, *args, **kwargs):
@@ -380,9 +382,7 @@ class TextOverlaySettings(bpy.types.PropertyGroup):
 
 
 def convert_data_path_to_readable(channel_data_path: str) -> str:
-    DBG_OVLY and log.header(
-        f"convert_data_path_to_readable(\n    '{channel_data_path}')"
-    )
+    log.debug(f"convert_data_path_to_readable(\n    '{channel_data_path}')")
     replace_list = [
         ('["', " "),
         ('"].', " < "),
@@ -396,7 +396,7 @@ def convert_data_path_to_readable(channel_data_path: str) -> str:
         word.capitalize() for word in readable_data_path.split(" ")
     )
 
-    DBG_OVLY and log(f"readable_data_path: {readable_data_path}")
+    log.debug(f"readable_data_path: {readable_data_path}")
     return readable_data_path
 
 
@@ -415,7 +415,7 @@ def gen_channel_info_line(obj, fcurve):
 
     info_str = info_str.replace("><", "|")
 
-    DBG_OVLY and log(f"channel_info_line: {info_str}")
+    log.debug(f"channel_info_line: {info_str}")
     return info_str
 
 

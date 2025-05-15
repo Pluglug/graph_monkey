@@ -1,5 +1,7 @@
 import bpy
-from ..debug_utils import log, DBG_OPS
+from ..utils.logging import get_logger
+
+log = get_logger(__name__)
 
 
 def is_object_displayed(obj, dopesheet, type_filters):

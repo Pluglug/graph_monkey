@@ -2,8 +2,8 @@
 import bpy
 from rna_keymap_ui import draw_kmi
 
-# from . debug import log, DBG_PREFS
-from .debug_utils import log, DBG_PREFS, DebugFlagsGroup
+from .utils.logging import get_logger
+from .utils.logger_prefs import MonKeyLoggerPrefs
 
 from .addon import ADDON_ID
 
@@ -20,6 +20,8 @@ ops_idnames = [
     GRAPH_OT_monkey_vertically.bl_idname,
     GRAPH_OT_monkey_handle_selecter.bl_idname,
 ]
+
+log = get_logger(__name__)
 
 
 class MonKeyPreferences(bpy.types.AddonPreferences):
@@ -38,7 +40,8 @@ class MonKeyPreferences(bpy.types.AddonPreferences):
     overlay: bpy.props.PointerProperty(type=TextOverlaySettings)
     info_to_display: bpy.props.PointerProperty(type=ChannelInfoToDisplay)
 
-    debug_flags: bpy.props.PointerProperty(type=DebugFlagsGroup)
+    # debug_flags: bpy.props.PointerProperty(type=DebugFlagsGroup)
+    logger_prefs: bpy.props.PointerProperty(type=MonKeyLoggerPrefs)
 
     def draw(self, context):
         layout = self.layout
@@ -59,7 +62,7 @@ class MonKeyPreferences(bpy.types.AddonPreferences):
     def draw_description(self, context, layout):
         layout.label(text="TODO: Add description")
 
-        self.debug_flags.draw(context, layout)
+        MonKeyLoggerPrefs.draw(self.logger_prefs, layout)
 
     def draw_keymap(self, context, layout):
         wm = context.window_manager

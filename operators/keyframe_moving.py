@@ -1,6 +1,10 @@
 import bpy
-from ..debug_utils import log, DBG_OPS
-from .dopesheet_helper import get_visible_objects, get_selected_keyframes
+
+from ..debug_utils import DBG_OPS, log
+from .dopesheet_helper import get_selected_keyframes, get_visible_objects
+from ..utils.logging import get_logger
+
+log = get_logger(__name__)
 
 
 # Keyframe selection moving operators
@@ -37,11 +41,11 @@ class GRAPH_OT_monkey_horizontally(bpy.types.Operator):
             )
             return {"CANCELLED"}
 
-        DBG_OPS and log.header("Move Keyframe Selection Horizontally", "EXECUTE")
+        log.debug("Move Keyframe Selection Horizontally: EXECUTE")
         move_keyframe_selection_horizontally(
             self.direction, self.extend, visible_objects
         )
-        DBG_OPS and log.footer("Move Keyframe Selection Horizontally")
+        log.debug("Move Keyframe Selection Horizontally: FINISHED")
         return {"FINISHED"}
 
 
@@ -76,9 +80,9 @@ class GRAPH_OT_monkey_vertically(bpy.types.Operator):
             )
             return {"CANCELLED"}
 
-        DBG_OPS and log.header("Move Channel Selection Vertically", "EXECUTE")
+        log.debug("Move Channel Selection Vertically: EXECUTE")
         move_channel_selection_vertically(self.direction, self.extend, visible_objects)
-        DBG_OPS and log.footer("Move Channel Selection Vertically")
+        log.debug("Move Channel Selection Vertically: FINISHED")
         return {"FINISHED"}
 
 
