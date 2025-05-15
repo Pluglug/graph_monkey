@@ -1,6 +1,6 @@
-from . addon import VERSION
+from bpy.app import version as BLENDER_VERSION
 
-SINCE_4_0_0 = VERSION >= (4, 0, 0)
+SINCE_4_0_0 = BLENDER_VERSION >= (4, 0, 0)
 
 OVERLAY_ALIGNMENT_ITEMS = [
     ('TOP', "Top", ""),
