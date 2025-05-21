@@ -123,6 +123,16 @@ def register_keymaps():
     kmi.properties.handle_direction = "Right"
     kmi.properties.extend = True
 
+    # Focus
+    kmi = km.keymap_items.new(
+        "graph.view_selected_curves_range", type='F', value='PRESS')
+    kmi.properties.use_frame_range = True
+
+    # Unfocus(Builtin)
+    kmi = km.keymap_items.new(
+        "graph.view_all", type='F', value='PRESS', alt=True)
+    # kmi.properties.include_handles = True
+
     addon_keymaps.append(km)
 
 
