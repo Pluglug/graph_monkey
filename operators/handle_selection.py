@@ -10,7 +10,7 @@ log = get_logger(__name__)
 class GRAPH_OT_monkey_handle_selecter(bpy.types.Operator):
     bl_idname = "graph.monkey_handle_selecter"
     bl_label = "Toggle Handle Selection"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_options = {"UNDO"}
 
     handle_direction: bpy.props.EnumProperty(  # type: ignore
         name="Handle Direction",

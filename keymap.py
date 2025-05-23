@@ -125,12 +125,12 @@ def register_keymaps():
 
     # Focus
     kmi = km.keymap_items.new(
-        "graph.view_selected_curves_range", type='F', value='PRESS')
+        "graph.view_selected_curves_range", type="F", value="PRESS"
+    )
     kmi.properties.use_frame_range = True
 
     # Unfocus(Builtin)
-    kmi = km.keymap_items.new(
-        "graph.view_all", type='F', value='PRESS', alt=True)
+    kmi = km.keymap_items.new("graph.view_all", type="F", value="PRESS", alt=True)
     # kmi.properties.include_handles = True
 
     addon_keymaps.append(km)
@@ -143,6 +143,9 @@ def unregister_keymaps():
     addon_keymaps.clear()
 
 
-register, unregister = bpy.utils.register_classes_factory(
-    register_keymaps, unregister_keymaps
-)
+def register():
+    register_keymaps()
+
+
+def unregister():
+    unregister_keymaps()

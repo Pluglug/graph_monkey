@@ -1,8 +1,7 @@
 import bpy
 
-from ..debug_utils import DBG_OPS, log
-from .dopesheet_helper import get_selected_keyframes, get_visible_objects
 from ..utils.logging import get_logger
+from .dopesheet_helper import get_selected_keyframes, get_visible_objects
 
 log = get_logger(__name__)
 
@@ -13,7 +12,7 @@ log = get_logger(__name__)
 class GRAPH_OT_monkey_horizontally(bpy.types.Operator):
     bl_idname = "graph.monkey_horizontally"
     bl_label = "Move Keyframe Selection Horizontally"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_options = {"UNDO"}
 
     direction: bpy.props.EnumProperty(  # type: ignore
         name="Direction",
@@ -52,7 +51,7 @@ class GRAPH_OT_monkey_horizontally(bpy.types.Operator):
 class GRAPH_OT_monkey_vertically(bpy.types.Operator):
     bl_idname = "graph.monkey_vertically"
     bl_label = "Move Channel Selection Vertically"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_options = {"UNDO"}
 
     direction: bpy.props.EnumProperty(  # type: ignore
         name="Direction",

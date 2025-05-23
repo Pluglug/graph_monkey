@@ -31,8 +31,8 @@ if TYPE_CHECKING:
 # グローバル設定
 # ======================================================
 
-DBG_INIT = False
-CREATE_DEPENDENCY_GRAPH = False  # Create dependency graph
+DBG_INIT = True
+CREATE_DEPENDENCY_GRAPH = True  # Create dependency graph
 BACKGROUND = False
 VERSION = (0, 0, 0)  # Addon version
 BL_VERSION = (0, 0, 0)  # Supported Blender version

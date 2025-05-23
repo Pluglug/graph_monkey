@@ -21,12 +21,13 @@ from . import addon
 
 addon.init_addon(
     module_patterns=[
-        "operators.*",
-        "utils.*",
         "constants",
         "keymap",
         "overlay",
         "preferences",
+        "operators.*",
+        "ui.*",
+        "utils.*",
     ],
     use_reload=use_reload,
 )
