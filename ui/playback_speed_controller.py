@@ -16,7 +16,6 @@ from bpy.types import DOPESHEET_HT_header, Operator, Panel, Scene
 
 from ..utils.ui_utils import ic
 
-# 定数定義
 DEFAULT_SPEED = 1.0
 FRAME_MAP_BASE = 100
 FRAME_MAP_MIN = 1
@@ -27,9 +26,7 @@ preset_items = [
     ("0.25", "¼x", ""),
     ("0.5", "½x", ""),
     ("1.0", "1x", ""),
-    # ("1.5", "1.5x", ""),
     ("2.0", "2x", ""),
-    # ("4.0", "4x", ""),
 ]
 
 
@@ -65,9 +62,13 @@ class PlaybackController:
         self.scene["original_end"] = self.scene.frame_end
 
     def adjust_range(self, frame_map_old, frame_map_new):
-        # original値が存在しない場合は現在の値を使用
-        original_start = self.scene.get("original_start", self.scene.frame_start)
-        original_end = self.scene.get("original_end", self.scene.frame_end)
+        # original値が存在しない場合は範囲調整をスキップ
+        original_start = self.scene.get("original_start")
+        original_end = self.scene.get("original_end")
+
+        if original_start is None or original_end is None:
+            print("警告: オリジナル範囲が未保存のため、フレーム範囲調整をスキップ")
+            return
 
         ratio = frame_map_new / frame_map_old
         new_start = round(original_start * ratio)
@@ -75,6 +76,25 @@ class PlaybackController:
 
         self.scene.frame_start = new_start
         self.scene.frame_end = new_end
+
+    def has_valid_original_range(self):
+        """オリジナル範囲が適切に保存されているかチェック"""
+        original_start = self.scene.get("original_start")
+        original_end = self.scene.get("original_end")
+        return original_start is not None and original_end is not None
+
+    def is_range_modified(self):
+        """現在の範囲がオリジナルから変更されているかチェック"""
+        if not self.has_valid_original_range():
+            return False
+
+        original_start = self.scene.get("original_start")
+        original_end = self.scene.get("original_end")
+
+        start_changed = abs(int(original_start) - self.scene.frame_start) > 0
+        end_changed = abs(int(original_end) - self.scene.frame_end) > 0
+
+        return start_changed or end_changed
 
     def apply_speed(self, playback_speed):
         playback_speed = round(playback_speed, 2)
@@ -91,13 +111,16 @@ class PlaybackController:
         return cls(scene)
 
 
+# ===== オペレーター =====
+
+
 class SCENE_OT_store_original_range(Operator):
     bl_idname = "scene.store_original_range"
     bl_label = "Store Original Playback Range"
     bl_description = (
         "Store the original playback range before applying playback speed adjustments"
     )
-    bl_options = {"REGISTER", "UNDO"}
+    bl_options = {"INTERNAL", "UNDO"}
 
     def execute(self, context):
         controller = PlaybackController.get_instance(context.scene)
@@ -124,11 +147,9 @@ class SCENE_OT_reset_speed(Operator):
     bl_idname = "scene.reset_speed"
     bl_label = "Reset Playback Speed"
     bl_description = "Reset playback speed and return to original playback range"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_options = {"INTERNAL", "UNDO"}
 
     def execute(self, context):
-        # playback_speedを設定することで、on_speed_updateが自動的に呼ばれ
-        # controller.apply_speed()とフレーム範囲調整が適切に実行される
         context.scene.playback_speed = 1.0
         return {"FINISHED"}
 
@@ -137,7 +158,7 @@ class SCENE_OT_set_playback_speed_preset(Operator):
     bl_idname = "scene.set_playback_speed_preset"
     bl_label = "Set Playback Speed Preset"
     bl_description = "Set playback speed to preset value"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_options = {"INTERNAL", "UNDO"}
 
     speed: FloatProperty(
         name="Speed",
@@ -146,92 +167,26 @@ class SCENE_OT_set_playback_speed_preset(Operator):
     )
 
     def execute(self, context):
-        # # オリジナル範囲の状態をチェック
-        # original_start = context.scene.get("original_start")
-        # original_end = context.scene.get("original_end")
-        
-        # # need_save状態: オリジナル未保存
-        # if original_start is None or original_end is None:
-        #     self.report({"WARNING"}, 
-        #                "オリジナル範囲が未保存です。まず範囲を保存してから速度を変更してください。")
-        #     return {"CANCELLED"}
-        
-        # # need_update状態: 範囲が手動変更されている
-        # if (abs(int(original_start) - context.scene.frame_start) > 0 or
-        #     abs(int(original_end) - context.scene.frame_end) > 0):
-        #     if not abs(context.scene.playback_speed - DEFAULT_SPEED) > SPEED_TOLERANCE:
-        #         self.report({"WARNING"},
-        #                 "フレーム範囲が変更されています。まず範囲を更新保存してから速度を変更してください。")
-        #         return {"CANCELLED"}
-        
         context.scene.playback_speed = self.speed
         return {"FINISHED"}
 
 
-class SCENE_OT_save_custom_preset(Operator):
-    bl_idname = "scene.save_custom_preset"
-    bl_label = "Save Custom Speed Preset"
-    bl_description = "Save current speed as custom preset"
-    bl_options = {"REGISTER", "UNDO"}
-
-    def execute(self, context):
-        speed = context.scene.playback_speed
-        # カスタムプリセットをシーンプロパティに保存
-        if "custom_speed_presets" not in context.scene:
-            context.scene["custom_speed_presets"] = []
-
-        presets = list(context.scene.get("custom_speed_presets", []))
-        if speed not in presets and speed != 1.0:  # 1.0は既にデフォルトで存在
-            presets.append(speed)
-            presets.sort()
-            context.scene["custom_speed_presets"] = presets
-            self.report({"INFO"}, f"カスタムプリセット {speed:.2f}x を保存しました")
-        else:
-            self.report({"WARNING"}, "このプリセットは既に存在します")
-
-        return {"FINISHED"}
+# ===== UI ユーティリティ =====
 
 
-def on_speed_update(scene, context):
-    # # オリジナル範囲の状態をチェック
-    # original_start = scene.get("original_start")
-    # original_end = scene.get("original_end")
-    
-    # # need_save状態: オリジナル未保存
-    # if original_start is None or original_end is None:
-    #     print("警告: オリジナル範囲が未保存のため速度変化をキャンセル")
-    #     scene.playback_speed = DEFAULT_SPEED
-    #     return
-    
-    # # need_update状態: 範囲が手動変更されている
-    # if (abs(int(original_start) - scene.frame_start) > 0 or 
-    #     abs(int(original_end) - scene.frame_end) > 0):
-    #     # 現在速度が1.0xの場合のみチェック（既に速度変化中の場合は除外）
-    #     if not abs(scene.playback_speed - DEFAULT_SPEED) > SPEED_TOLERANCE:
-    #         print("警告: 範囲が変更されているため速度変化をキャンセル")
-    #         scene.playback_speed = DEFAULT_SPEED
-    #         return
-    
-    controller = PlaybackController.get_instance(scene)
-    controller.apply_speed(scene.playback_speed)
+class PlaybackSpeedUI:
+    """再生速度コントロールのUI管理クラス"""
 
-
-def draw_ui(self, context):
-    layout = self.layout
-    scene = context.scene
-
-    # ヘッダー用の1行レイアウト
-    row = layout.row(align=True)
-
-    # ボタン状態を事前に取得
+    @staticmethod
     def get_store_button_state(scene):
+        """ストアボタンの状態を取得"""
         # original値の存在確認
         original_start = scene.get("original_start")
         original_end = scene.get("original_end")
-        
+
         # 現在の速度状態をチェック
         is_speed_normal = abs(scene.playback_speed - DEFAULT_SPEED) <= SPEED_TOLERANCE
-        
+
         # 速度変化中の場合
         if not is_speed_normal:
             if original_start is not None and original_end is not None:
@@ -240,19 +195,19 @@ def draw_ui(self, context):
             else:
                 # オリジナル未保存 + 速度変化中 = 警告（赤・無効）
                 return "warning", False
-        
+
         # 速度が通常時（1.0x）の場合
         if original_start is None or original_end is None:
             # 未保存（赤・有効）
             return "need_save", True
-            
+
         # 現在の範囲とoriginal範囲を比較
         current_start = scene.frame_start
         current_end = scene.frame_end
-        
+
         start_changed = abs(int(original_start) - current_start) > 0
         end_changed = abs(int(original_end) - current_end) > 0
-        
+
         if start_changed or end_changed:
             # 変更あり（赤・有効）
             return "need_update", True
@@ -260,71 +215,117 @@ def draw_ui(self, context):
             # 保存済み・変更なし（緑・有効）
             return "saved", True
 
+    @staticmethod
+    def get_store_button_icon(button_state):
+        """ストアボタンのアイコンを取得"""
+        icon_map = {
+            "using": ic("SEQUENCE_COLOR_05"),  # Blue - オリジナル範囲利用中
+            "warning": ic("SEQUENCE_COLOR_01"),  # Red - 速度変化中だが未保存
+            "need_save": ic("SEQUENCE_COLOR_01"),  # Red - 保存が必要
+            "need_update": ic("SEQUENCE_COLOR_01"),  # Red - 更新が必要
+            "saved": ic("SEQUENCE_COLOR_04"),  # Green - 保存済み・問題なし
+        }
+        return icon_map.get(button_state, ic("SEQUENCE_COLOR_01"))
 
-    button_state, button_enabled = get_store_button_state(scene)
-    
-    # 速度変化を無効化すべき状態かチェック
-    speed_change_blocked = button_state in ["need_save", "need_update"]
+    @staticmethod
+    def get_reset_button_icon(scene):
+        """リセットボタンのアイコンを取得"""
+        if scene.playback_speed != 1.00:
+            return ic("CANCEL")
+        else:
+            return ic("PLAY")
 
-    # 速度スライダー
-    col = row.column(align=True)
-    if speed_change_blocked:
-        col.enabled = False  # オリジナル範囲の問題がある場合は無効化
+    @staticmethod
+    def should_block_speed_change(button_state):
+        """速度変更をブロックすべきかチェック"""
+        return button_state in ["need_save", "need_update"]
+
+
+# ===== UIレイアウト =====
+
+
+def draw_speed_slider(layout, scene, enabled=True):
+    """速度スライダーを描画"""
+    col = layout.column(align=True)
+    col.enabled = enabled
     col.prop(scene, "playback_speed", text="", icon=ic("MOD_TIME"))
 
-    # プリセットボタン
-    col = row.column(align=True)
-    if speed_change_blocked:
-        col.enabled = False  # オリジナル範囲の問題がある場合は無効化
+
+def draw_preset_buttons(layout, scene, enabled=True):
+    """プリセットボタンを描画"""
+    col = layout.column(align=True)
+    col.enabled = enabled
     col.scale_x = 0.5
+
     preset_row = col.row(align=True)
     for speed_value, speed_label, _ in preset_items:
         op = preset_row.operator("scene.set_playback_speed_preset", text=speed_label)
         op.speed = float(speed_value)
 
-    # 制御ボタン
-    row.separator()
-    col = row.column(align=True)
+
+def draw_control_buttons(layout, scene):
+    """制御ボタン（ストア・リセット）を描画"""
+    col = layout.column(align=True)
     control_row = col.row(align=True)
 
-    button_state, button_enabled = get_store_button_state(scene)
+    # ストアボタンの状態取得
+    button_state, button_enabled = PlaybackSpeedUI.get_store_button_state(scene)
+    store_icon = PlaybackSpeedUI.get_store_button_icon(button_state)
 
-    # アイコンの決定
-    if button_state == "using":
-        store_icon = ic("SEQUENCE_COLOR_05")  # Blue - オリジナル範囲利用中
-    elif button_state == "warning":
-        store_icon = ic("SEQUENCE_COLOR_01")  # Red - 速度変化中だが未保存
-    elif button_state == "need_save" or button_state == "need_update":
-        store_icon = ic("SEQUENCE_COLOR_01")  # Red - 保存/更新が必要
-    else:  # saved
-        store_icon = ic("SEQUENCE_COLOR_04")  # Green - 保存済み・問題なし
-
-    store_op = control_row.operator(
-        "scene.store_original_range", text="", icon=store_icon
-    )
-
-    # 速度変化中の場合は視覚的にも分かりやすくする
-    if not button_enabled:
-        # 無効状態を視覚的に示すため、アルファ値を下げる
-        # Blenderでは直接的な無効化が難しいため、視覚的フィードバックで対応
-        pass  # 現在は視覚的な区別のみ
+    # ストアボタン
+    control_row.operator("scene.store_original_range", text="", icon=store_icon)
 
     # リセットボタン
-    if scene.playback_speed != 1.00:
-        reset_icon = ic("CANCEL")
-    else:
-        reset_icon = ic("PLAY")
-
+    reset_icon = PlaybackSpeedUI.get_reset_button_icon(scene)
     control_row.operator("scene.reset_speed", text="", icon=reset_icon)
 
 
+def draw_ui(self, context):
+    """メインのUI描画関数"""
+    layout = self.layout
+    scene = context.scene
+
+    # メインの横並び行
+    row = layout.row(align=True)
+
+    # ボタンの状態をチェック
+    button_state, _ = PlaybackSpeedUI.get_store_button_state(scene)
+    speed_change_blocked = PlaybackSpeedUI.should_block_speed_change(button_state)
+
+    # 速度スライダー
+    draw_speed_slider(row, scene, enabled=not speed_change_blocked)
+
+    # プリセットボタン
+    draw_preset_buttons(row, scene, enabled=not speed_change_blocked)
+
+    # セパレーター
+    row.separator()
+
+    # 制御ボタン
+    draw_control_buttons(row, scene)
+
+
+# ===== イベントハンドラー =====
+
+
+def on_speed_update(scene, context):
+    """速度更新時のコールバック"""
+    controller = PlaybackController.get_instance(scene)
+    controller.apply_speed(scene.playback_speed)
+
+
 def store_range_on_load(dummy):
+    """ファイル読み込み時にオリジナル範囲を保存"""
     controller = PlaybackController.get_instance(bpy.context.scene)
     controller.store_original_range()
     controller.apply_speed(bpy.context.scene.playback_speed)
 
 
+# ===== 登録・登録解除 =====
+
+
 def register():
+    """アドオンの登録"""
     Scene.playback_speed = FloatProperty(
         name="Playback Speed",
         description="Control the playback speed of the animation",
@@ -344,6 +345,7 @@ def register():
 
 
 def unregister():
+    """アドオンの登録解除"""
     if hasattr(Scene, "playback_speed"):
         bpy.context.scene.playback_speed = 1.0
 
