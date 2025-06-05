@@ -1,7 +1,9 @@
 # Add Action creation and unlink tools to Graph Editor
 # Location: Graph Editor > Header
 
+import bpy
 from bpy.types import GRAPH_MT_editor_menus, Operator
+from bpy.app import version as BL_VERSION
 
 
 class GRAPH_EDITOR_OT_create_action(Operator):
@@ -97,8 +99,51 @@ class GRAPH_EDITOR_OT_unlink_action(Operator):
 #         return bpy.ops.action.stash(override, create_new=True)
 
 
+def _get_animated_id(context):
+    """Get the animated ID for the current context"""
+    return context.object
+
+
+def _draw_action_selector(context, layout):
+    """Draw action and action slot selector similar to DopeSheet"""
+    animated_id = _get_animated_id(context)
+    if not animated_id:
+        return
+
+    row = layout.row()
+    if animated_id.animation_data and animated_id.animation_data.use_tweak_mode:
+        row.enabled = False
+
+    # Action selector
+    row.template_action(animated_id, new="graph_editor.create_action", unlink="graph_editor.unlink_action")
+
+    # Action slot selector for layered actions (Blender 4.4+ only)
+    if BL_VERSION >= (4, 4, 0):
+        adt = animated_id and animated_id.animation_data
+        if not adt or not adt.action:
+            return
+        
+        # Check if action has is_action_layered attribute (safer check)
+        if hasattr(adt.action, 'is_action_layered') and adt.action.is_action_layered:
+            row.context_pointer_set("animated_id", animated_id)
+            row.template_search(
+                adt, "action_slot",
+                adt, "action_suitable_slots",
+                new="anim.slot_new_for_id",
+                unlink="anim.slot_unassign_from_id",
+            )
+
+
 def draw_func(self, context):
     layout = self.layout
+
+    if BL_VERSION >= (4, 4, 0):
+        layout.menu("DOPESHEET_MT_action")
+        # TODO: 以下のオペレーターをグラフエディタで利用できるようにする。
+        # bpy.ops.anim.slot_channels_move_to_new_action()
+        # bpy.ops.action.push_down()
+        # bpy.ops.action.stash()
+
     obj = context.active_object
     layout.separator()
 
@@ -115,13 +160,9 @@ def draw_func(self, context):
     if obj is not None:
         if obj.animation_data is None:
             obj.animation_data_create()
-        ad = obj.animation_data
-        layout.template_ID(
-            ad,
-            "action",
-            new="graph_editor.create_action",
-            unlink="graph_editor.unlink_action",
-        )
+
+        # Use the new action selector that supports action slots
+        _draw_action_selector(context, layout)
     else:
         layout.label("No active object", icon="ERROR")
 
