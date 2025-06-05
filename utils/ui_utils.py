@@ -1,4 +1,4 @@
-from bpy.app import version as bpy_version
+from bpy.app import version as BL_VERSION
 from bpy.types import UILayout
 
 from .logging import get_logger
@@ -15,6 +15,9 @@ def ic(icon):
 
     if icon in ICON_ENUM_ITEMS:
         return icon
+
+    if icon.startswith("SEQUENCE_COLOR_"):  # 4.4+
+        return icon.replace("SEQUENCE_COLOR_", "STRIP_COLOR_")
 
     ICON_ALTERNATIVES = {
         "GREASEPENCIL_LAYER_GROUP": "TEXT",
@@ -46,7 +49,7 @@ def ic_eye(value):
 
 
 def ui_prop(layout, data, property, **kwargs):
-    if bpy_version < (4, 1, 0) and "placeholder" in kwargs:
+    if BL_VERSION < (4, 1, 0) and "placeholder" in kwargs:
         del kwargs["placeholder"]
 
     layout.prop(data, property, **kwargs)
