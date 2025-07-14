@@ -138,8 +138,8 @@ class SCENE_OT_store_original_range(Operator):
             )
             return {"CANCELLED"}
 
-        context.scene.playback_speed = 1.0
         controller.store_original_range()
+        # context.scene.playback_speed = 1.0
         return {"FINISHED"}
 
 
