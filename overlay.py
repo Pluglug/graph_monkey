@@ -84,7 +84,8 @@ def calculate_aligned_position(
     Returns:
         A tuple of (x, y) coordinates for the object position.
     """
-    if alignment not in CC.OVERLAY_ALIGNMENT_ITEMS:
+    valid_alignments = {item[0] for item in CC.OVERLAY_ALIGNMENT_ITEMS}
+    if alignment not in valid_alignments:
         raise ValueError(f"Invalid alignment: {alignment}")
 
     if "TOP" in alignment:
@@ -401,7 +402,7 @@ def convert_data_path_to_readable(channel_data_path: str) -> str:
 
 
 def gen_channel_info_line(obj, fcurve):
-    show = get_prefs().overlay.info_to_display
+    show = get_prefs().info_to_display
 
     info_str = ""
     if show.object_name:
@@ -411,7 +412,7 @@ def gen_channel_info_line(obj, fcurve):
     if fcurve.group and show.group_name:
         info_str += f"< {fcurve.group.name} >"
     if show.channel_name:
-        info_str += f" {convert_data_path_to_readable(fcurve.data_path)} >"
+        info_str += f"< {convert_data_path_to_readable(fcurve.data_path)} >"
 
     info_str = info_str.replace("><", "|")
 
@@ -487,47 +488,52 @@ class TextDisplayHandler:
 
     def start(self, context):
         if self.draw_handler is None:
-            self.draw_handler = bpy.types.SpaceView3D.draw_handler_add(
-                self.draw_callback, (context,), "WINDOW", "POST_PIXEL"
+            self.draw_handler = bpy.types.SpaceGraphEditor.draw_handler_add(
+                self.draw_callback_wrapper, (), "WINDOW", "POST_PIXEL"
             )
 
     def stop(self):
         if self.draw_handler is not None:
-            bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
+            bpy.types.SpaceGraphEditor.draw_handler_remove(self.draw_handler, "WINDOW")
             self.draw_handler = None
 
     def is_active(self):
         return self.draw_handler is not None
 
+    def draw_callback_wrapper(self):
+        """描画ハンドラーのラッパー - 正しいコンテキストを取得"""
+        context = bpy.context
+        self.draw_callback(context)
+
     def draw_callback(self, context):
-        generate_text_lines = None  # Delete
+        # generate_text_lines = None  # Delete
         pr = get_prefs(context)
 
         # Generate the text lines based on the current context
         text_lines = generate_text_lines(context)
 
         # Check if text should be displayed
-        if not pr.show_text or not text_lines:
+        if not pr.overlay.show_text or not text_lines:
             return
 
         font_id = 0
-        blf_size(font_id, pr.text_size)  # Set font size from addon preferences
-        blf.color(font_id, *pr.text_color)  # Set text color from addon preferences
+        blf_size(font_id, pr.overlay.size)  # Set font size from addon preferences
+        blf.color(font_id, *pr.overlay.color)  # Set text color from addon preferences
 
         # Get the initial value of y_offset
-        y_offset = pr.overlay_offset_y
+        y_offset = pr.overlay.offset_y
 
         for text in text_lines:
             # Get the screen position for the text based on the alignment
             # x, y = get_screen_position(context, text, pr.overlay_alignment, pr.overlay_offset_x, y_offset, font_id)
 
             x, y = calculate_aligned_position(
-                pr.overlay_alignment,
+                pr.overlay.alignment,
                 context.region.width,
                 context.region.height,
                 blf.dimensions(font_id, text)[0],
                 blf.dimensions(font_id, text)[1],
-                pr.overlay_offset_x,
+                pr.overlay.offset_x,
                 y_offset,
             )
 
@@ -539,7 +545,7 @@ class TextDisplayHandler:
             text_height = blf.dimensions(font_id, text)[1]
 
             # Adjust y_offset for the next line depending
-            y_offset += text_height + pr.line_offset
+            y_offset += text_height + 5  # Fixed line offset
 
 
 text_display_handler = TextDisplayHandler()
@@ -586,6 +592,56 @@ class TEXT_OT_deactivate_handler(bpy.types.Operator):
 #     TEXT_OT_activate_handler,
 #     TEXT_OT_deactivate_handler,
 # ]
+
+
+def generate_text_lines(context):
+    """選択中のアニメーションチャンネルの情報からテキスト行を生成する"""
+    log.debug("generate_text_lines called")
+    log.debug(f"context.area: {context.area}")
+    log.debug(f"context.area.type: {context.area.type if context.area else 'None'}")
+    log.debug(f"context.space_data: {context.space_data}")
+    log.debug(f"context.space_data.type: {context.space_data.type if context.space_data else 'None'}")
+    
+    # space_dataをチェックする方法に変更
+    if not context.space_data or context.space_data.type != "GRAPH_EDITOR":
+        log.debug("Not in GRAPH_EDITOR (using space_data)")
+        return []
+        
+    from .operators.dopesheet_helper import get_visible_objects
+    
+    dopesheet = context.space_data.dopesheet
+    visible_objects = get_visible_objects(dopesheet)
+    
+    log.debug(f"Found {len(visible_objects)} visible objects")
+    
+    if not visible_objects:
+        return []
+    
+    text_lines = []
+    
+    # 選択されたチャンネルを取得
+    for obj in visible_objects:
+        if not (obj.animation_data and obj.animation_data.action):
+            continue
+            
+        selected_channels = [
+            fcurve for fcurve in obj.animation_data.action.fcurves if fcurve.select
+        ]
+        
+        log.debug(f"Object {obj.name}: {len(selected_channels)} selected channels")
+        
+        # 選択されたチャンネルが1つの場合のみ表示
+        if len(selected_channels) == 1:
+            fcurve = selected_channels[0]
+            info_line = gen_channel_info_line(obj, fcurve)
+            log.debug(f"Generated info line: {info_line}")
+            if info_line:
+                text_lines.append(info_line)
+                break  # 1つのチャンネル情報のみ表示
+    
+    log.debug(f"Total text lines: {len(text_lines)}")
+    return text_lines
+
 
 if __name__ == "__main__":
     pass
