@@ -7,7 +7,7 @@ from .utils.logger_prefs import MONKEY_LoggerPreferences
 
 from .addon import ADDON_ID, get_prefs
 
-from .operators.keyframe_moving import (
+from .operators.keyframe_selection import (
     GRAPH_OT_monkey_horizontally,
     GRAPH_OT_monkey_vertically,
 )
@@ -87,6 +87,7 @@ class MonKeyPreferences(bpy.types.AddonPreferences):
 
 def register():
     from .utils.logger_prefs import LoggerRegistry
+
     context = bpy.context
     pr = get_prefs(context)
     if hasattr(pr, "logger_prefs"):
