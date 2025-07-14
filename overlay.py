@@ -7,6 +7,7 @@ from time import time
 from .addon import get_prefs
 from . import constants as CC
 from .utils.logging import get_logger
+from .operators.dopesheet_helper import get_selected_visible_fcurves
 
 log = get_logger(__name__)
 
@@ -349,6 +350,13 @@ class TextOverlaySettings(bpy.types.PropertyGroup):
         default=2,
         min=0,
     )
+    max_display_count: bpy.props.IntProperty(
+        name="Max Display Count",
+        description="Maximum display count",
+        default=3,
+        min=1,
+        max=10,
+    )
 
     def draw(self, context, layout):
         layout.use_property_split = True
@@ -364,6 +372,7 @@ class TextOverlaySettings(bpy.types.PropertyGroup):
         col.prop(self, "duration")
         col.prop(self, "offset_x")
         col.prop(self, "offset_y")
+        col.prop(self, "max_display_count")
 
         col.separator()
 
@@ -402,7 +411,6 @@ def gen_channel_info_line(fcurve):
     """
     Fカーブから人間が分かりやすいチャンネル名を生成し、色も返す。
     """
-    # data_path例: 'rotation_euler', 'location', 'scale', etc.
     data_path = fcurve.data_path
     idx = fcurve.array_index
     group = fcurve.group.name if fcurve.group else ""
@@ -413,70 +421,72 @@ def gen_channel_info_line(fcurve):
         "location": ["X Location", "Y Location", "Z Location"],
         "scale": ["X Scale", "Y Scale", "Z Scale"],
         "rotation_euler": ["X Euler Rotation", "Y Euler Rotation", "Z Euler Rotation"],
-        "rotation_quaternion": ["W Quaternion Rotation", "X Quaternion Rotation", "Y Quaternion Rotation", "Z Quaternion Rotation"],
+        "rotation_quaternion": [
+            "W Quaternion Rotation",
+            "X Quaternion Rotation",
+            "Y Quaternion Rotation",
+            "Z Quaternion Rotation",
+        ],
         "delta_location": ["X Delta Location", "Y Delta Location", "Z Delta Location"],
         "delta_scale": ["X Delta Scale", "Y Delta Scale", "Z Delta Scale"],
-        "delta_rotation_euler": ["X Delta Euler Rotation", "Y Delta Euler Rotation", "Z Delta Euler Rotation"],
-        "delta_rotation_quaternion": ["W Delta Quaternion Rotation", "X Delta Quaternion Rotation", "Y Delta Quaternion Rotation", "Z Delta Quaternion Rotation"],
+        "delta_rotation_euler": [
+            "X Delta Euler Rotation",
+            "Y Delta Euler Rotation",
+            "Z Delta Euler Rotation",
+        ],
+        "delta_rotation_quaternion": [
+            "W Delta Quaternion Rotation",
+            "X Delta Quaternion Rotation",
+            "Y Delta Quaternion Rotation",
+            "Z Delta Quaternion Rotation",
+        ],
     }
-    if data_path in array_labels and idx < len(array_labels[data_path]):
-        channel_name = array_labels[data_path][idx]
+    # ドット区切りで最後のワードをキーにする
+    last_key = data_path.split(".")[-1]
+    if last_key in array_labels and idx < len(array_labels[last_key]):
+        channel_name = array_labels[last_key][idx]
     else:
-        # 通常はdata_pathを整形
         channel_name = convert_data_path_to_readable(data_path)
-        # 配列インデックスがあれば付加
         if hasattr(fcurve, "array_index") and fcurve.array_index != 0:
             channel_name += f"[{fcurve.array_index}]"
-    # グループ名も付加（あれば）
     if group:
         channel_name = f"{group}: {channel_name}"
     return channel_name, color
 
 
+def get_fcurve_display_color(fcurve, alpha=1.0):
+    color = tuple(fcurve.color) if hasattr(fcurve, "color") else (1.0, 1.0, 1.0)
+    if len(color) == 3:
+        color = (color[0], color[1], color[2], alpha)
+    elif len(color) == 4:
+        color = (color[0], color[1], color[2], alpha)
+    else:
+        color = (1.0, 1.0, 1.0, alpha)
+    return color
+
+
 def generate_text_lines(context):
     """
-    context.visible_fcurvesから最大3つのカーブ名と色を返す。
+    選択中のvisible_fcurvesから最大N個のカーブ名と色を返す。
+    超過分はサマリ行で表示。
     戻り値: [(text, color), ...]
     """
-    log.debug("generate_text_lines (visible_fcurves) called")
-    if not hasattr(context, "visible_fcurves"):
+    log.debug("generate_text_lines (selected_visible_fcurves) called")
+    pr = get_prefs(context)
+    selected_fcurves = get_selected_visible_fcurves(context)
+    if not selected_fcurves:
         return []
-    visible_fcurves = context.visible_fcurves
-    if not visible_fcurves:
-        return []
+    max_count = getattr(pr.overlay, "max_display_count", 3)
     lines = []
-    for fcurve in visible_fcurves[:3]:
-        text, color = gen_channel_info_line(fcurve)
+    for fcurve in selected_fcurves[:max_count]:
+        text, _ = gen_channel_info_line(fcurve)
+        color = get_fcurve_display_color(fcurve, alpha=1.0)
         lines.append((text, color))
+    if len(selected_fcurves) > max_count:
+        lines.append(
+            (f"...{len(selected_fcurves) - max_count} more", (1.0, 1.0, 1.0, 1.0))
+        )
     return lines
-
-
-# def get_channel_info(visible_objects):
-#     selected_channels = [(obj, fcurve) for obj in visible_objects for fcurve in obj.animation_data.action.fcurves if fcurve.select]
-
-#     # Only display info if a single channel is selected
-#     if len(selected_channels) == 1:
-#         show = get_prefs().overlay.info_to_display
-#         obj, fcurve = selected_channels[0]
-#         object_name = obj.name if show.object_name else None
-#         action_name = fcurve.id_data.name if show.action_name else None
-#         group_name = fcurve.group.name if fcurve.group and show.group_name else None
-#         channel_name = convert_data_path_to_readable(fcurve.data_path) if show.channel_name else None
-
-#         info_str = ""
-#         if object_name:
-#             info_str += f"< {object_name} >"
-#         if action_name:
-#             info_str += f"< {action_name} >"
-#         if group_name:
-#             info_str += f"< {group_name} >"
-#         if channel_name:
-#             info_str += f" {channel_name} >"
-
-#         info_str = info_str.replace("><", "|")
-
-#         return info_str
-#     return None
 
 
 class ChannelInfoToDisplay(bpy.types.PropertyGroup):
@@ -516,6 +526,7 @@ class ChannelInfoToDisplay(bpy.types.PropertyGroup):
 def draw_callback_wrapper(*args, **kwargs):
     context = bpy.context
     TextDisplayHandler.draw_callback(context)
+
 
 class TextDisplayHandler:
     def __init__(self):
@@ -581,7 +592,6 @@ class TEXT_OT_activate_handler(bpy.types.Operator):
     def poll(cls, context):
         return not text_display_handler.is_active()
 
-    # @log_exec
     def execute(self, context):
         text_display_handler.start(context)
         return {"FINISHED"}
@@ -597,21 +607,9 @@ class TEXT_OT_deactivate_handler(bpy.types.Operator):
     def poll(cls, context):
         return text_display_handler.is_active()
 
-    # @log_exec
     def execute(self, context):
         text_display_handler.stop()
         return {"FINISHED"}
-
-
-# def activate_handler():
-#     bpy.ops.text.activate_handler()
-#     return None  # Stop the timer
-
-
-# operator_classes = [
-#     TEXT_OT_activate_handler,
-#     TEXT_OT_deactivate_handler,
-# ]
 
 
 if __name__ == "__main__":
