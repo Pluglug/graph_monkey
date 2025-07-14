@@ -1,6 +1,9 @@
 import bpy
 from ..utils.logging import get_logger
-from .dopesheet_helper import get_visible_objects, get_selected_keyframes
+from .dopesheet_helper import (
+    get_selected_keyframes,
+    get_visible_fcurves,
+)
 
 log = get_logger(__name__)
 
@@ -24,102 +27,92 @@ class GRAPH_OT_monkey_handle_selecter(bpy.types.Operator):
         if not context.area or context.area.type != "GRAPH_EDITOR":
             return False
 
-        if not context.space_data:
-            return False
-
-        dopesheet = context.space_data.dopesheet
-        visible_objects = get_visible_objects(dopesheet)
-        return bool(visible_objects)
+        # 新しいアプローチ: visible_fcurvesを使用
+        visible_fcurves = get_visible_fcurves(context)
+        return bool(visible_fcurves)
 
     def execute(self, context):
-        if not context.space_data:
-            self.report({"ERROR"}, "Graph Editor space data not found.")
+        # 新しいアプローチ: bpy.context.visible_fcurvesを使用
+        visible_fcurves = get_visible_fcurves(context)
+        if not visible_fcurves:
+            self.report({"ERROR"}, "No visible fcurves found")
             return {"CANCELLED"}
 
-        dopesheet = context.space_data.dopesheet
-        visible_objects = get_visible_objects(dopesheet)
-        toggle_handle_selection(self.handle_direction, self.extend, visible_objects)
+        toggle_handle_selection(self.handle_direction, self.extend)
         return {"FINISHED"}
 
 
-def toggle_handle_selection(
-    handle_direction: str, extend: bool, visible_objects: list
-) -> None:
-    if visible_objects is None:
+def toggle_handle_selection(handle_direction: str, extend: bool) -> None:
+    """ハンドル選択を切り替える（新しいアプローチ）"""
+    if handle_direction not in ("Left", "Right"):
+        raise ValueError("Invalid handle direction. Must be 'Left' or 'Right'.")
+
+    # 新しいヘルパー関数を使用して可視Fカーブを取得
+    visible_fcurves = get_visible_fcurves(bpy.context)
+
+    if not visible_fcurves:
+        log.warning("No visible fcurves found")
         return
 
-    all_selected = True
+    # 選択されたFカーブのみを処理
+    selected_fcurves = [fcurve for fcurve in visible_fcurves if fcurve.select]
 
-    for obj in visible_objects:
-        selected_channels = [
-            fcurve for fcurve in obj.animation_data.action.fcurves if fcurve.select
-        ]
+    if not selected_fcurves:
+        log.warning("No selected fcurves found")
+        return
 
-        if selected_channels:
-            all_selected &= all_keyframes_have_selected_handle(obj, handle_direction)
-            if not all_selected:
-                break
+    # すべての選択されたキーフレームが指定されたハンドルを選択しているかチェック
+    all_selected = all(
+        all_keyframes_have_selected_handle_for_fcurve(fcurve, handle_direction)
+        for fcurve in selected_fcurves
+    )
 
-    for obj in visible_objects:
-        selected_channels = [
-            fcurve for fcurve in obj.animation_data.action.fcurves if fcurve.select
-        ]
-
-        if selected_channels:
-            toggle_keyframe_handle_selection(
-                obj, handle_direction, extend, all_selected
-            )
+    # 各Fカーブのハンドル選択を切り替え
+    for fcurve in selected_fcurves:
+        toggle_keyframe_handle_selection_for_fcurve(
+            fcurve, handle_direction, extend, all_selected
+        )
 
 
-def all_keyframes_have_selected_handle(
-    obj: bpy.types.Object, handle_direction: str
+def all_keyframes_have_selected_handle_for_fcurve(
+    fcurve, handle_direction: str
 ) -> bool:
-    """選択されたキーフレームがすべて指定されたハンドルを選択しているかどうかを返す"""
-    action = obj.animation_data.action
+    """Fカーブの選択されたキーフレームがすべて指定されたハンドルを選択しているかどうかを返す"""
+    selected = get_selected_keyframes(fcurve.keyframe_points)
 
-    for fcurve in action.fcurves:
-        if not fcurve.select:
-            continue
+    if not selected:
+        return True  # 選択されたキーフレームがない場合はTrueを返す
 
-        selected = get_selected_keyframes(fcurve.keyframe_points)
+    for item in selected:
+        keyframe = item["keyframe"]
 
-        if not selected:
-            continue
-
-        for item in selected:
-            keyframe = item["keyframe"]
-
-            if handle_direction == "Left":
-                if not keyframe.select_left_handle:
-                    return False
-            elif handle_direction == "Right":
-                if not keyframe.select_right_handle:
-                    return False
+        if handle_direction == "Left":
+            if not keyframe.select_left_handle:
+                return False
+        elif handle_direction == "Right":
+            if not keyframe.select_right_handle:
+                return False
     return True
 
 
-def toggle_keyframe_handle_selection(
-    obj: bpy.types.Object, handle_direction: str, extend: bool, all_selected: bool
+def toggle_keyframe_handle_selection_for_fcurve(
+    fcurve, handle_direction: str, extend: bool, all_selected: bool
 ) -> None:
-    action = obj.animation_data.action
+    """Fカーブのキーフレームハンドル選択を切り替える"""
+    selected = get_selected_keyframes(fcurve.keyframe_points)
 
-    for fcurve in action.fcurves:
-        if not fcurve.select:
-            continue
+    if not selected:
+        return
 
-        selected = get_selected_keyframes(fcurve.keyframe_points)
-
-        if not selected:
-            continue
-
-        for item in selected:
-            keyframe = item["keyframe"]
-            update_keyframe_handle_selection(
-                keyframe, handle_direction, extend, all_selected
-            )
+    for item in selected:
+        keyframe = item["keyframe"]
+        update_keyframe_handle_selection(
+            keyframe, handle_direction, extend, all_selected
+        )
 
 
 def update_keyframe_handle_selection(keyframe, handle_direction, extend, all_selected):
+    """キーフレームのハンドル選択状態を更新する"""
     if handle_direction == "Left":
         if all_selected:
             keyframe.select_left_handle = False
