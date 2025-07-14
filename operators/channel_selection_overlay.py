@@ -6,11 +6,11 @@ import bpy
 from bpy.props import BoolProperty, EnumProperty, FloatVectorProperty, IntProperty
 from bpy.types import Operator
 
-from .addon import get_prefs
-from .constants import OVERLAY_ALIGNMENT_ITEMS
-from .operators.dopesheet_helper import get_selected_visible_fcurves
-from .utils.logging import get_logger
-from .utils.overlay_utils import calculate_aligned_position
+from ..addon import get_prefs
+from ..constants import OVERLAY_ALIGNMENT_ITEMS
+from ..operators.dopesheet_helper import get_selected_visible_fcurves
+from ..utils.logging import get_logger
+from ..utils.overlay_utils import calculate_aligned_position
 
 log = get_logger(__name__)
 

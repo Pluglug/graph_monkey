@@ -8,7 +8,7 @@ from .operators.keyframe_selection import (
     GRAPH_OT_monkey_horizontally,
     GRAPH_OT_monkey_vertically,
 )
-from .overlay import ChannelSelectionOverlaySettings
+from .operators.channel_selection_overlay import ChannelSelectionOverlaySettings
 from .utils.logger_prefs import MONKEY_LoggerPreferences
 from .utils.logging import LoggerRegistry, get_logger
 
