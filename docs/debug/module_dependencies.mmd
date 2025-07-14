@@ -8,32 +8,36 @@ config:
 flowchart RL
     constants[constants]
     keymap[keymap]
+    operators_channel_selection_overlay(operators.channel_selection_overlay)
     operators_dopesheet_helper(operators.dopesheet_helper)
     operators_handle_selection(operators.handle_selection)
     operators_keyframe_jump(operators.keyframe_jump)
     operators_keyframe_selection(operators.keyframe_selection)
-    overlay[overlay]
     preferences[preferences]
     ui_playback_speed_controller(ui.playback_speed_controller)
     utils_logger_prefs(utils.logger_prefs)
     utils_logging(utils.logging)
+    utils_overlay_utils(utils.overlay_utils)
     utils_ui_utils(utils.ui_utils)
+    constants --> operators_channel_selection_overlay
+    constants --> utils_overlay_utils
+    operators_channel_selection_overlay --> preferences
+    operators_dopesheet_helper --> operators_channel_selection_overlay
     operators_dopesheet_helper --> operators_handle_selection
     operators_dopesheet_helper --> operators_keyframe_selection
-    operators_dopesheet_helper --> overlay
     operators_handle_selection --> preferences
     operators_keyframe_selection --> preferences
-    overlay --> preferences
     utils_logger_prefs --> preferences
     utils_logging --> constants
     utils_logging --> keymap
+    utils_logging --> operators_channel_selection_overlay
     utils_logging --> operators_dopesheet_helper
     utils_logging --> operators_handle_selection
     utils_logging --> operators_keyframe_jump
     utils_logging --> operators_keyframe_selection
-    utils_logging --> overlay
     utils_logging --> preferences
     utils_logging --> utils_logger_prefs
     utils_logging --> utils_ui_utils
+    utils_overlay_utils --> operators_channel_selection_overlay
     utils_ui_utils --> ui_playback_speed_controller
     utils_ui_utils --> utils_logger_prefs
