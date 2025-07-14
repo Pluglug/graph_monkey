@@ -12,10 +12,7 @@ log = get_logger(__name__)
 
 
 def blf_size(font_id, size, *args, **kwargs):
-    if CC.SINCE_4_0_0:
-        blf.size(font_id, size)
-    else:
-        blf.size(font_id, size, 72)
+    blf.size(font_id, size)
 
 
 # TODO: Utilsへ移動
@@ -401,23 +398,57 @@ def convert_data_path_to_readable(channel_data_path: str) -> str:
     return readable_data_path
 
 
-def gen_channel_info_line(obj, fcurve):
-    show = get_prefs().info_to_display
+def gen_channel_info_line(fcurve):
+    """
+    Fカーブから人間が分かりやすいチャンネル名を生成し、色も返す。
+    """
+    # data_path例: 'rotation_euler', 'location', 'scale', etc.
+    data_path = fcurve.data_path
+    idx = fcurve.array_index
+    group = fcurve.group.name if fcurve.group else ""
+    color = tuple(fcurve.color) if hasattr(fcurve, "color") else (1.0, 1.0, 1.0, 1.0)
 
-    info_str = ""
-    if show.object_name:
-        info_str += f"< {obj.name} >"
-    if show.action_name:
-        info_str += f"< {fcurve.id_data.name} >"
-    if fcurve.group and show.group_name:
-        info_str += f"< {fcurve.group.name} >"
-    if show.channel_name:
-        info_str += f"< {convert_data_path_to_readable(fcurve.data_path)} >"
+    # 配列プロパティのラベル化
+    array_labels = {
+        "location": ["X Location", "Y Location", "Z Location"],
+        "scale": ["X Scale", "Y Scale", "Z Scale"],
+        "rotation_euler": ["X Euler Rotation", "Y Euler Rotation", "Z Euler Rotation"],
+        "rotation_quaternion": ["W Quaternion Rotation", "X Quaternion Rotation", "Y Quaternion Rotation", "Z Quaternion Rotation"],
+        "delta_location": ["X Delta Location", "Y Delta Location", "Z Delta Location"],
+        "delta_scale": ["X Delta Scale", "Y Delta Scale", "Z Delta Scale"],
+        "delta_rotation_euler": ["X Delta Euler Rotation", "Y Delta Euler Rotation", "Z Delta Euler Rotation"],
+        "delta_rotation_quaternion": ["W Delta Quaternion Rotation", "X Delta Quaternion Rotation", "Y Delta Quaternion Rotation", "Z Delta Quaternion Rotation"],
+    }
+    if data_path in array_labels and idx < len(array_labels[data_path]):
+        channel_name = array_labels[data_path][idx]
+    else:
+        # 通常はdata_pathを整形
+        channel_name = convert_data_path_to_readable(data_path)
+        # 配列インデックスがあれば付加
+        if hasattr(fcurve, "array_index") and fcurve.array_index != 0:
+            channel_name += f"[{fcurve.array_index}]"
+    # グループ名も付加（あれば）
+    if group:
+        channel_name = f"{group}: {channel_name}"
+    return channel_name, color
 
-    info_str = info_str.replace("><", "|")
 
-    log.debug(f"channel_info_line: {info_str}")
-    return info_str
+def generate_text_lines(context):
+    """
+    context.visible_fcurvesから最大3つのカーブ名と色を返す。
+    戻り値: [(text, color), ...]
+    """
+    log.debug("generate_text_lines (visible_fcurves) called")
+    if not hasattr(context, "visible_fcurves"):
+        return []
+    visible_fcurves = context.visible_fcurves
+    if not visible_fcurves:
+        return []
+    lines = []
+    for fcurve in visible_fcurves[:3]:
+        text, color = gen_channel_info_line(fcurve)
+        lines.append((text, color))
+    return lines
 
 
 # def get_channel_info(visible_objects):
@@ -482,6 +513,10 @@ class ChannelInfoToDisplay(bpy.types.PropertyGroup):
         col.prop(self, "channel_name")
 
 
+def draw_callback_wrapper(*args, **kwargs):
+    context = bpy.context
+    TextDisplayHandler.draw_callback(context)
+
 class TextDisplayHandler:
     def __init__(self):
         self.draw_handler = None
@@ -489,7 +524,7 @@ class TextDisplayHandler:
     def start(self, context):
         if self.draw_handler is None:
             self.draw_handler = bpy.types.SpaceGraphEditor.draw_handler_add(
-                self.draw_callback_wrapper, (), "WINDOW", "POST_PIXEL"
+                draw_callback_wrapper, (), "WINDOW", "POST_PIXEL"
             )
 
     def stop(self):
@@ -500,33 +535,23 @@ class TextDisplayHandler:
     def is_active(self):
         return self.draw_handler is not None
 
-    def draw_callback_wrapper(self):
-        """描画ハンドラーのラッパー - 正しいコンテキストを取得"""
-        context = bpy.context
-        self.draw_callback(context)
-
-    def draw_callback(self, context):
-        # generate_text_lines = None  # Delete
+    @staticmethod
+    def draw_callback(context):
+        if not context.region:
+            return
         pr = get_prefs(context)
-
-        # Generate the text lines based on the current context
         text_lines = generate_text_lines(context)
-
-        # Check if text should be displayed
         if not pr.overlay.show_text or not text_lines:
             return
-
         font_id = 0
-        blf_size(font_id, pr.overlay.size)  # Set font size from addon preferences
-        blf.color(font_id, *pr.overlay.color)  # Set text color from addon preferences
-
-        # Get the initial value of y_offset
+        blf_size(font_id, pr.overlay.size)
         y_offset = pr.overlay.offset_y
-
-        for text in text_lines:
-            # Get the screen position for the text based on the alignment
-            # x, y = get_screen_position(context, text, pr.overlay_alignment, pr.overlay_offset_x, y_offset, font_id)
-
+        for text, color in text_lines:
+            # 色が3要素ならalpha=1.0を補う
+            if len(color) == 3:
+                color = (color[0], color[1], color[2], 1.0)
+            # 減衰処理（仮: alpha=1.0のまま）
+            alpha = color[3]
             x, y = calculate_aligned_position(
                 pr.overlay.alignment,
                 context.region.width,
@@ -536,16 +561,11 @@ class TextDisplayHandler:
                 pr.overlay.offset_x,
                 y_offset,
             )
-
-            # Draw the text at the calculated position
+            blf.color(font_id, color[0], color[1], color[2], alpha)
             blf.position(font_id, x, y, 0)
             blf.draw(font_id, text)
-
-            # Calculate the height of the text
             text_height = blf.dimensions(font_id, text)[1]
-
-            # Adjust y_offset for the next line depending
-            y_offset += text_height + 5  # Fixed line offset
+            y_offset += text_height + 5
 
 
 text_display_handler = TextDisplayHandler()
@@ -592,55 +612,6 @@ class TEXT_OT_deactivate_handler(bpy.types.Operator):
 #     TEXT_OT_activate_handler,
 #     TEXT_OT_deactivate_handler,
 # ]
-
-
-def generate_text_lines(context):
-    """選択中のアニメーションチャンネルの情報からテキスト行を生成する"""
-    log.debug("generate_text_lines called")
-    log.debug(f"context.area: {context.area}")
-    log.debug(f"context.area.type: {context.area.type if context.area else 'None'}")
-    log.debug(f"context.space_data: {context.space_data}")
-    log.debug(f"context.space_data.type: {context.space_data.type if context.space_data else 'None'}")
-    
-    # space_dataをチェックする方法に変更
-    if not context.space_data or context.space_data.type != "GRAPH_EDITOR":
-        log.debug("Not in GRAPH_EDITOR (using space_data)")
-        return []
-        
-    from .operators.dopesheet_helper import get_visible_objects
-    
-    dopesheet = context.space_data.dopesheet
-    visible_objects = get_visible_objects(dopesheet)
-    
-    log.debug(f"Found {len(visible_objects)} visible objects")
-    
-    if not visible_objects:
-        return []
-    
-    text_lines = []
-    
-    # 選択されたチャンネルを取得
-    for obj in visible_objects:
-        if not (obj.animation_data and obj.animation_data.action):
-            continue
-            
-        selected_channels = [
-            fcurve for fcurve in obj.animation_data.action.fcurves if fcurve.select
-        ]
-        
-        log.debug(f"Object {obj.name}: {len(selected_channels)} selected channels")
-        
-        # 選択されたチャンネルが1つの場合のみ表示
-        if len(selected_channels) == 1:
-            fcurve = selected_channels[0]
-            info_line = gen_channel_info_line(obj, fcurve)
-            log.debug(f"Generated info line: {info_line}")
-            if info_line:
-                text_lines.append(info_line)
-                break  # 1つのチャンネル情報のみ表示
-    
-    log.debug(f"Total text lines: {len(text_lines)}")
-    return text_lines
 
 
 if __name__ == "__main__":
