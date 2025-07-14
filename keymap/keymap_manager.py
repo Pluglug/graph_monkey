@@ -1,10 +1,57 @@
-import bpy
-from typing import Dict, List, Tuple, Optional, Callable
 from dataclasses import dataclass, field
+from typing import Dict, List, Literal
+
+import bpy
+from rna_keymap_ui import draw_kmi
 
 from ..utils.logging import get_logger
 
 log = get_logger(__name__)
+
+# スペースタイプの型定義
+SpaceType = Literal[
+    "EMPTY",
+    "VIEW_3D",
+    "IMAGE_EDITOR",
+    "NODE_EDITOR",
+    "SEQUENCE_EDITOR",
+    "CLIP_EDITOR",
+    "MOTION_TRACKING",
+    "ANIMATION",
+    "DOPESHEET_EDITOR",
+    "GRAPH_EDITOR",
+    "NLA_EDITOR",
+    "SCRIPTING",
+    "TEXT_EDITOR",
+    "CONSOLE",
+    "INFO",
+    "TOPBAR",
+    "STATUSBAR",
+    "OUTLINER",
+    "PROPERTIES",
+    "FILE_BROWSER",
+    "SPREADSHEET",
+    "PREFERENCES",
+]
+
+# リージョンタイプの型定義
+RegionType = Literal[
+    "WINDOW",
+    "HEADER",
+    "CHANNELS",
+    "TEMPORARY",
+    "UI",
+    "TOOLS",
+    "TOOL_PROPS",
+    "ASSET_SHELF",
+    "PREVIEW",
+    "HUD",
+    "NAVIGATION_BAR",
+    "EXECUTE",
+    "FOOTER",
+    "TOOL_HEADER",
+    "XR",
+]
 
 SPACE_TYPE_ITEMS = [
     ("EMPTY", "Empty", "Empty"),
@@ -90,7 +137,9 @@ class KeymapDefinition:
     head: bool = False
     properties: Dict = field(default_factory=dict)
     description: str = ""
-    context: str = "GRAPH_EDITOR"
+    name: str = "3D View"  # キーマップの識別名
+    space_type: SpaceType = "VIEW_3D"  # スペースタイプ
+    region_type: RegionType = "WINDOW"  # リージョンタイプ
 
     def to_dict(self) -> Dict:
         """辞書形式に変換"""
@@ -109,7 +158,9 @@ class KeymapDefinition:
             "head": self.head,
             "properties": self.properties,
             "description": self.description,
-            "context": self.context,
+            "name": self.name,
+            "space_type": self.space_type,
+            "region_type": self.region_type,
         }
 
 
@@ -119,7 +170,6 @@ class KeymapRegistry:
     def __init__(self):
         self._keymaps: Dict[str, List[KeymapDefinition]] = {}
         self._registered_keymaps: List = []
-        self._conflict_detector = KeymapConflictDetector()
 
     def register_keymap_group(self, group_name: str, keymaps: List[KeymapDefinition]):
         """キーマップグループを登録"""
@@ -130,34 +180,34 @@ class KeymapRegistry:
         """全てのキーマップを取得"""
         return self._keymaps.copy()
 
-    def check_conflicts(self) -> List[Tuple[str, str]]:
-        """キーコンフリクトをチェック"""
-        return self._conflict_detector.detect_conflicts(self._keymaps)
-
     def apply_keymaps(self):
         """Blenderにキーマップを適用"""
         self.unregister_keymaps()
 
         wm = bpy.context.window_manager
+        if not wm or not wm.keyconfigs.addon:
+            log.error("Window manager or keyconfig not available")
+            return
         kc = wm.keyconfigs.addon
 
         for group_name, keymaps in self._keymaps.items():
             for keymap_def in keymaps:
                 km = kc.keymaps.new(
-                    name=keymap_def.context, space_type=keymap_def.context
+                    name=keymap_def.name,
+                    space_type=keymap_def.space_type,  # type: ignore
                 )
 
                 kmi = km.keymap_items.new(
                     keymap_def.operator_id,
-                    type=keymap_def.key,
-                    value=keymap_def.value,
+                    type=keymap_def.key,  # type: ignore
+                    value=keymap_def.value,  # type: ignore
                     any=keymap_def.any,
                     shift=keymap_def.shift,
                     ctrl=keymap_def.ctrl,
                     alt=keymap_def.alt,
                     oskey=keymap_def.oskey,
-                    key_modifier=keymap_def.key_modifier,
-                    direction=keymap_def.direction,
+                    key_modifier=keymap_def.key_modifier,  # type: ignore
+                    direction=keymap_def.direction,  # type: ignore
                     repeat=keymap_def.repeat,
                     head=keymap_def.head,
                 )
@@ -173,6 +223,8 @@ class KeymapRegistry:
     def unregister_keymaps(self):
         """キーマップを登録解除"""
         wm = bpy.context.window_manager
+        if not wm or not wm.keyconfigs.addon:
+            return
         for km in self._registered_keymaps:
             try:
                 wm.keyconfigs.addon.keymaps.remove(km)
@@ -180,77 +232,96 @@ class KeymapRegistry:
                 pass  # 既に削除されている場合
         self._registered_keymaps.clear()
 
+    def draw_keymap_settings(self, context, layout):
+        """キーマップ設定UIを描画"""
+        if not self._keymaps:
+            layout.label(text="登録されたキーマップがありません")
+            return
 
-class KeymapConflictDetector:
-    """キーマップコンフリクト検出クラス"""
+        wm = context.window_manager
+        if not wm or not wm.keyconfigs.addon:
+            layout.label(text="キーコンフィグが利用できません")
+            return
 
-    def detect_conflicts(
-        self, keymaps: Dict[str, List[KeymapDefinition]]
-    ) -> List[Tuple[str, str]]:
-        """コンフリクトを検出"""
-        conflicts = []
-        all_keymaps = []
+        kc = wm.keyconfigs.addon
 
-        # 全キーマップを収集
-        for group_name, keymap_list in keymaps.items():
-            for keymap_def in keymap_list:
-                all_keymaps.append((group_name, keymap_def))
+        # 統計情報を表示
+        total_groups = len(self._keymaps)
+        total_keymaps = sum(len(keymaps) for keymaps in self._keymaps.values())
 
-        # コンフリクトチェック
-        for i, (group1, keymap1) in enumerate(all_keymaps):
-            for j, (group2, keymap2) in enumerate(all_keymaps[i + 1 :], i + 1):
-                if self._is_conflict(keymap1, keymap2):
-                    conflicts.append(
-                        (
-                            f"{group1}: {keymap1.description}",
-                            f"{group2}: {keymap2.description}",
-                        )
-                    )
-
-        return conflicts
-
-    def _is_conflict(
-        self, keymap1: KeymapDefinition, keymap2: KeymapDefinition
-    ) -> bool:
-        """2つのキーマップがコンフリクトするかチェック"""
-        return (
-            keymap1.context == keymap2.context
-            and keymap1.key == keymap2.key
-            and keymap1.alt == keymap2.alt
-            and keymap1.ctrl == keymap2.ctrl
-            and keymap1.shift == keymap2.shift
+        stats_box = layout.box()
+        stats_box.label(
+            text=f"登録済みグループ: {total_groups}, 総キーマップ数: {total_keymaps}",
+            icon="INFO",
         )
 
+        # グループごとにキーマップを表示
+        for group_name, keymap_defs in self._keymaps.items():
+            # グループ名で区切り
+            box = layout.box()
+            box.label(text=f"グループ: {group_name}", icon="KEYINGSET")
 
-class KeymapConfig:
-    """キーマップ設定管理クラス"""
+            # このグループのキーマップを取得
+            group_keymaps = {}
+            for km in kc.keymaps:
+                if km.name in [kd.name for kd in keymap_defs]:
+                    group_keymaps[km.name] = km
 
-    def __init__(self):
-        self.default_configs = self._load_default_configs()
-        self.user_configs = {}
+            # 各キーマップ定義に対してUIを描画
+            for keymap_def in keymap_defs:
+                km = group_keymaps.get(keymap_def.name)
+                if not km:
+                    # キーマップが見つからない場合
+                    row = box.row()
+                    row.label(
+                        text=f"キーマップ '{keymap_def.name}' が見つかりません",
+                        icon="ERROR",
+                    )
+                    continue
 
-    def _load_default_configs(self) -> Dict:
-        """デフォルト設定を読み込み"""
-        return {
-            "vertical_movement": {"upward": "W", "downward": "S"},
-            "horizontal_movement": {"forward": "D", "backward": "A"},
-            "handle_selection": {"left": "Q", "right": "E"},
-            "view_control": {"focus": "F"},
-        }
+                # キーマップ名を表示
+                keymap_box = box.box()
+                keymap_box.label(text=f"キーマップ: {keymap_def.name}", icon="KEY")
 
-    def get_key_for_action(self, category: str, action: str) -> str:
-        """アクションに対応するキーを取得"""
-        if category in self.user_configs and action in self.user_configs[category]:
-            return self.user_configs[category][action]
-        return self.default_configs.get(category, {}).get(action, "")
+                # このキーマップのキーマップアイテムを検索
+                found_kmi = None
+                for kmi in km.keymap_items:
+                    if (
+                        kmi.idname == keymap_def.operator_id
+                        and kmi.type == keymap_def.key
+                        and kmi.value == keymap_def.value
+                    ):
+                        found_kmi = kmi
+                        break
 
-    def set_key_for_action(self, category: str, action: str, key: str):
-        """アクションにキーを設定"""
-        if category not in self.user_configs:
-            self.user_configs[category] = {}
-        self.user_configs[category][action] = key
+                if found_kmi:
+                    # キーマップアイテムが見つかった場合、draw_kmiで描画
+                    draw_kmi([], kc, km, found_kmi, keymap_box, 0)
+
+                    # 追加情報を表示
+                    info_row = keymap_box.row()
+                    info_row.label(
+                        text=f"キー: {keymap_def.key}, 値: {keymap_def.value}"
+                    )
+                    if keymap_def.description:
+                        desc_row = keymap_box.row()
+                        desc_row.label(text=f"説明: {keymap_def.description}")
+                else:
+                    # キーマップアイテムが見つからない場合
+                    row = keymap_box.row()
+                    row.label(
+                        text=f"オペレータ '{keymap_def.operator_id}' のキーマップアイテムが見つかりません",
+                        icon="ERROR",
+                    )
+
+                    # 定義情報を表示
+                    info_row = keymap_box.row()
+                    info_row.label(
+                        text=f"期待されるキー: {keymap_def.key}, 値: {keymap_def.value}"
+                    )
+                    if keymap_def.description:
+                        desc_row = keymap_box.row()
+                        desc_row.label(text=f"説明: {keymap_def.description}")
 
 
-# グローバルインスタンス
 keymap_registry = KeymapRegistry()
-keymap_config = KeymapConfig()
