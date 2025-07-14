@@ -1,7 +1,12 @@
 import bpy
 
 from ..utils.logging import get_logger
-from .dopesheet_helper import get_selected_keyframes, get_visible_objects
+from .dopesheet_helper import (
+    get_selected_keyframes,
+    get_visible_objects,
+    get_visible_fcurves,
+    get_selected_visible_fcurves,
+)
 
 log = get_logger(__name__)
 
@@ -26,16 +31,14 @@ class GRAPH_OT_monkey_horizontally(bpy.types.Operator):
         if not context.area or context.area.type != "GRAPH_EDITOR":
             return False
         return True
-        # if context.area.type != 'GRAPH_EDITOR':
-        #     return False
-
-        # dopesheet = context.space_data.dopesheet
-        # visible_objects = get_visible_objects(dopesheet)
-        # return bool(visible_objects)  # チェックが完全でないし、操作時混乱する。
 
     def execute(self, context):
         if not context.space_data:
             self.report({"ERROR"}, "Graph Editor space data not found.")
+            return {"CANCELLED"}
+
+        if not hasattr(context.space_data, "dopesheet"):
+            self.report({"ERROR"}, "Dopesheet not found in space data.")
             return {"CANCELLED"}
 
         dopesheet = context.space_data.dopesheet
@@ -71,29 +74,24 @@ class GRAPH_OT_monkey_vertically(bpy.types.Operator):
         if not context.area or context.area.type != "GRAPH_EDITOR":
             return False
         return True
-        # if context.area.type != 'GRAPH_EDITOR':
-        #     return False
-
-        # dopesheet = context.space_data.dopesheet
-        # visible_objects = get_visible_objects(dopesheet)
-        # return bool(visible_objects)
 
     def execute(self, context):
         if not context.space_data:
             self.report({"ERROR"}, "Graph Editor space data not found.")
             return {"CANCELLED"}
 
-        dopesheet = context.space_data.dopesheet
-        visible_objects = get_visible_objects(dopesheet)
-        if not visible_objects:
-            self.report(
-                {"ERROR"}, "There is no object that is displayed and has an action."
-            )
+        if not hasattr(context.space_data, "dopesheet"):
+            self.report({"ERROR"}, "Dopesheet not found in space data.")
             return {"CANCELLED"}
 
-        log.debug("Move Channel Selection Vertically: EXECUTE")
-        move_channel_selection_vertically(self.direction, self.extend, visible_objects)
-        log.debug("Move Channel Selection Vertically: FINISHED")
+        # 新しいアプローチを試行
+        visible_fcurves = get_visible_fcurves(context)
+        if visible_fcurves:
+            log.debug("Move Channel Selection Vertically: EXECUTE")
+            move_channel_selection_vertically(self.direction, self.extend)
+            log.debug("Move Channel Selection Vertically: FINISHED")
+            return {"FINISHED"}
+        self.report({"ERROR"}, "No visible fcurves found")
         return {"FINISHED"}
 
 
@@ -175,24 +173,24 @@ def binary_search_keyframe(fcurve, target_frame, direction="forward"):
     return None
 
 
-def move_channel_selection_vertically(
-    direction="downward", extend=False, visible_objects=None
-):
+def move_channel_selection_vertically(direction="downward", extend=False):
+    """チャンネル選択を垂直方向に移動する"""
     if direction not in ("downward", "upward"):
         raise ValueError("Invalid value for direction. Must be 'downward' or 'upward'.")
 
-    if visible_objects is None:
+    # 新しいヘルパー関数を使用して可視Fカーブを取得
+    all_fcurves = get_visible_fcurves(bpy.context)
+
+    if not all_fcurves:
+        log.warning("No visible fcurves found")
         return
 
-    all_fcurves = []
-
-    for obj in visible_objects:
-        action = obj.animation_data.action
-        all_fcurves.extend(action.fcurves)
-
     num_fcurves = len(all_fcurves)
-
     selected_indices = [i for i, fcurve in enumerate(all_fcurves) if fcurve.select]
+
+    if not selected_indices:
+        log.warning("No selected fcurves found")
+        return
 
     if direction == "downward":
         selected_indices.sort(reverse=True)
