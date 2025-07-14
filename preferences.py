@@ -5,7 +5,7 @@ from rna_keymap_ui import draw_kmi
 from .utils.logging import get_logger
 from .utils.logger_prefs import MONKEY_LoggerPreferences
 
-from .addon import ADDON_ID
+from .addon import ADDON_ID, get_prefs
 
 from .operators.keyframe_moving import (
     GRAPH_OT_monkey_horizontally,
@@ -83,3 +83,19 @@ class MonKeyPreferences(bpy.types.AddonPreferences):
 # del GRAPH_OT_monkey_horizontally
 # del GRAPH_OT_monkey_vertically
 # del GRAPH_OT_monkey_handle_selecter
+
+
+def register():
+    from .utils.logger_prefs import LoggerRegistry
+    context = bpy.context
+    pr = get_prefs(context)
+    if hasattr(pr, "logger_prefs"):
+        mods = LoggerRegistry.get_all_loggers()
+        current_module_names = {m.name for m in pr.logger_prefs.modules}
+        for module_name, _logger in mods.items():
+            if module_name not in current_module_names:
+                pr.logger_prefs.register_module(module_name, "INFO")
+        # 設定の更新もここで呼び出すのが適切か？
+        for module in pr.logger_prefs.modules:
+            module.log_level = "DEBUG"
+        pr.logger_prefs.update_logger_settings(context)
