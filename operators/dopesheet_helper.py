@@ -44,6 +44,9 @@ def is_object_displayed(obj, dopesheet, type_filters):
 
 
 def get_visible_objects(dopesheet):
+    if not bpy.context.scene:
+        return []
+
     type_filters = {
         "SCENE": dopesheet.show_scenes,
         "NODETREE": dopesheet.show_nodes,

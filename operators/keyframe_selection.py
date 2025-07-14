@@ -23,7 +23,9 @@ class GRAPH_OT_monkey_horizontally(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.area.type == "GRAPH_EDITOR"
+        if not context.area or context.area.type != "GRAPH_EDITOR":
+            return False
+        return True
         # if context.area.type != 'GRAPH_EDITOR':
         #     return False
 
@@ -32,6 +34,10 @@ class GRAPH_OT_monkey_horizontally(bpy.types.Operator):
         # return bool(visible_objects)  # チェックが完全でないし、操作時混乱する。
 
     def execute(self, context):
+        if not context.space_data:
+            self.report({"ERROR"}, "Graph Editor space data not found.")
+            return {"CANCELLED"}
+
         dopesheet = context.space_data.dopesheet
         visible_objects = get_visible_objects(dopesheet)
         if not visible_objects:
@@ -62,7 +68,9 @@ class GRAPH_OT_monkey_vertically(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.area.type == "GRAPH_EDITOR"
+        if not context.area or context.area.type != "GRAPH_EDITOR":
+            return False
+        return True
         # if context.area.type != 'GRAPH_EDITOR':
         #     return False
 
@@ -71,6 +79,10 @@ class GRAPH_OT_monkey_vertically(bpy.types.Operator):
         # return bool(visible_objects)
 
     def execute(self, context):
+        if not context.space_data:
+            self.report({"ERROR"}, "Graph Editor space data not found.")
+            return {"CANCELLED"}
+
         dopesheet = context.space_data.dopesheet
         visible_objects = get_visible_objects(dopesheet)
         if not visible_objects:

@@ -21,7 +21,10 @@ class GRAPH_OT_monkey_handle_selecter(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        if context.area.type != "GRAPH_EDITOR":
+        if not context.area or context.area.type != "GRAPH_EDITOR":
+            return False
+
+        if not context.space_data:
             return False
 
         dopesheet = context.space_data.dopesheet
@@ -29,6 +32,10 @@ class GRAPH_OT_monkey_handle_selecter(bpy.types.Operator):
         return bool(visible_objects)
 
     def execute(self, context):
+        if not context.space_data:
+            self.report({"ERROR"}, "Graph Editor space data not found.")
+            return {"CANCELLED"}
+
         dopesheet = context.space_data.dopesheet
         visible_objects = get_visible_objects(dopesheet)
         toggle_handle_selection(self.handle_direction, self.extend, visible_objects)
