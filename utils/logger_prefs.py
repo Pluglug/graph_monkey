@@ -184,11 +184,12 @@ class MONKEY_LoggerPreferences(PropertyGroup):
             )
 
             # ログ操作ボタン
-            row = box.row()
-            row.operator("monkey_logger.export_logs", text="Export Logs")
-            row.operator("monkey_logger.clear_logs", text="Clear Logs")
-            row = box.row()
-            row.operator(
+            col = box.column()
+            col.operator("monkey_logger.export_logs", text="Export Logs")
+            col.operator("monkey_logger.clear_logs", text="Clear Logs")
+            col.separator()
+            col.operator("monkey_logger.update_settings", text="Update Settings")
+            col.operator(
                 "monkey_logger.batch_update_log_levels", text="Batch Update Log Levels"
             )
 

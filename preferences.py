@@ -2,18 +2,15 @@
 import bpy
 from rna_keymap_ui import draw_kmi
 
-from .utils.logging import get_logger
-from .utils.logger_prefs import MONKEY_LoggerPreferences
-
 from .addon import ADDON_ID, get_prefs
-
+from .operators.handle_selection import GRAPH_OT_monkey_handle_selecter
 from .operators.keyframe_selection import (
     GRAPH_OT_monkey_horizontally,
     GRAPH_OT_monkey_vertically,
 )
-from .operators.handle_selection import GRAPH_OT_monkey_handle_selecter
-
-from .overlay import TextOverlaySettings, ChannelInfoToDisplay
+from .overlay import ChannelSelectionOverlaySettings
+from .utils.logger_prefs import MONKEY_LoggerPreferences
+from .utils.logging import LoggerRegistry, get_logger
 
 ops_idnames = [
     GRAPH_OT_monkey_horizontally.bl_idname,
@@ -37,10 +34,7 @@ class MonKeyPreferences(bpy.types.AddonPreferences):
         ],
         default="HowToUse",
     )
-    overlay: bpy.props.PointerProperty(type=TextOverlaySettings)
-    info_to_display: bpy.props.PointerProperty(type=ChannelInfoToDisplay)
-
-    # debug_flags: bpy.props.PointerProperty(type=DebugFlagsGroup)
+    overlay: bpy.props.PointerProperty(type=ChannelSelectionOverlaySettings)
     logger_prefs: bpy.props.PointerProperty(type=MONKEY_LoggerPreferences)
 
     def draw(self, context):
@@ -54,8 +48,6 @@ class MonKeyPreferences(bpy.types.AddonPreferences):
             self.draw_description(context, box)
         elif self.tab == "OVERLAY":
             self.overlay.draw(context, box)
-            box.separator()
-            self.info_to_display.draw(context, box)
         elif self.tab == "KEYMAP":
             self.draw_keymap(context, box)
 
@@ -79,14 +71,7 @@ class MonKeyPreferences(bpy.types.AddonPreferences):
                 draw_kmi([], kc, km, kmi, layout, 0)
 
 
-# del ops_idnames
-# del GRAPH_OT_monkey_horizontally
-# del GRAPH_OT_monkey_vertically
-# del GRAPH_OT_monkey_handle_selecter
-
-
 def register():
-    from .utils.logger_prefs import LoggerRegistry
 
     context = bpy.context
     pr = get_prefs(context)
@@ -97,6 +82,6 @@ def register():
             if module_name not in current_module_names:
                 pr.logger_prefs.register_module(module_name, "INFO")
         # 設定の更新もここで呼び出すのが適切か？
-        for module in pr.logger_prefs.modules:
-            module.log_level = "DEBUG"
+        # for module in pr.logger_prefs.modules:
+        #     module.log_level = "DEBUG"
         pr.logger_prefs.update_logger_settings(context)
