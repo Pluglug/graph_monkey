@@ -143,9 +143,9 @@ def unregister_keymaps():
     addon_keymaps.clear()
 
 
-def register():
-    register_keymaps()
+# def register():
+#     register_keymaps()
 
 
-def unregister():
-    unregister_keymaps()
+# def unregister():
+#     unregister_keymaps()

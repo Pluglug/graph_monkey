@@ -6,6 +6,7 @@ from .dopesheet_helper import (
     get_visible_fcurves,
     get_selected_visible_fcurves,
 )
+from ..keymap.keymap_manager import KeymapDefinition, keymap_registry
 
 log = get_logger(__name__)
 
@@ -247,3 +248,109 @@ def transfer_keyframe_selection(selected, target_keyframes, extend=False):
                 target_keyframe.select_right_handle = True
                 if not extend:
                     keyframe.select_right_handle = False
+
+
+keymap_monkey_vertically = [
+    # 上方向
+    KeymapDefinition(
+        operator_id="graph.monkey_vertically",
+        key="W",
+        value="PRESS",
+        alt=True,
+        shift=False,
+        properties={"direction": "upward", "extend": False},
+        name="Graph Editor",
+        space_type="GRAPH_EDITOR",
+        description="上方向にチャンネル選択を移動",
+    ),
+    # 上方向（拡張）
+    KeymapDefinition(
+        operator_id="graph.monkey_vertically",
+        key="W",
+        value="PRESS",
+        alt=True,
+        shift=True,
+        properties={"direction": "upward", "extend": True},
+        name="Graph Editor",
+        space_type="GRAPH_EDITOR",
+        description="上方向にチャンネル選択を拡張移動",
+    ),
+    # 下方向
+    KeymapDefinition(
+        operator_id="graph.monkey_vertically",
+        key="S",
+        value="PRESS",
+        alt=True,
+        shift=False,
+        properties={"direction": "downward", "extend": False},
+        name="Graph Editor",
+        space_type="GRAPH_EDITOR",
+        description="下方向にチャンネル選択を移動"
+    ),
+    # 下方向（拡張）
+    KeymapDefinition(
+        operator_id="graph.monkey_vertically",
+        key="S",
+        value="PRESS",
+        alt=True,
+        shift=True,
+        properties={"direction": "downward", "extend": True},
+        name="Graph Editor",
+        space_type="GRAPH_EDITOR",
+        description="下方向にチャンネル選択を拡張移動"
+    ),
+]
+
+keymap_monkey_horizontally = [
+    # 右方向
+    KeymapDefinition(
+        operator_id="graph.monkey_horizontally",
+        key="D",
+        value="PRESS",
+        alt=True,
+        shift=False,
+        properties={"direction": "forward", "extend": False},
+        name="Graph Editor",
+        space_type="GRAPH_EDITOR",
+        description="右方向にキーフレーム選択を移動"
+    ),
+    # 右方向（拡張）
+    KeymapDefinition(
+        operator_id="graph.monkey_horizontally",
+        key="D",
+        value="PRESS",
+        alt=True,
+        shift=True,
+        properties={"direction": "forward", "extend": True},
+        name="Graph Editor",
+        space_type="GRAPH_EDITOR",
+        description="右方向にキーフレーム選択を拡張移動"
+    ),
+    # 左方向
+    KeymapDefinition(
+        operator_id="graph.monkey_horizontally",
+        key="A",
+        value="PRESS",
+        alt=True,
+        shift=False,
+        properties={"direction": "backward", "extend": False},
+        name="Graph Editor",
+        space_type="GRAPH_EDITOR",
+        description="左方向にキーフレーム選択を移動"
+    ),
+    # 左方向（拡張）
+    KeymapDefinition(
+        operator_id="graph.monkey_horizontally",
+        key="A",
+        value="PRESS",
+        alt=True,
+        shift=True,
+        properties={"direction": "backward", "extend": True},
+        name="Graph Editor",
+        space_type="GRAPH_EDITOR",
+        description="左方向にキーフレーム選択を拡張移動"
+    ),
+]
+
+keymap_registry.register_keymap_group("Monkey Horizontal Selection", keymap_monkey_horizontally)
+keymap_registry.register_keymap_group("Monkey Vertical Selection", keymap_monkey_vertically)

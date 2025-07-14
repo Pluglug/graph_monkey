@@ -2,6 +2,8 @@ import bpy
 from bpy.types import Operator
 from bpy.props import BoolProperty
 
+from ..keymap.keymap_manager import KeymapDefinition, keymap_registry
+
 
 class GRAPH_OT_view_selected_curves_range(Operator):
     """再生範囲内の選択中のカーブ全体を表示する"""
@@ -86,19 +88,28 @@ class GRAPH_OT_view_selected_curves_range(Operator):
         return {"FINISHED"}
 
 
-# def menu_func(self, context):
-#     self.layout.operator(GRAPH_OT_view_selected_curves_range.bl_idname)
+keymap_graph_view_selected_curves_range = [
+    # フォーカス
+    KeymapDefinition(
+        operator_id="graph.view_selected_curves_range",
+        key="F",
+        value="PRESS",
+        properties={"use_frame_range": True},
+        name="Graph Editor",
+        space_type="GRAPH_EDITOR",
+        description="選択カーブ範囲にフォーカス"
+    ),
+    # アンフォーカス（ビルトイン）
+    KeymapDefinition(
+        operator_id="graph.view_all",
+        key="F",
+        value="PRESS",
+        alt=True,
+        name="Graph Editor",
+        space_type="GRAPH_EDITOR",
+        description="全体表示（ビルトイン）"
+    ),
+]
 
 
-# def register():
-#     bpy.utils.register_class(GRAPH_OT_view_selected_curves_range)
-#     bpy.types.GRAPH_MT_view.append(menu_func)
-
-
-# def unregister():
-#     bpy.types.GRAPH_MT_view.remove(menu_func)
-#     bpy.utils.unregister_class(GRAPH_OT_view_selected_curves_range)
-
-
-# if __name__ == "__main__":
-#     register()
+keymap_registry.register_keymap_group("Focus Selected Curves", keymap_graph_view_selected_curves_range)

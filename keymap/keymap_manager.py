@@ -1,122 +1,14 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Literal
+from typing import Dict, List
 
 import bpy
 from rna_keymap_ui import draw_kmi
 
+from ..constants import RegionType, SpaceType
 from ..utils.logging import get_logger
+from ..utils.ui_utils import ic
 
 log = get_logger(__name__)
-
-# スペースタイプの型定義
-SpaceType = Literal[
-    "EMPTY",
-    "VIEW_3D",
-    "IMAGE_EDITOR",
-    "NODE_EDITOR",
-    "SEQUENCE_EDITOR",
-    "CLIP_EDITOR",
-    "MOTION_TRACKING",
-    "ANIMATION",
-    "DOPESHEET_EDITOR",
-    "GRAPH_EDITOR",
-    "NLA_EDITOR",
-    "SCRIPTING",
-    "TEXT_EDITOR",
-    "CONSOLE",
-    "INFO",
-    "TOPBAR",
-    "STATUSBAR",
-    "OUTLINER",
-    "PROPERTIES",
-    "FILE_BROWSER",
-    "SPREADSHEET",
-    "PREFERENCES",
-]
-
-# リージョンタイプの型定義
-RegionType = Literal[
-    "WINDOW",
-    "HEADER",
-    "CHANNELS",
-    "TEMPORARY",
-    "UI",
-    "TOOLS",
-    "TOOL_PROPS",
-    "ASSET_SHELF",
-    "PREVIEW",
-    "HUD",
-    "NAVIGATION_BAR",
-    "EXECUTE",
-    "FOOTER",
-    "TOOL_HEADER",
-    "XR",
-]
-
-SPACE_TYPE_ITEMS = [
-    ("EMPTY", "Empty", "Empty"),
-    ("VIEW_3D", "3D Viewport", "3D Viewport"),
-    ("IMAGE_EDITOR", "Image Editor", "Image Editor"),
-    ("NODE_EDITOR", "Node Editor", "Node Editor"),
-    ("SEQUENCE_EDITOR", "Video Sequencer", "Video Sequencer"),
-    ("CLIP_EDITOR", "Movie Clip Editor", "Movie Clip Editor"),
-    ("MOTION_TRACKING", "Motion Tracking", "Motion Tracking"),
-    ("ANIMATION", "Animation", "Animation"),
-    ("DOPESHEET_EDITOR", "Dope Sheet", "Dope Sheet"),
-    ("GRAPH_EDITOR", "Graph Editor", "Graph Editor"),
-    ("NLA_EDITOR", "Nonlinear Animation", "Nonlinear Animation"),
-    ("SCRIPTING", "Scripting", "Scripting"),
-    ("TEXT_EDITOR", "Text Editor", "Text Editor"),
-    ("CONSOLE", "Console", "Console"),
-    ("INFO", "Info", "Info"),
-    ("TOPBAR", "Top Bar", "Top Bar"),
-    ("STATUSBAR", "Status Bar", "Status Bar"),
-    ("OUTLINER", "Outliner", "Outliner"),
-    ("PROPERTIES", "Properties", "Properties"),
-    ("FILE_BROWSER", "File Browser", "File Browser"),
-    ("SPREADSHEET", "Spreadsheet", "Spreadsheet"),
-    ("PREFERENCES", "Preferences", "Preferences"),
-]
-
-REGION_TYPE_ITEMS = [
-    ("WINDOW", "Window", "Window"),
-    ("HEADER", "Header", "Header"),
-    ("CHANNELS", "Channels", "Channels"),
-    ("TEMPORARY", "Temporary", "Temporary"),
-    ("UI", "Sidebar", "Sidebar"),
-    ("TOOLS", "Tools", "Tools"),
-    ("TOOL_PROPS", "Tool Properties", "Tool Properties"),
-    ("ASSET_SHELF", "Asset Shelf", "Asset Shelf"),
-    ("PREVIEW", "Preview", "Preview"),
-    ("HUD", "Floating Region", "Floating Region"),
-    ("NAVIGATION_BAR", "Navigation Bar", "Navigation Bar"),
-    ("EXECUTE", "Execute Buttons", "Execute Buttons"),
-    ("FOOTER", "Footer", "Footer"),
-    ("TOOL_HEADER", "Tool Header", "Tool Header"),
-    ("XR", "XR", "XR"),
-]
-
-EVENT_DIRECTION_ITEMS = [
-    ("ANY", "Any", "Any"),
-    ("NORTH", "North", "North"),
-    ("NORTH_EAST", "North-East", "North-East"),
-    ("EAST", "East", "East"),
-    ("SOUTH_EAST", "South-East", "South-East"),
-    ("SOUTH", "South", "South"),
-    ("SOUTH_WEST", "South-West", "South-West"),
-    ("WEST", "West", "West"),
-    ("NORTH_WEST", "North-West", "North-West"),
-]
-
-EVENT_VALUE_ITEMS = [
-    ("ANY", "Any", "Any"),
-    ("PRESS", "Press", "Press"),
-    ("RELEASE", "Release", "Release"),
-    ("CLICK", "Click", "Click"),
-    ("DOUBLE_CLICK", "Double Click", "Double Click"),
-    ("CLICK_DRAG", "Click Drag", "Click Drag"),
-    ("NOTHING", "Nothing", "Nothing"),
-]
 
 
 @dataclass
@@ -140,6 +32,7 @@ class KeymapDefinition:
     name: str = "3D View"  # キーマップの識別名
     space_type: SpaceType = "VIEW_3D"  # スペースタイプ
     region_type: RegionType = "WINDOW"  # リージョンタイプ
+    active: bool = True  # キーマップの有効/無効状態
 
     def to_dict(self) -> Dict:
         """辞書形式に変換"""
@@ -161,6 +54,7 @@ class KeymapDefinition:
             "name": self.name,
             "space_type": self.space_type,
             "region_type": self.region_type,
+            "active": self.active,
         }
 
 
@@ -216,6 +110,10 @@ class KeymapRegistry:
                 for prop_name, prop_value in keymap_def.properties.items():
                     setattr(kmi.properties, prop_name, prop_value)
 
+                # キーマップが無効な場合は無効化
+                if not keymap_def.active:
+                    kmi.active = False
+
                 self._registered_keymaps.append(km)
 
         log.info(f"Applied {len(self._registered_keymaps)} keymaps")
@@ -232,96 +130,238 @@ class KeymapRegistry:
                 pass  # 既に削除されている場合
         self._registered_keymaps.clear()
 
+    def get_hotkey_entry_item(self, km, kmi_name, kmi_value, handled_kmi):
+        """指定されたオペレータに対応するkmiを取得"""
+        for km_item in km.keymap_items:
+            if km_item in handled_kmi:
+                continue
+            if km_item.idname == kmi_name:
+                if kmi_value is None:
+                    return km_item
+                elif (
+                    hasattr(km_item.properties, "name")
+                    and km_item.properties.name == kmi_value
+                ):
+                    return km_item
+        return None
+
+    def get_kmi_collision(self, kc, km, kmi):
+        """キーマップアイテムの衝突を検出"""
+        if kmi.active:
+            for it_kmi in km.keymap_items:
+                if it_kmi.active and it_kmi != kmi:
+                    b_has_collision = it_kmi.compare(kmi)
+                    if b_has_collision:
+                        return it_kmi
+        return None
+
     def draw_keymap_settings(self, context, layout):
         """キーマップ設定UIを描画"""
         if not self._keymaps:
-            layout.label(text="登録されたキーマップがありません")
+            layout.label(text="No keymaps registered")
             return
 
         wm = context.window_manager
-        if not wm or not wm.keyconfigs.addon:
-            layout.label(text="キーコンフィグが利用できません")
+        kc = wm.keyconfigs.user
+
+        if not wm or not kc:
+            layout.label(text="User keyconfig is not available")
             return
 
-        kc = wm.keyconfigs.addon
+        # # 統計情報を表示
+        # total_groups = len(self._keymaps)
+        # total_keymaps = sum(len(keymaps) for keymaps in self._keymaps.values())
 
-        # 統計情報を表示
-        total_groups = len(self._keymaps)
-        total_keymaps = sum(len(keymaps) for keymaps in self._keymaps.values())
+        # stats_box = layout.box()
+        # stats_box.label(
+        #     text=f"Registered groups: {total_groups}, Total keymaps: {total_keymaps}",
+        #     icon=ic("INFO"),
+        # )
 
-        stats_box = layout.box()
-        stats_box.label(
-            text=f"登録済みグループ: {total_groups}, 総キーマップ数: {total_keymaps}",
-            icon="INFO",
-        )
+        # KeymapDefinitionからkm_treeを構築
+        from collections import defaultdict
 
-        # グループごとにキーマップを表示
+        km_tree = defaultdict(list)
+
+        for group_name, keymap_defs in self._keymaps.items():
+            for keymap_def in keymap_defs:
+                km_tree[keymap_def.name].append(
+                    (
+                        keymap_def.operator_id,
+                        (
+                            getattr(keymap_def.properties, "name", None)
+                            if keymap_def.properties and "name" in keymap_def.properties
+                            else None
+                        ),
+                    )
+                )
+
+        # 衝突検出
+        t_collisions = defaultdict(list)
+        handled_kmi = set()
+
+        for km_name, kmi_items in km_tree.items():
+            km = kc.keymaps.get(km_name)
+            if km:
+                for kmi_node in kmi_items:
+                    kmi = self.get_hotkey_entry_item(
+                        km, kmi_node[0], kmi_node[1], handled_kmi
+                    )
+                    if kmi:
+                        handled_kmi.add(kmi)
+                        p_collision_kmi = self.get_kmi_collision(kc, km, kmi)
+                        if p_collision_kmi:
+                            t_collisions[km_name].append(
+                                (
+                                    kmi.to_string(),
+                                    f" - {p_collision_kmi.name}({p_collision_kmi.idname})",
+                                    kmi,
+                                )
+                            )
+
+        # 衝突がある場合は警告表示
+        if t_collisions:
+            collision_box = layout.box()
+            row = collision_box.row(align=True)
+            row.separator()
+            row.label(text="Keymap collision:", icon=ic("MOD_PHYSICS"))
+
+            col_box = collision_box.column(align=True)
+            for km_name, collision_items in t_collisions.items():
+                subbox = col_box.box()
+                col = subbox.column(align=True)
+                col.label(text=f"{km_name}:")
+                for col_item in collision_items:
+                    s_keymap, s_label, p_kmi = col_item
+                    row = col.row(align=True)
+                    r1 = row.row(align=True)
+                    r1.alignment = "LEFT"
+                    r1.label(text=s_keymap, icon=ic("DOT"))
+                    r2 = row.row(align=True)
+                    r2.label(text=s_label)
+
+        # 各グループのキーマップを表示
         for group_name, keymap_defs in self._keymaps.items():
             # グループ名で区切り
-            box = layout.box()
-            box.label(text=f"グループ: {group_name}", icon="KEYINGSET")
+            group_box = layout.box()
+            group_box.label(text=f"{group_name}:", icon=ic("DOT"))
 
-            # このグループのキーマップを取得
-            group_keymaps = {}
-            for km in kc.keymaps:
-                if km.name in [kd.name for kd in keymap_defs]:
-                    group_keymaps[km.name] = km
+            # このグループで使用されるkm名を取得
+            km_names = list({kd.name for kd in keymap_defs})
 
-            # 各キーマップ定義に対してUIを描画
-            for keymap_def in keymap_defs:
-                km = group_keymaps.get(keymap_def.name)
+            for km_name in km_names:
+                km = kc.keymaps.get(km_name)
                 if not km:
-                    # キーマップが見つからない場合
-                    row = box.row()
+                    row = group_box.row()
                     row.label(
-                        text=f"キーマップ '{keymap_def.name}' が見つかりません",
-                        icon="ERROR",
+                        text=f"Keymap '{km_name}' not found", icon=ic("ERROR")
                     )
                     continue
 
-                # キーマップ名を表示
-                keymap_box = box.box()
-                keymap_box.label(text=f"キーマップ: {keymap_def.name}", icon="KEY")
+                # キーマップボックス
+                keymap_box = group_box.box()
 
-                # このキーマップのキーマップアイテムを検索
-                found_kmi = None
-                for kmi in km.keymap_items:
-                    if (
-                        kmi.idname == keymap_def.operator_id
-                        and kmi.type == keymap_def.key
-                        and kmi.value == keymap_def.value
-                    ):
-                        found_kmi = kmi
+                # キーマップヘッダー
+                header_row = keymap_box.row(align=True)
+                header_row.label(text=f"{km_name}:")
+
+                # 修復状態をチェック
+                b_modified = km.is_user_modified
+                b_has_deleted = False
+
+                # このkmに関連するKeymapDefinitionを取得
+                related_keymaps = [kd for kd in keymap_defs if kd.name == km_name]
+
+                # 削除されたアイテムをチェック
+                for keymap_def in related_keymaps:
+                    kmi = self.get_hotkey_entry_item(
+                        km,
+                        keymap_def.operator_id,
+                        (
+                            getattr(keymap_def.properties, "name", None)
+                            if keymap_def.properties and "name" in keymap_def.properties
+                            else None
+                        ),
+                        set(),
+                    )
+                    if not kmi:
+                        b_has_deleted = True
                         break
 
-                if found_kmi:
-                    # キーマップアイテムが見つかった場合、draw_kmiで描画
-                    draw_kmi([], kc, km, found_kmi, keymap_box, 0)
+                # # 復元ボタン (まずアドオン内のkmiを復元。次に警告を出したうえでユーザーのkmを復元)
+                # if b_modified or b_has_deleted:
+                #     subrow = header_row.row()
+                #     subrow.alignment = "RIGHT"
+                #     s_restore_caption = "キーマップを復元" if b_has_deleted else "復元"
+                #     s_icon = ic("FILE_REFRESH") if b_has_deleted else ic("BACK")
+                #     # 実際の復元機能は今回は省略（オペレータが必要）
+                #     subrow.label(text=s_restore_caption, icon=s_icon)
 
-                    # 追加情報を表示
-                    info_row = keymap_box.row()
-                    info_row.label(
-                        text=f"キー: {keymap_def.key}, 値: {keymap_def.value}"
-                    )
-                    if keymap_def.description:
-                        desc_row = keymap_box.row()
-                        desc_row.label(text=f"説明: {keymap_def.description}")
-                else:
-                    # キーマップアイテムが見つからない場合
-                    row = keymap_box.row()
-                    row.label(
-                        text=f"オペレータ '{keymap_def.operator_id}' のキーマップアイテムが見つかりません",
-                        icon="ERROR",
-                    )
+                keymap_box.context_pointer_set("keymap", km)
 
-                    # 定義情報を表示
-                    info_row = keymap_box.row()
-                    info_row.label(
-                        text=f"期待されるキー: {keymap_def.key}, 値: {keymap_def.value}"
+                # km内の全kmiを表示
+                handled_kmi_for_display = set()
+
+                # まず、このグループに関連するkmiを表示
+                for keymap_def in related_keymaps:
+                    kmi = self.get_hotkey_entry_item(
+                        km,
+                        keymap_def.operator_id,
+                        (
+                            getattr(keymap_def.properties, "name", None)
+                            if keymap_def.properties and "name" in keymap_def.properties
+                            else None
+                        ),
+                        handled_kmi_for_display,
                     )
-                    if keymap_def.description:
-                        desc_row = keymap_box.row()
-                        desc_row.label(text=f"説明: {keymap_def.description}")
+                    if kmi:
+                        handled_kmi_for_display.add(kmi)
+
+                        # 衝突チェック
+                        p_collision_kmi = self.get_kmi_collision(kc, km, kmi)
+                        subcol = keymap_box
+                        if p_collision_kmi:
+                            collision_row = subcol.row(align=True)
+                            collision_row.separator(factor=2)
+                            r1 = collision_row.row(align=True)
+                            r1.alignment = "LEFT"
+                            r1.label(text="Collision:", icon=ic("MOD_PHYSICS"))
+                            r2 = collision_row.row(align=True)
+                            r2.alignment = "RIGHT"
+                            r2.label(
+                                text=f"{p_collision_kmi.name}({p_collision_kmi.idname})"
+                            )
+
+                            subcol = keymap_box.column(align=True)
+                            subcol.active = False
+
+                        # draw_kmiで標準UI表示
+                        draw_kmi([], kc, km, kmi, subcol, 0)
+
+                        # # 説明文を表示
+                        # if keymap_def.description:
+                        #     desc_row = subcol.row()
+                        #     desc_row.label(text=f"説明: {keymap_def.description}")
+                    else:
+                        # kmiが見つからない場合
+                        error_row = keymap_box.row(align=True)
+                        error_row.separator(factor=2.0)
+                        error_row.label(
+                            text=f"Keymap item '{keymap_def.operator_id}' not found",
+                            icon=ic("ERROR"),
+                        )
+
+                # # その他のkmiも表示（このグループ以外で追加されたもの）
+                # other_kmis = [
+                #     kmi for kmi in km.keymap_items if kmi not in handled_kmi_for_display
+                # ]
+                # if other_kmis:
+                #     other_box = keymap_box.box()
+                #     other_box.label(text="その他のキーマップアイテム:", icon=ic("DOT"))
+                #     for kmi in other_kmis:
+                #         draw_kmi([], kc, km, kmi, other_box, 0)
 
 
 keymap_registry = KeymapRegistry()
+
+# Dopesheet; Frames; Graph Editor; Object Mode; Pose

@@ -3,6 +3,7 @@ import bpy
 from rna_keymap_ui import draw_kmi
 
 from .addon import ADDON_ID, get_prefs
+from .keymap.keymap_manager import keymap_registry
 from .operators.handle_selection import GRAPH_OT_monkey_handle_selecter
 from .operators.keyframe_selection import (
     GRAPH_OT_monkey_horizontally,
@@ -49,7 +50,8 @@ class MonKeyPreferences(bpy.types.AddonPreferences):
         elif self.tab == "OVERLAY":
             self.overlay.draw(context, box)
         elif self.tab == "KEYMAP":
-            self.draw_keymap(context, box)
+            # self.draw_keymap(context, box)
+            keymap_registry.draw_keymap_settings(context, box)
 
     def draw_description(self, context, layout):
         layout.label(text="TODO: Add description")

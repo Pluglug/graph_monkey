@@ -7,7 +7,6 @@ config:
 ---
 flowchart RL
     constants[constants]
-    keymap[keymap]
     operators_channel_selection_overlay(operators.channel_selection_overlay)
     operators_dopesheet_helper(operators.dopesheet_helper)
     operators_handle_selection(operators.handle_selection)
@@ -29,7 +28,6 @@ flowchart RL
     operators_keyframe_selection --> preferences
     utils_logger_prefs --> preferences
     utils_logging --> constants
-    utils_logging --> keymap
     utils_logging --> operators_channel_selection_overlay
     utils_logging --> operators_dopesheet_helper
     utils_logging --> operators_handle_selection
