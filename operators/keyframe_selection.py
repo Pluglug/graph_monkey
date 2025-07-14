@@ -3,7 +3,6 @@ import bpy
 from ..utils.logging import get_logger
 from .dopesheet_helper import (
     get_selected_keyframes,
-    get_visible_objects,
     get_visible_fcurves,
     get_selected_visible_fcurves,
 )
@@ -37,22 +36,13 @@ class GRAPH_OT_monkey_horizontally(bpy.types.Operator):
             self.report({"ERROR"}, "Graph Editor space data not found.")
             return {"CANCELLED"}
 
-        if not hasattr(context.space_data, "dopesheet"):
-            self.report({"ERROR"}, "Dopesheet not found in space data.")
-            return {"CANCELLED"}
-
-        dopesheet = context.space_data.dopesheet
-        visible_objects = get_visible_objects(dopesheet)
-        if not visible_objects:
-            self.report(
-                {"ERROR"}, "There is no object that is displayed and has an action."
-            )
+        visible_fcurves = get_visible_fcurves(context)
+        if not visible_fcurves:
+            self.report({"ERROR"}, "No visible fcurves found")
             return {"CANCELLED"}
 
         log.debug("Move Keyframe Selection Horizontally: EXECUTE")
-        move_keyframe_selection_horizontally(
-            self.direction, self.extend, visible_objects
-        )
+        move_keyframe_selection_horizontally(self.direction, self.extend)
         log.debug("Move Keyframe Selection Horizontally: FINISHED")
         return {"FINISHED"}
 
@@ -98,56 +88,60 @@ class GRAPH_OT_monkey_vertically(bpy.types.Operator):
 # Helper functions
 
 
-def move_keyframe_selection_horizontally(
-    direction="forward", extend=False, visible_objects=None
-):
-    if visible_objects is None:
-        return
-
-    for obj in visible_objects:
-        selected_channels = [
-            fcurve for fcurve in obj.animation_data.action.fcurves if fcurve.select
-        ]
-
-        if selected_channels:
-            process_keyframe_selection_for_horizontal_move(obj, direction, extend)
-
-
-def process_keyframe_selection_for_horizontal_move(
-    obj, direction="forward", extend=False
-):
+def move_keyframe_selection_horizontally(direction="forward", extend=False):
+    """キーフレーム選択を水平方向に移動する"""
     if direction not in ("forward", "backward"):
         raise ValueError(
             "Invalid value for direction. Must be 'forward' or 'backward'."
         )
 
-    action = obj.animation_data.action
+    visible_fcurves = get_visible_fcurves(bpy.context)
 
-    for fcurve in action.fcurves:
-        if not fcurve.select:  # Only process selected fcurves
-            continue
+    if not visible_fcurves:
+        log.warning("No visible fcurves found")
+        return
 
-        selected = get_selected_keyframes(fcurve.keyframe_points)
+    # 選択されたFカーブのみを処理
+    selected_fcurves = [fcurve for fcurve in visible_fcurves if fcurve.select]
 
-        if not selected:
-            continue
+    if not selected_fcurves:
+        log.warning("No selected fcurves found")
+        return
 
+    for fcurve in selected_fcurves:
+        process_keyframe_selection_for_horizontal_move(fcurve, direction, extend)
+
+
+def process_keyframe_selection_for_horizontal_move(
+    fcurve, direction="forward", extend=False
+):
+    """Fカーブのキーフレーム選択を水平方向に移動する"""
+    if direction not in ("forward", "backward"):
+        raise ValueError(
+            "Invalid value for direction. Must be 'forward' or 'backward'."
+        )
+
+    selected = get_selected_keyframes(fcurve.keyframe_points)
+
+    if not selected:
+        return
+
+    if direction == "forward":
+        selected.sort(key=lambda k: k["keyframe"].co[0], reverse=True)
+    else:  # direction == "backward"
+        selected.sort(key=lambda k: k["keyframe"].co[0])
+
+    for item in selected:
+        keyframe = item["keyframe"]
         if direction == "forward":
-            selected.sort(key=lambda k: k["keyframe"].co[0], reverse=True)
+            target_frame = keyframe.co[0] + 1
         else:  # direction == "backward"
-            selected.sort(key=lambda k: k["keyframe"].co[0])
+            target_frame = keyframe.co[0] - 1
 
-        for item in selected:
-            keyframe = item["keyframe"]
-            if direction == "forward":
-                target_frame = keyframe.co[0] + 1
-            else:  # direction == "backward"
-                target_frame = keyframe.co[0] - 1
+        next_keyframe = binary_search_keyframe(fcurve, target_frame, direction)
 
-            next_keyframe = binary_search_keyframe(fcurve, target_frame, direction)
-
-            if next_keyframe is not None:
-                transfer_keyframe_selection([item], [next_keyframe], extend)
+        if next_keyframe is not None:
+            transfer_keyframe_selection([item], [next_keyframe], extend)
 
 
 def binary_search_keyframe(fcurve, target_frame, direction="forward"):
@@ -211,24 +205,26 @@ def move_channel_selection_vertically(direction="downward", extend=False):
 
 
 def process_keyframe_selection_for_vertical_move(fcurve_from, fcurve_to, extend=False):
+    """Fカーブ間でキーフレーム選択を移動する"""
     selected = get_selected_keyframes(fcurve_from.keyframe_points)
+
+    if not selected:
+        return
 
     if not extend:
         fcurve_from.select = False
 
     fcurve_to.select = True
 
-    # Move the selection to the nearest keyframes in the new channel
+    # 選択されたキーフレームを新しいチャンネルの最も近いキーフレームに移動
     for item in selected:
-        target_keyframes = [
-            min(
-                fcurve_to.keyframe_points,
-                key=lambda k: abs(k.co[0] - item["keyframe"].co[0]),
-            )
-            for item in selected
-        ]
+        # 最も近いキーフレームを見つける
+        target_keyframe = min(
+            fcurve_to.keyframe_points,
+            key=lambda k: abs(k.co[0] - item["keyframe"].co[0]),
+        )
 
-        transfer_keyframe_selection(selected, target_keyframes, extend)
+        transfer_keyframe_selection([item], [target_keyframe], extend)
 
 
 def transfer_keyframe_selection(selected, target_keyframes, extend=False):
