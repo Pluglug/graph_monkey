@@ -83,3 +83,21 @@ def get_selected_keyframes(keyframe_points):
         or keyframe.select_left_handle
         or keyframe.select_right_handle
     ]
+
+
+def get_visible_fcurves(context):
+    """bpy.context.visible_fcurvesを安全に取得する"""
+    if not context or not hasattr(context, "visible_fcurves"):
+        return []
+    return context.visible_fcurves
+
+
+def get_selected_visible_fcurves(context):
+    """可視状態で選択されたFカーブを取得する"""
+    visible_fcurves = get_visible_fcurves(context)
+    return [fcurve for fcurve in visible_fcurves if fcurve.select]
+
+
+def get_all_visible_fcurves(context):
+    """すべての可視Fカーブを取得する（選択状態に関係なく）"""
+    return get_visible_fcurves(context)
