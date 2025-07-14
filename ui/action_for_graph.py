@@ -366,7 +366,7 @@ def draw_func(self, context):
         # Use the new action selector that supports action slots
         _draw_action_selector(context, layout)
     else:
-        layout.label("No active object", icon="ERROR")
+        layout.label(text="No active object", icon="ERROR")
 
 
 def register():
