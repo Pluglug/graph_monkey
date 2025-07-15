@@ -63,12 +63,12 @@ class KeymapRegistry:
 
     def __init__(self):
         self._keymaps: Dict[str, List[KeymapDefinition]] = {}
-        self._registered_keymaps: List = []
+        self._registered_keymap_items: List = []  # (km, kmi)
 
     def register_keymap_group(self, group_name: str, keymaps: List[KeymapDefinition]):
         """キーマップグループを登録"""
         self._keymaps[group_name] = keymaps
-        log.info(f"Registered keymap group: {group_name} with {len(keymaps)} keymaps")
+        log.debug(f"Registered keymap group: {group_name} with {len(keymaps)} keymaps")
 
     def get_all_keymaps(self) -> Dict[str, List[KeymapDefinition]]:
         """全てのキーマップを取得"""
@@ -105,6 +105,9 @@ class KeymapRegistry:
                     repeat=keymap_def.repeat,
                     head=keymap_def.head,
                 )
+                log.debug(
+                    f"[KeymapRegistry] Created keymap item: operator_id={keymap_def.operator_id}, key={keymap_def.key}, value={keymap_def.value}, keymap={km.name}"
+                )
 
                 # プロパティを設定
                 for prop_name, prop_value in keymap_def.properties.items():
@@ -114,21 +117,42 @@ class KeymapRegistry:
                 if not keymap_def.active:
                     kmi.active = False
 
-                self._registered_keymaps.append(km)
+                # キーマップとキーマップアイテムを抱き合わせで追跡
+                self._registered_keymap_items.append((km, kmi))
 
-        log.info(f"Applied {len(self._registered_keymaps)} keymaps")
+        log.debug(f"Applied {len(self._registered_keymap_items)} keymap items")
 
     def unregister_keymaps(self):
         """キーマップを登録解除"""
         wm = bpy.context.window_manager
         if not wm or not wm.keyconfigs.addon:
             return
-        for km in self._registered_keymaps:
+
+        # 作成したキーマップを取得（重複削除）
+        keymaps_to_remove = set()
+
+        # キーマップアイテムを削除
+        for km, kmi in self._registered_keymap_items:
             try:
-                wm.keyconfigs.addon.keymaps.remove(km)
+                km.keymap_items.remove(kmi)
+                log.debug(
+                    f"[KeymapRegistry] Removed keymap item: {kmi.idname} from {km.name}"
+                )
+                # キーマップが空になった場合は削除対象に追加
+                if len(km.keymap_items) == 0:
+                    keymaps_to_remove.add(km)
             except:
                 pass  # 既に削除されている場合
-        self._registered_keymaps.clear()
+
+        # 空になったキーマップを削除
+        for km in keymaps_to_remove:
+            try:
+                wm.keyconfigs.addon.keymaps.remove(km)
+                log.debug(f"[KeymapRegistry] Removed empty keymap: {km.name}")
+            except:
+                pass  # 既に削除されている場合
+
+        self._registered_keymap_items.clear()
 
     def get_hotkey_entry_item(self, km, kmi_name, kmi_value, handled_kmi):
         """指定されたオペレータに対応するkmiを取得"""
@@ -253,9 +277,7 @@ class KeymapRegistry:
                 km = kc.keymaps.get(km_name)
                 if not km:
                     row = group_box.row()
-                    row.label(
-                        text=f"Keymap '{km_name}' not found", icon=ic("ERROR")
-                    )
+                    row.label(text=f"Keymap '{km_name}' not found", icon=ic("ERROR"))
                     continue
 
                 # キーマップボックス

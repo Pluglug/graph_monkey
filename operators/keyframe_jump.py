@@ -3,6 +3,7 @@ from bpy.types import Operator, Context, Area
 from bpy.props import BoolProperty
 
 from ..utils.logging import get_logger
+from ..keymap.keymap_manager import KeymapDefinition, keymap_registry
 
 log = get_logger(__name__)
 
@@ -116,3 +117,61 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
 
 # def unregister():
 #     del bpy.types.Scene.keyframe_jump_wrap
+
+KEYFRAME_JUMP_KEYMAPS = [
+    ("Dopesheet", "DOPESHEET_EDITOR"),
+    ("Frames", "EMPTY"),
+    ("Graph Editor", "GRAPH_EDITOR"),
+    ("Object Mode", "EMPTY"),
+    ("Pose", "EMPTY"),
+]
+
+keymap_definitions = []
+
+for keymap_name, keymap_space_type in KEYFRAME_JUMP_KEYMAPS:
+    keymap_definitions.append(
+        KeymapDefinition(
+            operator_id="screen.frame_offset",  # Built-in operator
+            key="ONE",
+            value="PRESS",
+            repeat=True,
+            properties={"delta": -1},
+            name=keymap_name,
+            space_type=keymap_space_type,
+        )
+    )
+    keymap_definitions.append(
+        KeymapDefinition(
+            operator_id="screen.frame_offset",  # Built-in operator
+            key="TWO",
+            value="PRESS",
+            repeat=True,
+            properties={"delta": 1},
+            name=keymap_name,
+            space_type=keymap_space_type,
+        )
+    )
+    keymap_definitions.append(
+        KeymapDefinition(
+            operator_id="keyframe.jump_within_range",
+            key="THREE",
+            value="PRESS",
+            repeat=True,
+            properties={"next": False, "loop": True},
+            name=keymap_name,
+            space_type=keymap_space_type,
+        )
+    )
+    keymap_definitions.append(
+        KeymapDefinition(
+            operator_id="keyframe.jump_within_range",
+            key="FOUR",
+            value="PRESS",
+            repeat=True,
+            properties={"next": True, "loop": True},
+            name=keymap_name,
+            space_type=keymap_space_type,
+        )
+    )
+
+keymap_registry.register_keymap_group("Keyframe Jump", keymap_definitions)
