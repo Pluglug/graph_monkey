@@ -7,18 +7,10 @@ from ..keymap.keymap_manager import KeymapDefinition, keymap_registry
 
 log = get_logger(__name__)
 
-
-def jump_or_wrap(next=True):
-    current_frame = bpy.context.scene.frame_current
-
-    bpy.ops.screen.keyframe_jump(next=next)
-
-    if bpy.context.scene.frame_current == current_frame:
-        # キーフレームが存在しない場合の処理
-        if next:
-            bpy.context.scene.frame_set(bpy.context.scene.frame_start)
-        else:
-            bpy.context.scene.frame_set(bpy.context.scene.frame_end)
+# グローバル変数で元のフレームを記憶
+_original_frame = None
+_peek_operator_running = False
+_peek_key_type = None
 
 
 class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
@@ -106,17 +98,64 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
         return {"FINISHED"}
 
 
-# TODO: Prefsで定義する
-# def register():
-#     bpy.types.Scene.keyframe_jump_wrap = BoolProperty(
-#         name="Loop Keyframe Jump",
-#         description="Loop keyframe jump within frame range",
-#         default=True,
-#     )
+class MONKEY_OT_KEYFRAME_PEEK(Operator):
+    bl_idname = "keyframe.peek_next"
+    bl_label = "Peek Next Keyframe"
+    bl_description = "Peek next keyframe while key is held down, return to original frame when released"
 
+    next: BoolProperty(default=True, options={"SKIP_SAVE"})
 
-# def unregister():
-#     del bpy.types.Scene.keyframe_jump_wrap
+    def modal(self, context, event):
+        global _peek_operator_running, _peek_key_type
+
+        # 押されたキーと同じキーが離されたかを判定
+        if (
+            event.type == _peek_key_type
+            and event.value == "RELEASE"
+            and _peek_operator_running
+        ):
+            # キーが離されたら元のフレームに戻る
+            global _original_frame
+            if _original_frame is not None:
+                context.scene.frame_set(_original_frame)
+                _original_frame = None
+            _peek_operator_running = False
+            _peek_key_type = None
+            return {"FINISHED"}
+
+        return {"PASS_THROUGH"}
+
+    def invoke(self, context, event):
+        global _original_frame, _peek_operator_running, _peek_key_type
+
+        # 既に実行中の場合は無視
+        if _peek_operator_running:
+            return {"CANCELLED"}
+
+        # フラグとキータイプを設定
+        _peek_operator_running = True
+        _peek_key_type = event.type
+
+        # 元のフレームを記憶
+        _original_frame = context.scene.frame_current
+
+        # タイムラインエリアを探す
+        timeline_area = MONKEY_OT_JUMP_WITHIN_RANGE.find_area_with_visible_fcurves(
+            context
+        )
+
+        if timeline_area:
+            with context.temp_override(area=timeline_area):
+                # 次のキーフレームへジャンプ
+                bpy.ops.screen.keyframe_jump(next=self.next)
+        else:
+            # タイムラインエリアがない場合は通常ジャンプ
+            bpy.ops.screen.keyframe_jump(next=self.next)
+
+        # モーダル開始
+        context.window_manager.modal_handler_add(self)
+        return {"RUNNING_MODAL"}
+
 
 KEYFRAME_JUMP_KEYMAPS = [
     ("Dopesheet", "DOPESHEET_EDITOR"),
@@ -173,5 +212,26 @@ for keymap_name, keymap_space_type in KEYFRAME_JUMP_KEYMAPS:
             space_type=keymap_space_type,
         )
     )
+    keymap_definitions.append(
+        KeymapDefinition(
+            operator_id="keyframe.peek_next",
+            key="FIVE",
+            value="PRESS",
+            repeat=False,
+            properties={"next": True},
+            name=keymap_name,
+            space_type=keymap_space_type,
+        )
+    )
 
 keymap_registry.register_keymap_group("Keyframe Jump", keymap_definitions)
+
+
+# def register():
+#     bpy.types.Scene.keyframe_jump_wrap = BoolProperty(
+#         name="Loop Keyframe Jump",
+#         description="Loop keyframe jump within frame range",
+#         default=True,
+#     )
+# def unregister():
+#     del bpy.types.Scene.keyframe_jump_wrap
