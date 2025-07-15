@@ -1,6 +1,6 @@
 import bpy
 from bpy.types import Operator, Context, Area
-from bpy.props import BoolProperty
+from bpy.props import BoolProperty, StringProperty
 
 from ..utils.logging import get_logger
 from ..keymap.keymap_manager import KeymapDefinition, keymap_registry
@@ -29,8 +29,10 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
 
     next: BoolProperty(default=True, options={"SKIP_SAVE"})
     loop: BoolProperty(default=True, options={"SKIP_SAVE"})
+    called_from: StringProperty(default="", options={"SKIP_SAVE"})
 
     def execute(self, context: Context):
+        log.debug(f"Keymap: {self.called_from}")
         scene = context.scene
 
         if scene.use_preview_range:
@@ -40,26 +42,28 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
             self.start_frame = scene.frame_start
             self.end_frame = scene.frame_end
 
-        timeline_area = self.find_area_with_visible_fcurves(context)
-        if timeline_area:
-            with context.temp_override(area=timeline_area):
+        area = self.find_timeline_area(context)
+        if area is not None:
+            with context.temp_override(area=area):
+                log.debug(f"Executing jump within range in {bpy.context.area.ui_type}")
                 return self.jump_within_range(context)
         else:
             # タイムラインエリアがない場合は通常ジャンプ
             self.report({"INFO"}, "No Timeline area found")
-            bpy.ops.screen.keyframe_jump(next=self.next)
+            log.warning(f"Executing keyframe jump in {context.area.ui_type}")
+            try:
+                bpy.ops.screen.keyframe_jump(next=self.next)
+            except Exception as e:
+                log.error("Error executing keyframe jump")
+                log.error(context.area.ui_type)
+                log.error(e)
             return {"FINISHED"}
 
     @staticmethod
-    def find_area_with_visible_fcurves(context: Context) -> Area | None:
-        """
-        context.window.screen.areas から visible_fcurves を持つエリアを探して返す。
-        見つからなければ None。
-        """
+    def find_timeline_area(context: Context) -> Area | None:
         for area in context.window.screen.areas:
-            with context.temp_override(area=area):
-                if hasattr(context, "visible_fcurves"):
-                    return area
+            if area.ui_type == "TIMELINE":
+                return area
         return None
 
     @staticmethod
@@ -71,20 +75,39 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
         scene = context.scene
         current_frame = scene.frame_current
 
-        visible_fcurves = (
-            context.visible_fcurves if hasattr(context, "visible_fcurves") else []
-        )
+        # visible_fcurvesが存在し、かつNoneでないことを確認
+        visible_fcurves = getattr(context, "visible_fcurves", None)
+        if not visible_fcurves:
+            return False
+            
         for fcurve in visible_fcurves:
             for kp in fcurve.keyframe_points:
                 if int(kp.co.x) == current_frame:
                     return True
         return False
 
+    def jump_within_range_with_fallback(self, context: Context) -> bool:
+        """When outside of timeline area, keyframe_jump fails.
+        Fallback to frame_offset.
+        """
+        try:
+            bpy.ops.screen.keyframe_jump(next=self.next)
+            return True
+        except RuntimeError as e:
+            log.error(f"keyframe_jump failed in {context.area.ui_type}: {e}")
+            if self.next:
+                bpy.ops.screen.frame_offset(delta=1)
+            else:
+                bpy.ops.screen.frame_offset(delta=-1)
+            return False
+
     def jump_within_range(self, context: Context):
         scene = context.scene
         current_frame = scene.frame_current
 
-        bpy.ops.screen.keyframe_jump(next=self.next)
+        if not self.jump_within_range_with_fallback(context):
+            return {"FINISHED"}
+
         new_frame = scene.frame_current
 
         out_of_range = new_frame < self.start_frame or new_frame > self.end_frame
@@ -102,7 +125,7 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
                 return {"FINISHED"}
 
             # なければもう一度ジャンプ
-            bpy.ops.screen.keyframe_jump(next=self.next)
+            self.jump_within_range_with_fallback(context)
         return {"FINISHED"}
 
 
@@ -157,7 +180,7 @@ for keymap_name, keymap_space_type in KEYFRAME_JUMP_KEYMAPS:
             key="THREE",
             value="PRESS",
             repeat=True,
-            properties={"next": False, "loop": True},
+            properties={"next": False, "loop": True, "called_from": keymap_name},
             name=keymap_name,
             space_type=keymap_space_type,
         )
@@ -168,7 +191,7 @@ for keymap_name, keymap_space_type in KEYFRAME_JUMP_KEYMAPS:
             key="FOUR",
             value="PRESS",
             repeat=True,
-            properties={"next": True, "loop": True},
+            properties={"next": True, "loop": True, "called_from": keymap_name},
             name=keymap_name,
             space_type=keymap_space_type,
         )
