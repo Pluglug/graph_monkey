@@ -42,22 +42,9 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
             self.start_frame = scene.frame_start
             self.end_frame = scene.frame_end
 
-        area = self.find_timeline_area(context)
-        if area is not None:
-            with context.temp_override(area=area):
-                log.debug(f"Executing jump within range in {bpy.context.area.ui_type}")
-                return self.jump_within_range(context)
-        else:
-            # タイムラインエリアがない場合は通常ジャンプ
-            self.report({"INFO"}, "No Timeline area found")
-            log.warning(f"Executing keyframe jump in {context.area.ui_type}")
-            try:
-                bpy.ops.screen.keyframe_jump(next=self.next)
-            except Exception as e:
-                log.error("Error executing keyframe jump")
-                log.error(context.area.ui_type)
-                log.error(e)
-            return {"FINISHED"}
+        # 直接jump_within_rangeを実行
+        # TIMELINE切り替えはvisible_fcurvesが必要な時のみ行う
+        return self.jump_within_range(context)
 
     @staticmethod
     def find_timeline_area(context: Context) -> Area | None:
@@ -79,14 +66,14 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
         visible_fcurves = getattr(context, "visible_fcurves", None)
         if not visible_fcurves:
             return False
-            
+
         for fcurve in visible_fcurves:
             for kp in fcurve.keyframe_points:
                 if int(kp.co.x) == current_frame:
                     return True
         return False
 
-    def jump_within_range_with_fallback(self, context: Context) -> bool:
+    def screen_keyframe_jump_with_fallback(self, context: Context) -> bool:
         """When outside of timeline area, keyframe_jump fails.
         Fallback to frame_offset.
         """
@@ -105,7 +92,7 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
         scene = context.scene
         current_frame = scene.frame_current
 
-        if not self.jump_within_range_with_fallback(context):
+        if not self.screen_keyframe_jump_with_fallback(context):
             return {"FINISHED"}
 
         new_frame = scene.frame_current
@@ -120,13 +107,39 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
             else:
                 scene.frame_set(self.end_frame)
 
-            # 逆端に可視キーフレームがあれば終了
-            if self.visible_key_on_current_frame(context):
+            # 逆端に可視キーフレームがあれば終了（TIMELINE context override付き）
+            if self.visible_key_on_current_frame_with_timeline_fallback(context):
                 return {"FINISHED"}
 
             # なければもう一度ジャンプ
-            self.jump_within_range_with_fallback(context)
+            self.screen_keyframe_jump_with_fallback(context)
         return {"FINISHED"}
+
+    def visible_key_on_current_frame_with_timeline_fallback(self, context: Context) -> bool:
+        """
+        visible_key_on_current_frameをTIMELINEコンテキストで実行
+        TIMELINEエリアがない場合はFalseを返す
+        """
+        # まず現在のコンテキストで試す
+        if hasattr(context, "visible_fcurves") and context.visible_fcurves:
+            return self.visible_key_on_current_frame(context)
+        
+        # TIMELINEエリアを探して一時的に切り替え
+        timeline_area = self.find_timeline_area(context)
+        if timeline_area:
+            with context.temp_override(area=timeline_area):
+                return self.visible_key_on_current_frame(context)
+        
+        # TIMELINEエリアがない場合は、他のアニメーションエリアを試す
+        animation_areas = ["DOPESHEET_EDITOR", "GRAPH_EDITOR", "NLA_EDITOR"]
+        for area_type in animation_areas:
+            for area in context.window.screen.areas:
+                if area.type == area_type:
+                    with context.temp_override(area=area):
+                        if hasattr(context, "visible_fcurves") and context.visible_fcurves:
+                            return self.visible_key_on_current_frame(context)
+        
+        return False
 
 
 # TODO: Prefsで定義する
