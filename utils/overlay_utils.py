@@ -4,6 +4,7 @@ import blf
 import bpy
 
 from ..constants import OVERLAY_ALIGNMENT_ITEMS
+from .timer import Timer
 
 
 def multiton(cls):
@@ -15,36 +16,6 @@ def multiton(cls):
         return instances[cls]
 
     return get_instance
-
-
-class Timer:
-    def __init__(self, duration):
-        self.duration = duration
-        self.reset(duration)
-
-    def update(self):
-        current_time = time()
-        elapsed_time = current_time - self.start_time
-        self.remaining_time -= elapsed_time
-        self.start_time = current_time
-
-        return self.remaining_time <= 0
-
-    def reset(self, duration):
-        self.duration = duration
-        self.remaining_time = duration
-        self.start_time = time()
-
-    # def remaining_percentage(self):
-    #     # Transitions from 100 to 0
-    #     return max(0, self.remaining_time / self.duration * 100)
-
-    def elapsed_ratio(self):
-        """Returns the ratio of elapsed time to total duration."""
-        return max(0, min(1, (self.duration - self.remaining_time) / self.duration))
-
-    def is_finished(self):
-        return self.remaining_time <= 0
 
 
 def calculate_aligned_position(
