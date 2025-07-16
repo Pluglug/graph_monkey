@@ -7,11 +7,6 @@ from ..keymap.keymap_manager import KeymapDefinition, keymap_registry
 
 log = get_logger(__name__)
 
-# グローバル変数で元のフレームを記憶
-_original_frame = None
-_peek_operator_running = False
-_peek_key_type = None
-
 
 class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
     bl_idname = "keyframe.jump_within_range"
@@ -101,43 +96,41 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
 class MONKEY_OT_KEYFRAME_PEEK(Operator):
     bl_idname = "keyframe.peek_next"
     bl_label = "Peek Next Keyframe"
-    bl_description = "Peek next keyframe while key is held down, return to original frame when released"
+    bl_description = (
+        "Peek next/previous keyframe while key is held down, return to original frame when released. "
+        "Ctrl key to stay at the destination frame. "
+    )
 
     next: BoolProperty(default=True, options={"SKIP_SAVE"})
 
-    def modal(self, context, event):
-        global _peek_operator_running, _peek_key_type
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.original_frame = None
+        self.peek_key_type = None
 
+    def modal(self, context, event):
         # 押されたキーと同じキーが離されたかを判定
-        if (
-            event.type == _peek_key_type
-            and event.value == "RELEASE"
-            and _peek_operator_running
-        ):
-            # キーが離されたら元のフレームに戻る
-            global _original_frame
-            if _original_frame is not None:
-                context.scene.frame_set(_original_frame)
-                _original_frame = None
-            _peek_operator_running = False
-            _peek_key_type = None
+        if event.type == self.peek_key_type and event.value == "RELEASE":
+            # Ctrlキーが押されている場合は、現在のフレームにとどまって終了
+            if event.ctrl:
+                # 移動先にとどまる（original_frameには戻らない）
+                self.original_frame = None
+                return {"FINISHED"}
+
+            # 通常の場合は元のフレームに戻る
+            if self.original_frame is not None:
+                context.scene.frame_set(self.original_frame)
+                self.original_frame = None
             return {"FINISHED"}
 
         return {"PASS_THROUGH"}
 
     def invoke(self, context, event):
-        global _original_frame, _peek_operator_running, _peek_key_type
-
-        # 既に実行中の場合は無視
-        if _peek_operator_running:
-            return {"CANCELLED"}
-
-        # フラグとキータイプを設定
-        _peek_operator_running = True
-        _peek_key_type = event.type
+        # キータイプを設定
+        self.peek_key_type = event.type
 
         # 元のフレームを記憶
-        _original_frame = context.scene.frame_current
+        self.original_frame = context.scene.frame_current
 
         # タイムラインエリアを探す
         timeline_area = MONKEY_OT_JUMP_WITHIN_RANGE.find_area_with_visible_fcurves(
@@ -215,7 +208,20 @@ for keymap_name, keymap_space_type in KEYFRAME_JUMP_KEYMAPS:
     keymap_definitions.append(
         KeymapDefinition(
             operator_id="keyframe.peek_next",
-            key="FIVE",
+            key="THREE",
+            shift=True,
+            value="PRESS",
+            repeat=False,
+            properties={"next": False},
+            name=keymap_name,
+            space_type=keymap_space_type,
+        )
+    )
+    keymap_definitions.append(
+        KeymapDefinition(
+            operator_id="keyframe.peek_next",
+            key="FOUR",
+            shift=True,
             value="PRESS",
             repeat=False,
             properties={"next": True},
