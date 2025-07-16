@@ -7,27 +7,35 @@ config:
 ---
 flowchart RL
     constants[constants]
+    keymap_manager[keymap_manager]
     operators_channel_selection_overlay(operators.channel_selection_overlay)
     operators_dopesheet_helper(operators.dopesheet_helper)
     operators_handle_selection(operators.handle_selection)
     operators_keyframe_jump(operators.keyframe_jump)
     operators_keyframe_selection(operators.keyframe_selection)
+    operators_view_selected_curves_range(operators.view_selected_curves_range)
     preferences[preferences]
     ui_playback_speed_controller(ui.playback_speed_controller)
     utils_logger_prefs(utils.logger_prefs)
     utils_logging(utils.logging)
     utils_overlay_utils(utils.overlay_utils)
+    utils_timer(utils.timer)
     utils_ui_utils(utils.ui_utils)
+    constants --> keymap_manager
     constants --> operators_channel_selection_overlay
     constants --> utils_overlay_utils
+    keymap_manager --> operators_handle_selection
+    keymap_manager --> operators_keyframe_jump
+    keymap_manager --> operators_keyframe_selection
+    keymap_manager --> operators_view_selected_curves_range
+    keymap_manager --> preferences
     operators_channel_selection_overlay --> preferences
     operators_dopesheet_helper --> operators_channel_selection_overlay
     operators_dopesheet_helper --> operators_handle_selection
     operators_dopesheet_helper --> operators_keyframe_selection
-    operators_handle_selection --> preferences
-    operators_keyframe_selection --> preferences
     utils_logger_prefs --> preferences
     utils_logging --> constants
+    utils_logging --> keymap_manager
     utils_logging --> operators_channel_selection_overlay
     utils_logging --> operators_dopesheet_helper
     utils_logging --> operators_handle_selection
@@ -37,5 +45,7 @@ flowchart RL
     utils_logging --> utils_logger_prefs
     utils_logging --> utils_ui_utils
     utils_overlay_utils --> operators_channel_selection_overlay
+    utils_timer --> utils_overlay_utils
+    utils_ui_utils --> keymap_manager
     utils_ui_utils --> ui_playback_speed_controller
     utils_ui_utils --> utils_logger_prefs

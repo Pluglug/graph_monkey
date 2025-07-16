@@ -386,4 +386,10 @@ class KeymapRegistry:
 
 keymap_registry = KeymapRegistry()
 
-# Dopesheet; Frames; Graph Editor; Object Mode; Pose
+
+def register():
+    keymap_registry.apply_keymaps()
+
+
+def unregister():
+    keymap_registry.unregister_keymaps()

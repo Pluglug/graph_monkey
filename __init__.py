@@ -18,14 +18,12 @@ if use_reload:
     del importlib
 
 from . import addon
-from .keymap_manager import keymap_registry
 
 addon.init_addon(
     module_patterns=[
         "constants",
-        "keymap",
-        "overlay",
         "preferences",
+        "keymap_manager",
         "operators.*",
         "ui.*",
         "utils.*",
@@ -36,9 +34,7 @@ addon.init_addon(
 
 def register():
     addon.register_modules()
-    keymap_registry.apply_keymaps()
 
 
 def unregister():
-    keymap_registry.unregister_keymaps()
     addon.unregister_modules()
