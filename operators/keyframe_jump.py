@@ -3,7 +3,7 @@ from bpy.types import Operator, Context, Area
 from bpy.props import BoolProperty, StringProperty
 
 from ..utils.logging import get_logger
-from ..keymap.keymap_manager import KeymapDefinition, keymap_registry
+from ..keymap_manager import KeymapDefinition, keymap_registry
 
 log = get_logger(__name__)
 

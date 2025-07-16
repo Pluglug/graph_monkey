@@ -2,7 +2,7 @@ import bpy
 from bpy.types import Operator
 from bpy.props import BoolProperty
 
-from ..keymap.keymap_manager import KeymapDefinition, keymap_registry
+from ..keymap_manager import KeymapDefinition, keymap_registry
 
 
 class GRAPH_OT_view_selected_curves_range(Operator):
@@ -97,7 +97,7 @@ keymap_graph_view_selected_curves_range = [
         properties={"use_frame_range": True},
         name="Graph Editor",
         space_type="GRAPH_EDITOR",
-        description="選択カーブ範囲にフォーカス"
+        description="選択カーブ範囲にフォーカス",
     ),
     # アンフォーカス（ビルトイン）
     KeymapDefinition(
@@ -107,9 +107,11 @@ keymap_graph_view_selected_curves_range = [
         alt=True,
         name="Graph Editor",
         space_type="GRAPH_EDITOR",
-        description="全体表示（ビルトイン）"
+        description="全体表示（ビルトイン）",
     ),
 ]
 
 
-keymap_registry.register_keymap_group("Focus Selected Curves", keymap_graph_view_selected_curves_range)
+keymap_registry.register_keymap_group(
+    "Focus Selected Curves", keymap_graph_view_selected_curves_range
+)

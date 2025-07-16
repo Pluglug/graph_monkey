@@ -1,6 +1,6 @@
 import bpy
 
-from ..keymap.keymap_manager import KeymapDefinition, keymap_registry
+from ..keymap_manager import KeymapDefinition, keymap_registry
 from ..utils.logging import get_logger
 from .dopesheet_helper import (
     get_selected_keyframes,
@@ -135,7 +135,6 @@ def update_keyframe_handle_selection(keyframe, handle_direction, extend, all_sel
             keyframe.select_right_handle = True
 
 
-
 keymap_monkey_handle_selecter = [
     # ハンドル選択 Left
     KeymapDefinition(
@@ -147,7 +146,7 @@ keymap_monkey_handle_selecter = [
         properties={"handle_direction": "Left", "extend": False},
         name="Graph Editor",
         space_type="GRAPH_EDITOR",
-        description="左ハンドル選択"
+        description="左ハンドル選択",
     ),
     # ハンドル選択 Left（拡張）
     KeymapDefinition(
@@ -159,7 +158,7 @@ keymap_monkey_handle_selecter = [
         properties={"handle_direction": "Left", "extend": True},
         name="Graph Editor",
         space_type="GRAPH_EDITOR",
-        description="左ハンドル選択（拡張）"
+        description="左ハンドル選択（拡張）",
     ),
     # ハンドル選択 Right
     KeymapDefinition(
@@ -171,7 +170,7 @@ keymap_monkey_handle_selecter = [
         properties={"handle_direction": "Right", "extend": False},
         name="Graph Editor",
         space_type="GRAPH_EDITOR",
-        description="右ハンドル選択"
+        description="右ハンドル選択",
     ),
     # ハンドル選択 Right（拡張）
     KeymapDefinition(
@@ -183,8 +182,10 @@ keymap_monkey_handle_selecter = [
         properties={"handle_direction": "Right", "extend": True},
         name="Graph Editor",
         space_type="GRAPH_EDITOR",
-        description="右ハンドル選択（拡張）"
+        description="右ハンドル選択（拡張）",
     ),
 ]
 
-keymap_registry.register_keymap_group("Monkey Handle Selection", keymap_monkey_handle_selecter)
+keymap_registry.register_keymap_group(
+    "Monkey Handle Selection", keymap_monkey_handle_selecter
+)

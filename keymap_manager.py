@@ -4,9 +4,9 @@ from typing import Dict, List
 import bpy
 from rna_keymap_ui import draw_kmi
 
-from ..constants import RegionType, SpaceType
-from ..utils.logging import get_logger
-from ..utils.ui_utils import ic
+from .constants import RegionType, SpaceType
+from .utils.logging import get_logger
+from .utils.ui_utils import ic
 
 log = get_logger(__name__)
 

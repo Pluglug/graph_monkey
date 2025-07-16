@@ -6,7 +6,7 @@ from .dopesheet_helper import (
     get_visible_fcurves,
     get_selected_visible_fcurves,
 )
-from ..keymap.keymap_manager import KeymapDefinition, keymap_registry
+from ..keymap_manager import KeymapDefinition, keymap_registry
 
 log = get_logger(__name__)
 
@@ -285,7 +285,7 @@ keymap_monkey_vertically = [
         properties={"direction": "downward", "extend": False},
         name="Graph Editor",
         space_type="GRAPH_EDITOR",
-        description="下方向にチャンネル選択を移動"
+        description="下方向にチャンネル選択を移動",
     ),
     # 下方向（拡張）
     KeymapDefinition(
@@ -297,7 +297,7 @@ keymap_monkey_vertically = [
         properties={"direction": "downward", "extend": True},
         name="Graph Editor",
         space_type="GRAPH_EDITOR",
-        description="下方向にチャンネル選択を拡張移動"
+        description="下方向にチャンネル選択を拡張移動",
     ),
 ]
 
@@ -312,7 +312,7 @@ keymap_monkey_horizontally = [
         properties={"direction": "forward", "extend": False},
         name="Graph Editor",
         space_type="GRAPH_EDITOR",
-        description="右方向にキーフレーム選択を移動"
+        description="右方向にキーフレーム選択を移動",
     ),
     # 右方向（拡張）
     KeymapDefinition(
@@ -324,7 +324,7 @@ keymap_monkey_horizontally = [
         properties={"direction": "forward", "extend": True},
         name="Graph Editor",
         space_type="GRAPH_EDITOR",
-        description="右方向にキーフレーム選択を拡張移動"
+        description="右方向にキーフレーム選択を拡張移動",
     ),
     # 左方向
     KeymapDefinition(
@@ -336,7 +336,7 @@ keymap_monkey_horizontally = [
         properties={"direction": "backward", "extend": False},
         name="Graph Editor",
         space_type="GRAPH_EDITOR",
-        description="左方向にキーフレーム選択を移動"
+        description="左方向にキーフレーム選択を移動",
     ),
     # 左方向（拡張）
     KeymapDefinition(
@@ -348,9 +348,13 @@ keymap_monkey_horizontally = [
         properties={"direction": "backward", "extend": True},
         name="Graph Editor",
         space_type="GRAPH_EDITOR",
-        description="左方向にキーフレーム選択を拡張移動"
+        description="左方向にキーフレーム選択を拡張移動",
     ),
 ]
 
-keymap_registry.register_keymap_group("Monkey Horizontal Selection", keymap_monkey_horizontally)
-keymap_registry.register_keymap_group("Monkey Vertical Selection", keymap_monkey_vertically)
+keymap_registry.register_keymap_group(
+    "Monkey Horizontal Selection", keymap_monkey_horizontally
+)
+keymap_registry.register_keymap_group(
+    "Monkey Vertical Selection", keymap_monkey_vertically
+)

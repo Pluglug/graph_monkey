@@ -18,7 +18,7 @@ if use_reload:
     del importlib
 
 from . import addon
-from .keymap.keymap_manager import keymap_registry
+from .keymap_manager import keymap_registry
 
 addon.init_addon(
     module_patterns=[
@@ -34,7 +34,7 @@ addon.init_addon(
 )
 
 
-def register(): 
+def register():
     addon.register_modules()
     keymap_registry.apply_keymaps()
 
