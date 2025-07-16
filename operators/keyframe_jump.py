@@ -1,6 +1,6 @@
 import bpy
 from bpy.types import Operator, Context, Area
-from bpy.props import BoolProperty
+from bpy.props import BoolProperty, StringProperty
 
 from ..utils.logging import get_logger
 from ..keymap.keymap_manager import KeymapDefinition, keymap_registry
@@ -16,10 +16,48 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
 
     next: BoolProperty(default=True, options={"SKIP_SAVE"})
     loop: BoolProperty(default=True, options={"SKIP_SAVE"})
+    called_from: StringProperty(default="", options={"SKIP_SAVE"})
 
     def execute(self, context: Context):
-        scene = context.scene
+        log.debug(f"Called from: {self.called_from}")
 
+        # フレーム範囲を設定
+        self._setup_frame_range(context)
+
+        # メインのジャンプ処理を実行
+        return self.jump_within_range(context)
+
+    # ===========================================
+    # メインのジャンプ処理
+    # ===========================================
+
+    def jump_within_range(self, context: Context):
+        """範囲内でのキーフレームジャンプのメイン処理"""
+        scene = context.scene
+        current_frame = scene.frame_current
+
+        # 1. キーフレームジャンプを実行
+        if not self._execute_keyframe_jump(context):
+            return {"FINISHED"}
+
+        # 2. ジャンプ後の状態をチェック
+        new_frame = scene.frame_current
+        out_of_range = new_frame < self.start_frame or new_frame > self.end_frame
+        did_not_move = new_frame == current_frame
+
+        # 3. 範囲外または動かなかった場合のループ処理
+        if (did_not_move or out_of_range) and self.loop:
+            self._handle_loop_jump(context)
+
+        return {"FINISHED"}
+
+    # ===========================================
+    # ヘルパーメソッド（実行順序）
+    # ===========================================
+
+    def _setup_frame_range(self, context: Context):
+        """フレーム範囲の設定"""
+        scene = context.scene
         if scene.use_preview_range:
             self.start_frame = scene.frame_preview_start
             self.end_frame = scene.frame_preview_end
@@ -27,70 +65,124 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
             self.start_frame = scene.frame_start
             self.end_frame = scene.frame_end
 
-        timeline_area = self.find_area_with_visible_fcurves(context)
+    def _execute_keyframe_jump(self, context: Context) -> bool:
+        """キーフレームジャンプの実行（エラーハンドリング付き）"""
+        try:
+            bpy.ops.screen.keyframe_jump(next=self.next)
+            return True
+        except RuntimeError as e:
+            log.warning(f"keyframe_jump failed in {context.area.ui_type}: {e}")
+            # フォールバック: 通常のフレーム移動
+            if self.next:
+                bpy.ops.screen.frame_offset(delta=1)
+            else:
+                bpy.ops.screen.frame_offset(delta=-1)
+            return False
+
+    def _handle_loop_jump(self, context: Context):
+        """ループ処理：範囲の逆端に移動してキーフレームをチェック"""
+        scene = context.scene
+
+        # 逆端に移動
+        if self.next:
+            scene.frame_set(self.start_frame)
+        else:
+            scene.frame_set(self.end_frame)
+
+        # 逆端に可視キーフレームがあれば終了
+        if self._has_visible_keyframe_at_current_frame(context):
+            return
+
+        # なければもう一度ジャンプ
+        self._execute_keyframe_jump(context)
+
+    # ===========================================
+    # キーフレーム検出メソッド
+    # ===========================================
+
+    def _has_visible_keyframe_at_current_frame(self, context: Context) -> bool:
+        """
+        現在のフレームに可視キーフレームがあるかチェック
+        必要に応じてTIMELINEコンテキストに切り替える
+        """
+        # 1. 現在のコンテキストで試す
+        if self._check_visible_fcurves(context):
+            return self._check_keyframe_at_frame(context)
+
+        # 2. TIMELINEエリアで試す
+        timeline_area = self._find_timeline_area(context)
         if timeline_area:
             with context.temp_override(area=timeline_area):
-                return self.jump_within_range(context)
-        else:
-            # タイムラインエリアがない場合は通常ジャンプ
-            self.report({"INFO"}, "No Timeline area found")
-            bpy.ops.screen.keyframe_jump(next=self.next)
-            return {"FINISHED"}
+                if self._check_visible_fcurves(context):
+                    return self._check_keyframe_at_frame(context)
 
-    @staticmethod
-    def find_area_with_visible_fcurves(context: Context) -> Area | None:
-        """
-        context.window.screen.areas から visible_fcurves を持つエリアを探して返す。
-        見つからなければ None。
-        """
-        for area in context.window.screen.areas:
-            with context.temp_override(area=area):
-                if hasattr(context, "visible_fcurves"):
-                    return area
-        return None
+        # 3. 他のアニメーションエリアで試す
+        return self._try_animation_areas(context)
 
-    @staticmethod
-    def visible_key_on_current_frame(context: Context) -> bool:
-        """
-        contextとタイムラインエリアを受け取り、
-        現在のフレーム位置に可視状態のキーフレームがあればTrue、なければFalseを返す
-        """
+    def _check_visible_fcurves(self, context: Context) -> bool:
+        """visible_fcurvesが利用可能かチェック"""
+        return hasattr(context, "visible_fcurves") and context.visible_fcurves
+
+    def _check_keyframe_at_frame(self, context: Context) -> bool:
+        """現在のフレームにキーフレームがあるかチェック"""
         scene = context.scene
         current_frame = scene.frame_current
 
-        visible_fcurves = (
-            context.visible_fcurves if hasattr(context, "visible_fcurves") else []
-        )
+        visible_fcurves = getattr(context, "visible_fcurves", None)
+        if not visible_fcurves:
+            return False
+
         for fcurve in visible_fcurves:
             for kp in fcurve.keyframe_points:
                 if int(kp.co.x) == current_frame:
                     return True
         return False
 
-    def jump_within_range(self, context: Context):
+    def _try_animation_areas(self, context: Context) -> bool:
+        """他のアニメーションエリアでvisible_fcurvesを試す"""
+        animation_areas = ["DOPESHEET_EDITOR", "GRAPH_EDITOR", "NLA_EDITOR"]
+        for area_type in animation_areas:
+            for area in context.window.screen.areas:
+                if area.type == area_type:
+                    with context.temp_override(area=area):
+                        if self._check_visible_fcurves(context):
+                            return self._check_keyframe_at_frame(context)
+        return False
+
+    # ===========================================
+    # ユーティリティメソッド
+    # ===========================================
+
+    @staticmethod
+    def _find_timeline_area(context: Context) -> Area | None:
+        """TIMELINEエリアを探す"""
+        for area in context.window.screen.areas:
+            if area.ui_type == "TIMELINE":
+                return area
+        return None
+
+    # ===========================================
+    # 旧メソッド（互換性のため残す）
+    # ===========================================
+
+    @staticmethod
+    def visible_key_on_current_frame(context: Context) -> bool:
+        """
+        【非推奨】現在のフレーム位置に可視状態のキーフレームがあればTrue
+        新しいコードでは _has_visible_keyframe_at_current_frame を使用してください
+        """
         scene = context.scene
         current_frame = scene.frame_current
 
-        bpy.ops.screen.keyframe_jump(next=self.next)
-        new_frame = scene.frame_current
+        visible_fcurves = getattr(context, "visible_fcurves", None)
+        if not visible_fcurves:
+            return False
 
-        out_of_range = new_frame < self.start_frame or new_frame > self.end_frame
-        did_not_move = new_frame == current_frame
-
-        if (did_not_move or out_of_range) and self.loop:
-            # 逆端に移動
-            if self.next:
-                scene.frame_set(self.start_frame)
-            else:
-                scene.frame_set(self.end_frame)
-
-            # 逆端に可視キーフレームがあれば終了
-            if self.visible_key_on_current_frame(context):
-                return {"FINISHED"}
-
-            # なければもう一度ジャンプ
-            bpy.ops.screen.keyframe_jump(next=self.next)
-        return {"FINISHED"}
+        for fcurve in visible_fcurves:
+            for kp in fcurve.keyframe_points:
+                if int(kp.co.x) == current_frame:
+                    return True
+        return False
 
 
 class MONKEY_OT_KEYFRAME_PEEK(Operator):
@@ -189,7 +281,7 @@ for keymap_name, keymap_space_type in KEYFRAME_JUMP_KEYMAPS:
             key="THREE",
             value="PRESS",
             repeat=True,
-            properties={"next": False, "loop": True},
+            properties={"next": False, "loop": True, "called_from": keymap_name},
             name=keymap_name,
             space_type=keymap_space_type,
         )
@@ -200,7 +292,7 @@ for keymap_name, keymap_space_type in KEYFRAME_JUMP_KEYMAPS:
             key="FOUR",
             value="PRESS",
             repeat=True,
-            properties={"next": True, "loop": True},
+            properties={"next": True, "loop": True, "called_from": keymap_name},
             name=keymap_name,
             space_type=keymap_space_type,
         )
