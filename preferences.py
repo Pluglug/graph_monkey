@@ -74,16 +74,31 @@ class MonKeyPreferences(bpy.types.AddonPreferences):
 
 
 def register():
+    def sync_logger_modules():
+        """ロガーモジュールのインクリメンタル同期"""
+        context = bpy.context
+        try:
+            pr = get_prefs(context)
+            if not hasattr(pr, "logger_prefs"):
+                return
 
-    context = bpy.context
-    pr = get_prefs(context)
-    if hasattr(pr, "logger_prefs"):
-        mods = LoggerRegistry.get_all_loggers()
-        current_module_names = {m.name for m in pr.logger_prefs.modules}
-        for module_name, _logger in mods.items():
-            if module_name not in current_module_names:
-                pr.logger_prefs.register_module(module_name, "INFO")
-        # 設定の更新もここで呼び出すのが適切か？
-        # for module in pr.logger_prefs.modules:
-        #     module.log_level = "DEBUG"
-        pr.logger_prefs.update_logger_settings(context)
+            # 現在のロガーと設定済みモジュールを取得
+            active_loggers = LoggerRegistry.get_all_loggers()
+            existing_modules = {m.name for m in pr.logger_prefs.modules}
+
+            # 新しいモジュールのみ追加（既存設定は保持）
+            for module_name in active_loggers.keys():
+                short_name = module_name
+                if module_name.startswith(ADDON_ID + "."):
+                    short_name = module_name[len(ADDON_ID) + 1 :]
+
+                if short_name not in existing_modules:
+                    pr.logger_prefs.register_module(short_name, "INFO")
+
+            # 設定を適用
+            pr.logger_prefs.update_logger_settings(context)
+
+        except Exception as e:
+            print(f"Logger sync error: {e}")
+
+    bpy.app.timers.register(sync_logger_modules, first_interval=0.1)

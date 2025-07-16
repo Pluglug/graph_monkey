@@ -20,7 +20,7 @@ import traceback
 from collections import deque
 import threading
 
-from ..addon import ADDON_ID
+INIT_LOG_LEVEL = logging.INFO
 
 # ANSIカラーコード
 COLORS = {
@@ -31,6 +31,15 @@ COLORS = {
     "ERROR": "\033[31m",  # Red
     "CRITICAL": "\033[31;1m",  # Bold Red
 }
+
+
+def _temp_log(level, message, exc=None):
+    """ロガーシステム自体のエラー用フォールバック"""
+    prefix = f"[LOGGER-{level}]"
+    if exc:
+        message = f"{message}: {exc}"
+
+    print(f"{prefix} {message}")
 
 
 class ColoredFormatter(logging.Formatter):
@@ -54,7 +63,7 @@ class MemoryHandler(logging.Handler):
             with self._lock:
                 self.buffer.append(record)
         except Exception as e:
-            print(f"MemoryHandler emit error: {str(e)}", file=sys.stderr)
+            _temp_log("ERROR", "MemoryHandler emit error", e)
 
     def get_records(self):
         with self._lock:
@@ -70,43 +79,52 @@ class LoggerRegistry:
 
     _loggers = {}
     _config = None
+    _lock = threading.RLock()
 
     @classmethod
     def get_logger(cls, module_name):
         """モジュール名でロガーを取得（なければ作成）"""
-        if module_name not in cls._loggers:
-            logger = AddonLogger(module_name)
-            cls._loggers[module_name] = logger
-            # 既存の設定があれば適用
-            if cls._config:
-                logger.configure(cls._config, module_name)
-        return cls._loggers[module_name]
+        with cls._lock:
+            if module_name not in cls._loggers:
+                logger = AddonLogger(module_name)
+                logger.logger.setLevel(INIT_LOG_LEVEL)
+                cls._loggers[module_name] = logger
+                # 既存の設定があれば適用
+                if cls._config:
+                    logger.configure(cls._config, module_name)
+            return cls._loggers[module_name]
 
     @classmethod
     def configure_all(cls, config):
         """すべてのロガーに設定を適用"""
-        cls._config = config
-        for module_name, logger in cls._loggers.items():
-            logger.configure(config, module_name)
+        with cls._lock:
+            cls._config = config
+            for module_name, logger in cls._loggers.items():
+                logger.configure(config, module_name)
 
     @classmethod
     def get_all_loggers(cls):
         """登録されているすべてのロガーを取得"""
-        return cls._loggers
+        with cls._lock:
+            # 辞書のコピーを返して外部からの変更を防ぐ
+            return cls._loggers.copy()
 
     @classmethod
     def export_all_logs(cls, file_path):
         """すべてのロガーのログをエクスポート"""
         try:
+            with cls._lock:
+                # ロガー一覧のスナップショットを取得
+                loggers_snapshot = cls._loggers.copy()
+
             with open(file_path, "w", encoding="utf-8") as f:
-                for module_name, logger in sorted(cls._loggers.items()):
+                for module_name, logger in sorted(loggers_snapshot.items()):
                     f.write(f"\n=== Module: {module_name} ===\n")
                     for record in logger.memory_handler.get_records():
                         f.write(f"[{record.levelname}] {record.msg}\n")
             return True
         except Exception as e:
-            # エラーを報告するためのロガーがない可能性があるので、標準エラー出力を使用
-            print(f"Log export failed: {str(e)}", file=sys.stderr)
+            _temp_log("ERROR", "Log export failed", e)
             return False
 
 
@@ -120,7 +138,7 @@ class AddonLogger:
         self.logger.propagate = False  # 親ロガーへの伝播を無効化
 
         self.memory_handler = MemoryHandler()
-        # 初期状態ではコンソール/ファイルハンドラはNone
+        # 初期状態でコンソールハンドラーを設定（デフォルト有効）
         self.console_handler = None
         self.file_handler = None
 
@@ -128,6 +146,14 @@ class AddonLogger:
         # リロード時に重複しないように、既に追加済みか確認
         if not any(isinstance(h, MemoryHandler) for h in self.logger.handlers):
             self.logger.addHandler(self.memory_handler)
+
+        # デフォルトでコンソールハンドラーを追加
+        if not any(isinstance(h, logging.StreamHandler) for h in self.logger.handlers):
+            self.console_handler = logging.StreamHandler()
+            self.console_handler.setFormatter(
+                ColoredFormatter("%(name)s - %(levelname)s: %(message)s")
+            )
+            self.logger.addHandler(self.console_handler)
 
     def configure(self, config, module_name=None):
         """設定を更新"""
@@ -164,32 +190,32 @@ class AddonLogger:
         #         f"DEBUG: Module '{module_name}' using default log level {config.log_level} ({module_level})"
         #     )
 
-        # --- コンソールハンドラのガード処理 ---
+        # --- コンソールハンドラの設定処理 ---
         has_console_handler = any(
             isinstance(h, logging.StreamHandler) for h in self.logger.handlers
         )
 
-        if config.log_to_console and not has_console_handler:
-            # 既存ハンドラがない場合のみ追加
-            self.console_handler = logging.StreamHandler()
-            formatter = (
-                ColoredFormatter("%(name)s - %(levelname)s: %(message)s")
-                if config.use_colors
-                else logging.Formatter("%(name)s - %(levelname)s: %(message)s")
-            )
-            self.console_handler.setFormatter(formatter)
-            self.logger.addHandler(self.console_handler)
-            # print(f"DEBUG: Added console handler for {module_name}") # デバッグ用
-        elif not config.log_to_console and has_console_handler:
-            # 設定が無効で既存ハンドラがある場合は削除
-            # 複数のStreamHandlerがある可能性も考慮し、全て削除する（通常は1つのはずだが念のため）
-            for handler in list(
-                self.logger.handlers
-            ):  # イテレート中に削除するためコピー
-                if isinstance(handler, logging.StreamHandler):
-                    self.logger.removeHandler(handler)
-            self.console_handler = None  # 参照もクリア
-            # print(f"DEBUG: Removed console handler for {module_name}") # デバッグ用
+        if config.log_to_console:
+            # コンソール出力有効: ハンドラーがない場合は追加、ある場合はフォーマッター更新
+            if not has_console_handler:
+                self.console_handler = logging.StreamHandler()
+                self.logger.addHandler(self.console_handler)
+
+            # フォーマッター更新（カラー設定反映）
+            if self.console_handler:
+                formatter = (
+                    ColoredFormatter("%(name)s - %(levelname)s: %(message)s")
+                    if config.use_colors
+                    else logging.Formatter("%(name)s - %(levelname)s: %(message)s")
+                )
+                self.console_handler.setFormatter(formatter)
+        else:
+            # コンソール出力無効: ハンドラーがある場合は削除
+            if has_console_handler:
+                for handler in list(self.logger.handlers):
+                    if isinstance(handler, logging.StreamHandler):
+                        self.logger.removeHandler(handler)
+                self.console_handler = None
 
         # --- ファイルハンドラのガード処理 ---
         has_file_handler = any(
@@ -220,7 +246,7 @@ class AddonLogger:
                 )
                 self.file_handler.setFormatter(formatter)
                 self.logger.addHandler(self.file_handler)
-                # print(f"DEBUG: Added/Updated file handler for {module_name} to {config.log_file_path}") # デバッグ用
+                # _temp_log("DEBUG", f"Added/Updated file handler for {module_name} to {config.log_file_path}")
 
         elif not config.log_to_file and has_file_handler:
             # 設定が無効で既存ハンドラがある場合は削除
@@ -228,7 +254,7 @@ class AddonLogger:
                 if isinstance(handler, logging.FileHandler):
                     self.logger.removeHandler(handler)
             self.file_handler = None  # 参照もクリア
-            # print(f"DEBUG: Removed file handler for {module_name}") # デバッグ用
+            # _temp_log("DEBUG", f"Removed file handler for {module_name}") # デバッグ用
 
         self.memory_handler.capacity = config.memory_capacity
 
@@ -273,7 +299,7 @@ class AddonLogger:
             self.logger.error(info)
             return error_id
         except Exception as e:
-            print(f"Failed to capture exception: {str(e)}", file=sys.stderr)
+            _temp_log("ERROR", "Failed to capture exception", e)
             return None
 
     def section(self, title, level=logging.INFO):
@@ -316,10 +342,11 @@ class AddonLogger:
                     f.write(f"[{record.levelname}] {record.msg}\n")
             return True
         except Exception as e:
-            self.logger.error(f"Log export failed: {str(e)}")
+            # ロガー自体のエラーの可能性があるため、フォールバック使用
+            _temp_log("ERROR", "Individual log export failed", e)
             return False
 
 
-def get_logger(module_name: str = ADDON_ID) -> AddonLogger:
+def get_logger(module_name: str) -> AddonLogger:
     """Get a logger for a module"""
     return LoggerRegistry.get_logger(module_name)

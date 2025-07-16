@@ -232,7 +232,7 @@ class MONKEY_UL_modules(UIList):
     ):
         if self.layout_type in {"DEFAULT", "COMPACT"}:
             row = layout.row()
-            row.prop(item, "name", text="", emboss=False)
+            row.label(text=item.name)
             icon = "CHECKBOX_HLT" if item.enabled else "CHECKBOX_DEHLT"
             row.prop(item, "enabled", text="", icon=icon, emboss=False)
             row.prop(item, "log_level", text="")
@@ -247,9 +247,9 @@ class MONKEY_OT_update_settings(Operator):
 
     def execute(self, context):
         # アドオン設定を取得
-        pr = get_prefs(context)
-        if hasattr(pr, "_update_logger_settings"):
-            pr._update_logger_settings(context)
+        pr = get_prefs(context).logger_prefs
+        if hasattr(pr, "update_logger_settings"):
+            pr.update_logger_settings(context)
             self.report({"INFO"}, "Logger settings updated")
             return {"FINISHED"}
 

@@ -24,14 +24,14 @@ from bpy.utils import user_resource
 if TYPE_CHECKING:
     from .preferences import MonKeyPreferences
 
-# from .utils.logging import get_logger  # TODO: Printをログに変更
-# log = get_logger(__name__)
+from .utils.logging import get_logger
+
+log = get_logger(__name__)
 
 # ======================================================
 # グローバル設定
 # ======================================================
 
-DBG_INIT = True
 CREATE_DEPENDENCY_GRAPH = True  # Create dependency graph
 BACKGROUND = False
 VERSION = (0, 0, 0)  # Addon version
@@ -155,6 +155,7 @@ def init_addon(
             use_reload=True
         )
     """
+
     global VERSION, BL_VERSION, ADDON_PREFIX, ADDON_PREFIX_PY, _class_cache
 
     # 初期化処理
@@ -187,7 +188,7 @@ def init_addon(
             else:
                 importlib.import_module(module_name)
         except Exception as e:
-            print(f">>> Failed to load module {module_name}: {str(e)}")
+            log.debug(f">>> Failed to load module {module_name}: {str(e)}")
             traceback.print_exception(type(e), e, e.__traceback__, limit=2)
 
     # 依存関係解決
@@ -195,8 +196,7 @@ def init_addon(
         # ------------------------------------------------------
         # トラブルシューティング用: 強制的なモジュールロード順序
         # ------------------------------------------------------
-        if DBG_INIT:
-            print("\n=== 強制指定されたモジュールロード順序を使用 ===")
+        log.debug("\n=== 強制指定されたモジュールロード順序を使用 ===")
         sorted_modules = _resolve_forced_order(force_order, module_names)
     else:
         # ------------------------------------------------------
@@ -206,11 +206,10 @@ def init_addon(
 
     MODULE_NAMES[:] = sorted_modules
 
-    if DBG_INIT:
-        print("\n=== 最終モジュールロード順序 ===")
-        for i, mod in enumerate(MODULE_NAMES, 1):
-            short = short_name(mod)
-            print(f"{i:2d}. {short}")
+    log.debug("\n=== 最終モジュールロード順序 ===")
+    for i, mod in enumerate(MODULE_NAMES, 1):
+        short = short_name(mod)
+        log.debug(f"{i:2d}. {short}")
 
 
 def _resolve_forced_order(force_order: List[str], module_names: List[str]) -> List[str]:
@@ -235,7 +234,7 @@ def _resolve_forced_order(force_order: List[str], module_names: List[str]) -> Li
         if full_name in module_names:
             processed_order.append(full_name)
         else:
-            print(f"Warning: Specified module {full_name} not found")
+            log.debug(f"Warning: Specified module {full_name} not found")
 
     # 指定されていないモジュールを末尾に追加
     remaining = [m for m in module_names if m not in processed_order]
@@ -317,18 +316,14 @@ def _analyze_dependencies(module_names: List[str]) -> Dict[str, Set[str]]:
                     # 注: 方向は「依存先 → 依存元」
                     graph[dep_full].add(mod_name)
                 else:
-                    if DBG_INIT:
-                        print(
-                            f"  警告: {mod_name} の依存先 {dep_full} が見つかりません"
-                        )
+                    log.debug(f"  警告: {mod_name} の依存先 {dep_full} が見つかりません")
 
-    if DBG_INIT:
-        print("\n=== 依存関係詳細 ===")
-        for mod, deps in sorted(graph.items()):
-            if deps:
-                print(f"{short_name(mod)} は以下から依存されています:")
-                for d in sorted(deps):
-                    print(f"  → {short_name(d)}")
+    log.debug("\n=== 依存関係詳細 ===")
+    for mod, deps in sorted(graph.items()):
+        if deps:
+            log.debug(f"{short_name(mod)} は以下から依存されています:")
+            for d in sorted(deps):
+                log.debug(f"  → {short_name(d)}")
 
     return graph
 
@@ -458,21 +453,20 @@ def _analyze_imports(module_names: List[str]) -> Dict[str, Set[str]]:
             visitor.visit(tree)
 
         except FileNotFoundError:
-            print(f"File not found ({mod_name}): {mod.__file__}")
+            log.debug(f"File not found ({mod_name}): {mod.__file__}")
         except SyntaxError as e:
-            print(f"Syntax error ({mod_name}): {str(e)}")
+            log.debug(f"Syntax error ({mod_name}): {str(e)}")
         except Exception as e:
-            print(f"Unexpected error during import analysis ({mod_name}): {str(e)}")
+            log.debug(f"Unexpected error during import analysis ({mod_name}): {str(e)}")
             traceback.print_exc()
 
-    if DBG_INIT:
-        print("\n--- Import dependencies ---")
-        for mod, deps in sorted(graph.items()):
-            if deps:
-                print(f"{short_name(mod)} depends on:")
-                for d in sorted(deps):
-                    print(f"  -> {short_name(d)}")
-        print("-------------------------------------------------")
+    log.debug("\n--- Import dependencies ---")
+    for mod, deps in sorted(graph.items()):
+        if deps:
+            log.debug(f"{short_name(mod)} depends on:")
+            for d in sorted(deps):
+                log.debug(f"  -> {short_name(d)}")
+    log.debug("-------------------------------------------------")
 
     return graph
 
@@ -513,12 +507,11 @@ def _sort_modules(module_names: List[str]) -> List[str]:
         sorted_modules = _topological_sort(filtered_graph)
 
         # デバッグ出力
-        if DBG_INIT:
-            print("\n=== モジュールロード順序 ===")
-            for idx, mod in enumerate(sorted_modules):
-                deps = filtered_graph.get(mod, set())
-                dep_str = ", ".join(short_name(d) for d in deps) if deps else "-"
-                print(f"{idx+1:2d}. {short_name(mod)} (依存: {dep_str})")
+        log.debug("\n=== モジュールロード順序 ===")
+        for idx, mod in enumerate(sorted_modules):
+            deps = filtered_graph.get(mod, set())
+            dep_str = ", ".join(short_name(d) for d in deps) if deps else "-"
+            log.debug(f"{idx+1:2d}. {short_name(mod)} (依存: {dep_str})")
 
         if CREATE_DEPENDENCY_GRAPH:
             # Generate Mermaid diagram (for detailed analysis)
@@ -530,22 +523,22 @@ def _sort_modules(module_names: List[str]) -> List[str]:
                 viz_path = os.path.join(debug_dir, "module_dependencies.mmd")
                 with open(viz_path, "w", encoding="utf-8") as f:
                     f.write(mermaid)
-                print(f"Generated dependency graph: {viz_path}")
+                log.debug(f"Generated dependency graph: {viz_path}")
             except Exception as e:
-                print(f"Error generating dependency graph: {str(e)}")
+                log.debug(f"Error generating dependency graph: {str(e)}")
 
     except ValueError as e:
         # ------------------------------------------------------
         # 循環依存検出時の代替処理（フォールバック）
         # ------------------------------------------------------
-        print(f"Warning: {str(e)}")
-        print("Using alternative sorting method to resolve circular dependencies...")
+        log.debug(f"Warning: {str(e)}")
+        log.debug("Using alternative sorting method to resolve circular dependencies...")
         sorted_modules = _alternative_sort(filtered_graph, module_names)
 
     # 未処理モジュールを末尾に追加
     remaining = [m for m in module_names if m not in sorted_modules]
     if remaining:
-        print(f"\nAdding unprocessed modules: {', '.join(remaining)}")
+        log.debug(f"\nAdding unprocessed modules: {', '.join(remaining)}")
         sorted_modules.extend(remaining)
 
     return sorted_modules
@@ -632,13 +625,13 @@ def _alternative_sort(graph: Dict[str, Set[str]], module_names: List[str]) -> Li
     try:
         cycles = _detect_cycles(graph)
         if cycles:
-            print("\n=== Detected circular dependencies ===")
+            log.debug("\n=== Detected circular dependencies ===")
             for i, cycle in enumerate(cycles, 1):
-                print(
+                log.debug(
                     f"Circular {i}: {' → '.join(short_name(m) for m in cycle)} → {short_name(cycle[0])}"
                 )
     except Exception as e:
-        print(f"Circular dependency detection error: {str(e)}")
+        log.debug(f"Circular dependency detection error: {str(e)}")
         cycles = []
 
     # 基本的なソート順：アドオンモジュール → util系 → core系 → 他のモジュール
@@ -824,15 +817,14 @@ def register_modules() -> None:
         try:
             _validate_class(cls)
             bpy.utils.register_class(cls)
-            if DBG_INIT:
-                print(f"✓ Registered: {cls.__name__}")
+            log.debug(f"□ Registered: {cls.__name__}")
         except Exception as e:
             success = False
-            print(f"✗ Failed to register class: {cls.__name__}")
-            print(f"   Reason: {str(e)}")
-            print(f"   Module: {cls.__module__}")
+            log.debug(f"■ Failed to register class: {cls.__name__}")
+            log.debug(f"   Reason: {str(e)}")
+            log.debug(f"   Module: {cls.__module__}")
             if hasattr(cls, "__annotations__"):
-                print(f"   Annotations: {list(cls.__annotations__.keys())}")
+                log.debug(f"   Annotations: {list(cls.__annotations__.keys())}")
 
     # Initialize modules
     for mod_name in MODULE_NAMES:
@@ -840,16 +832,15 @@ def register_modules() -> None:
             mod = sys.modules[mod_name]
             if hasattr(mod, "register"):
                 mod.register()
-                if DBG_INIT:
-                    print(f"✓ Initialized: {mod_name}")
+                log.debug(f"□ Initialized: {mod_name}")
         except Exception as e:
             success = False
-            print(f"✗ Failed to initialize module: {mod_name}")
-            print(f"   Reason: {str(e)}")
+            log.debug(f"■ Failed to initialize module: {mod_name}")
+            log.debug(f"   Reason: {str(e)}")
             traceback.print_exc()
 
     if not success:
-        print("Warning: Some components failed to initialize")
+        log.debug("Warning: Some components failed to initialize")
 
 
 def unregister_modules() -> None:
@@ -870,14 +861,14 @@ def unregister_modules() -> None:
             if hasattr(mod, "unregister"):
                 mod.unregister()
         except Exception as e:
-            print(f"Module unregistration error: {mod_name} - {str(e)}")
+            log.debug(f"Module unregistration error: {mod_name} - {str(e)}")
 
     # クラス登録解除
     for cls in reversed(_get_classes()):
         try:
             bpy.utils.unregister_class(cls)
         except Exception as e:
-            print(f"Class unregistration error: {cls.__name__} - {str(e)}")
+            log.debug(f"Class unregistration error: {cls.__name__} - {str(e)}")
 
 
 # ======================================================
@@ -984,10 +975,9 @@ def _get_classes(force: bool = True) -> List[bpy.types.bpy_struct]:
         if cls not in visited:
             visit(cls)
 
-    if DBG_INIT:
-        print("\n=== 登録クラス一覧 ===")
-        for cls in ordered:
-            print(f" - {cls.__name__}")
+    log.debug("\n=== 登録クラス一覧 ===")
+    for cls in ordered:
+        log.debug(f" - {cls.__name__}")
 
     _class_cache = ordered
     return ordered
