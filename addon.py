@@ -316,7 +316,9 @@ def _analyze_dependencies(module_names: List[str]) -> Dict[str, Set[str]]:
                     # 注: 方向は「依存先 → 依存元」
                     graph[dep_full].add(mod_name)
                 else:
-                    log.debug(f"  警告: {mod_name} の依存先 {dep_full} が見つかりません")
+                    log.debug(
+                        f"  警告: {mod_name} の依存先 {dep_full} が見つかりません"
+                    )
 
     log.debug("\n=== 依存関係詳細 ===")
     for mod, deps in sorted(graph.items()):
@@ -532,7 +534,9 @@ def _sort_modules(module_names: List[str]) -> List[str]:
         # 循環依存検出時の代替処理（フォールバック）
         # ------------------------------------------------------
         log.debug(f"Warning: {str(e)}")
-        log.debug("Using alternative sorting method to resolve circular dependencies...")
+        log.debug(
+            "Using alternative sorting method to resolve circular dependencies..."
+        )
         sorted_modules = _alternative_sort(filtered_graph, module_names)
 
     # 未処理モジュールを末尾に追加
