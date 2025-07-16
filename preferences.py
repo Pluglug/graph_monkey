@@ -8,6 +8,8 @@ from .operators.channel_selection_overlay import ChannelSelectionOverlaySettings
 from .utils.logger_prefs import MONKEY_LoggerPreferences
 from .utils.logging import LoggerRegistry, get_logger
 
+from .utils.ui_utils import draw_multiline_text_examples
+
 # log = get_logger(__name__)
 
 
@@ -44,6 +46,7 @@ class MonKeyPreferences(AddonPreferences):
 
     def draw_description(self, context, layout):
         layout.label(text="TODO: Add description")
+        draw_multiline_text_examples(layout)
 
         MONKEY_LoggerPreferences.draw(self.logger_prefs, layout)
 
