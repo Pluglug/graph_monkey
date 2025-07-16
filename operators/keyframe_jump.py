@@ -243,11 +243,8 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
 
 
 KEYFRAME_JUMP_KEYMAPS = [
-    ("Dopesheet", "DOPESHEET_EDITOR"),
     ("Frames", "EMPTY"),
-    ("Graph Editor", "GRAPH_EDITOR"),
     ("Object Mode", "EMPTY"),
-    ("Pose", "EMPTY"),
 ]
 
 keymap_definitions = []
