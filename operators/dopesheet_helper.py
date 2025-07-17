@@ -1,5 +1,7 @@
 import bpy
-from ..debug_utils import log, DBG_OPS
+from ..utils.logging import get_logger
+
+log = get_logger(__name__)
 
 
 def is_object_displayed(obj, dopesheet, type_filters):
@@ -42,23 +44,28 @@ def is_object_displayed(obj, dopesheet, type_filters):
 
 
 def get_visible_objects(dopesheet):
+    if not bpy.context.scene:
+        return []
+
     type_filters = {
-        'SCENE': dopesheet.show_scenes,
-        'NODETREE': dopesheet.show_nodes,
-        'CAMERA': dopesheet.show_cameras,
-        'LIGHT': dopesheet.show_lights,
-        'MESH': dopesheet.show_meshes,
-        'WORLD': dopesheet.show_worlds,
-        'LINESTYLE': dopesheet.show_linestyles,
-        'MATERIAL': dopesheet.show_materials
+        "SCENE": dopesheet.show_scenes,
+        "NODETREE": dopesheet.show_nodes,
+        "CAMERA": dopesheet.show_cameras,
+        "LIGHT": dopesheet.show_lights,
+        "MESH": dopesheet.show_meshes,
+        "WORLD": dopesheet.show_worlds,
+        "LINESTYLE": dopesheet.show_linestyles,
+        "MATERIAL": dopesheet.show_materials,
     }
     visible_objects = [
-        obj for obj in bpy.context.scene.objects
-        if obj.animation_data and obj.animation_data.action and is_object_displayed(obj, dopesheet, type_filters)
+        obj
+        for obj in bpy.context.scene.objects
+        if obj.animation_data
+        and obj.animation_data.action
+        and is_object_displayed(obj, dopesheet, type_filters)
     ]
     visible_objects.sort(key=lambda obj: obj.name)
     return visible_objects
-
 
 
 # keyframe_helpers.py
@@ -72,5 +79,25 @@ def get_selected_keyframes(keyframe_points):
             "right_handle": keyframe.select_right_handle,
         }
         for keyframe in keyframe_points
-        if keyframe.select_control_point or keyframe.select_left_handle or keyframe.select_right_handle
+        if keyframe.select_control_point
+        or keyframe.select_left_handle
+        or keyframe.select_right_handle
     ]
+
+
+def get_visible_fcurves(context):
+    """bpy.context.visible_fcurvesを安全に取得する"""
+    if not context or not hasattr(context, "visible_fcurves"):
+        return []
+    return context.visible_fcurves
+
+
+def get_selected_visible_fcurves(context):
+    """可視状態で選択されたFカーブを取得する"""
+    visible_fcurves = get_visible_fcurves(context)
+    return [fcurve for fcurve in visible_fcurves if fcurve.select]
+
+
+def get_all_visible_fcurves(context):
+    """すべての可視Fカーブを取得する（選択状態に関係なく）"""
+    return get_visible_fcurves(context)

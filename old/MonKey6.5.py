@@ -25,24 +25,22 @@ from bpy.props import (
     StringProperty,
 )
 
+
 class GRAPH_OT_monkey_horizontally(bpy.types.Operator):
     bl_idname = "graph.monkey_horizontally"
     bl_label = "MonKey for Horizontal"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {"REGISTER", "UNDO"}
 
     direction: bpy.props.EnumProperty(
         name="Direction",
-        items=[
-            ("forward", "Forward", ""),
-            ("backward", "Backward", "")
-        ],
-        default="forward"
+        items=[("forward", "Forward", ""), ("backward", "Backward", "")],
+        default="forward",
     )
     extend: bpy.props.BoolProperty(default=False)
 
     @classmethod
     def poll(cls, context):
-        if context.area.type != 'GRAPH_EDITOR':
+        if context.area.type != "GRAPH_EDITOR":
             return False
 
         dopesheet = context.space_data.dopesheet
@@ -52,33 +50,35 @@ class GRAPH_OT_monkey_horizontally(bpy.types.Operator):
     def execute(self, context):
         dopesheet = context.space_data.dopesheet
         visible_objects = get_visible_objects(dopesheet)
-        move_keyframe_selection_horizontally(self.direction, self.extend, visible_objects)
-        return {'FINISHED'}
+        move_keyframe_selection_horizontally(
+            self.direction, self.extend, visible_objects
+        )
+        return {"FINISHED"}
 
 
 class GRAPH_OT_monkey_vertically(bpy.types.Operator):
     bl_idname = "graph.monkey_vertically"
     bl_label = "MonKey for Vertical"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {"REGISTER", "UNDO"}
 
     direction: bpy.props.EnumProperty(
         name="Direction",
         description="Direction to move the selected channels",
         items=[
             ("upward", "Upward", "Move the selected channels upward"),
-            ("downward", "Downward", "Move the selected channels downward")
+            ("downward", "Downward", "Move the selected channels downward"),
         ],
-        default="downward"
+        default="downward",
     )
     extend: bpy.props.BoolProperty(
         name="Extend",
         description="Extend the channel selection instead of moving",
-        default=False
+        default=False,
     )
 
     @classmethod
     def poll(cls, context):
-        if context.area.type != 'GRAPH_EDITOR':
+        if context.area.type != "GRAPH_EDITOR":
             return False
 
         dopesheet = context.space_data.dopesheet
@@ -89,10 +89,10 @@ class GRAPH_OT_monkey_vertically(bpy.types.Operator):
         dopesheet = context.space_data.dopesheet
         visible_objects = get_visible_objects(dopesheet)
         move_channel_selection_vertically(self.direction, self.extend, visible_objects)
-        
+
         # Get channel information
         # display_props = context.scene.monkey_display_properties
-        channel_info = get_channel_info(visible_objects)  #, display_props)
+        channel_info = get_channel_info(visible_objects)  # , display_props)
         if channel_info:
             print(channel_info)
             print()
@@ -100,26 +100,28 @@ class GRAPH_OT_monkey_vertically(bpy.types.Operator):
             # Draw text overlay using display properties
             region = context.region
             width = region.width / 2 + display_props.text_position_x
-            bpy.ops.graph.draw_text(text=channel_info, 
-                                    coords=(width, display_props.text_position_y), 
-                                    center=True, 
-                                    color=display_props.text_color, 
-                                    time=display_props.display_time, 
-                                    alpha=0.5)
+            bpy.ops.graph.draw_text(
+                text=channel_info,
+                coords=(width, display_props.text_position_y),
+                center=True,
+                color=display_props.text_color,
+                time=display_props.display_time,
+                alpha=0.5,
+            )
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class GRAPH_OT_draw_text(bpy.types.Operator):
     bl_idname = "graph.draw_text"
     bl_label = "Draw Text"
     bl_description = "Draw text overlay in the Graph Editor"
-    bl_options = {'INTERNAL'}
+    bl_options = {"INTERNAL"}
 
-    text: StringProperty(name="Text to draw", default='Text')
-    coords: FloatVectorProperty(name='Screen Coordinates', size=2, default=(100, 100))
-    center: BoolProperty(name='Center', default=True)
-    color: FloatVectorProperty(name='Color', size=3, default=(1, 1, 1))
+    text: StringProperty(name="Text to draw", default="Text")
+    coords: FloatVectorProperty(name="Screen Coordinates", size=2, default=(100, 100))
+    center: BoolProperty(name="Center", default=True)
+    color: FloatVectorProperty(name="Color", size=3, default=(1, 1, 1))
 
     time: FloatProperty(name="", default=2, min=0.1)
     alpha: FloatProperty(name="Alpha", default=0.5, min=0.1, max=1)
@@ -127,7 +129,15 @@ class GRAPH_OT_draw_text(bpy.types.Operator):
     def draw_text_overlay(self, context):
         display_props = context.scene.monkey_display_properties
         alpha = self.countdown / self.time * self.alpha
-        draw_text(context, self.text, self.coords, self.center, self.color, alpha, fontsize=display_props.font_size)
+        draw_text(
+            context,
+            self.text,
+            self.coords,
+            self.center,
+            self.color,
+            alpha,
+            fontsize=display_props.font_size,
+        )
 
     def modal(self, context, event):
         context.area.tag_redraw()
@@ -135,23 +145,28 @@ class GRAPH_OT_draw_text(bpy.types.Operator):
         if self.countdown < 0:
             # Remove event timer and draw handler before returning 'FINISHED'
             context.window_manager.event_timer_remove(self.TIMER)
-            bpy.types.SpaceGraphEditor.draw_handler_remove(self.HUD, 'WINDOW')
-            return {'FINISHED'}
+            bpy.types.SpaceGraphEditor.draw_handler_remove(self.HUD, "WINDOW")
+            return {"FINISHED"}
 
-        if event.type == 'TIMER':
+        if event.type == "TIMER":
             self.countdown -= 0.1
 
-        return {'PASS_THROUGH'}
+        return {"PASS_THROUGH"}
 
     def execute(self, context):
-        self.HUD = bpy.types.SpaceGraphEditor.draw_handler_add(self.draw_text_overlay, (context,), 'WINDOW', 'POST_PIXEL')
+        self.HUD = bpy.types.SpaceGraphEditor.draw_handler_add(
+            self.draw_text_overlay, (context,), "WINDOW", "POST_PIXEL"
+        )
         self.TIMER = context.window_manager.event_timer_add(0.1, window=context.window)
         self.countdown = self.time
 
         context.window_manager.modal_handler_add(self)
-        return {'RUNNING_MODAL'}
+        return {"RUNNING_MODAL"}
 
-def draw_text(context, text, coords=None, center=True, color=(1, 1, 1), alpha=1, fontsize=32):
+
+def draw_text(
+    context, text, coords=None, center=True, color=(1, 1, 1), alpha=1, fontsize=32
+):
     if not coords:
         region = context.region
         width = region.width / 2
@@ -165,7 +180,12 @@ def draw_text(context, text, coords=None, center=True, color=(1, 1, 1), alpha=1,
     blf.color(font, *color, alpha)
 
     if center:
-        blf.position(font, width - (int(len(text) * fontsize * 0.4) / 2), height + int(fontsize), 0)
+        blf.position(
+            font,
+            width - (int(len(text) * fontsize * 0.4) / 2),
+            height + int(fontsize),
+            0,
+        )
     else:
         blf.position(font, *(coords), 1)
 
@@ -176,33 +196,33 @@ class MonKeyDisplayProperties(bpy.types.PropertyGroup):
     show_object_name: bpy.props.BoolProperty(
         name="Show Object Name",
         description="Display the object name in the output",
-        default=False
+        default=False,
     )
-    
+
     show_action_name: bpy.props.BoolProperty(
         name="Show Action Name",
         description="Display the action name in the output",
-        default=False
+        default=False,
     )
 
     show_group_name: bpy.props.BoolProperty(
         name="Show Group Name",
         description="Display the group name in the output",
-        default=True
+        default=True,
     )
 
     show_channel_name: bpy.props.BoolProperty(
         name="Show Channel Name",
         description="Display the channel name in the output",
-        default=True
+        default=True,
     )
-    
+
     font_size: bpy.props.IntProperty(
         name="Font Size",
         description="Size of the text overlay font",
         default=32,
         min=6,
-        soft_max=48
+        soft_max=48,
     )
 
     text_color: bpy.props.FloatVectorProperty(
@@ -210,9 +230,9 @@ class MonKeyDisplayProperties(bpy.types.PropertyGroup):
         description="Color of the text overlay",
         size=3,
         default=(1, 1, 1),
-        subtype='COLOR',
+        subtype="COLOR",
         min=0,
-        max=1
+        max=1,
     )
 
     text_position_x: bpy.props.IntProperty(
@@ -220,7 +240,7 @@ class MonKeyDisplayProperties(bpy.types.PropertyGroup):
         description="Horizontal position of the text overlay",
         default=0,
         min=0,
-        soft_max=500
+        soft_max=500,
     )
 
     text_position_y: bpy.props.IntProperty(
@@ -228,7 +248,7 @@ class MonKeyDisplayProperties(bpy.types.PropertyGroup):
         description="Vertical position of the text overlay",
         default=40,
         min=0,
-        soft_max=500
+        soft_max=500,
     )
 
     display_time: bpy.props.FloatProperty(
@@ -236,30 +256,50 @@ class MonKeyDisplayProperties(bpy.types.PropertyGroup):
         description="Duration for which the text overlay is displayed",
         default=3.0,
         min=0.1,
-        soft_max=10.0
+        soft_max=10.0,
     )
 
 
 bpy.utils.register_class(MonKeyDisplayProperties)
 # Add the property group to the Scene type
-bpy.types.Scene.monkey_display_properties = bpy.props.PointerProperty(type=MonKeyDisplayProperties)
+bpy.types.Scene.monkey_display_properties = bpy.props.PointerProperty(
+    type=MonKeyDisplayProperties
+)
 
 
 def convert_data_path_to_readable(channel_data_path):
-    readable_data_path = channel_data_path.replace('["', ' ').replace('"].', ' < ').replace('_', ' ')
+    readable_data_path = (
+        channel_data_path.replace('["', " ").replace('"].', " < ").replace("_", " ")
+    )
     readable_data_path = re.sub(r"(\.)([A-Z])", r"\1 \2", readable_data_path)
-    readable_data_path = ' '.join(word.capitalize() for word in readable_data_path.split(' '))
+    readable_data_path = " ".join(
+        word.capitalize() for word in readable_data_path.split(" ")
+    )
     return readable_data_path
 
+
 def get_channel_info(visible_objects, display_props):
-    selected_channels = [(obj, fcurve) for obj in visible_objects for fcurve in obj.animation_data.action.fcurves if fcurve.select]
+    selected_channels = [
+        (obj, fcurve)
+        for obj in visible_objects
+        for fcurve in obj.animation_data.action.fcurves
+        if fcurve.select
+    ]
 
     if len(selected_channels) == 1:
         obj, fcurve = selected_channels[0]  # Unpack the tuple
         object_name = obj.name if display_props.show_object_name else None
         action_name = fcurve.id_data.name if display_props.show_action_name else None
-        group_name = fcurve.group.name if fcurve.group and display_props.show_group_name else None
-        channel_name = convert_data_path_to_readable(fcurve.data_path) if display_props.show_channel_name else None
+        group_name = (
+            fcurve.group.name
+            if fcurve.group and display_props.show_group_name
+            else None
+        )
+        channel_name = (
+            convert_data_path_to_readable(fcurve.data_path)
+            if display_props.show_channel_name
+            else None
+        )
 
         info_str = ""
         if object_name:
@@ -270,9 +310,9 @@ def get_channel_info(visible_objects, display_props):
             info_str += f"< {group_name} >"
         if channel_name:
             info_str += f" {channel_name} >"
-        
+
         info_str = info_str.replace("><", "|")
-        
+
         return info_str
 
     return None
@@ -281,21 +321,18 @@ def get_channel_info(visible_objects, display_props):
 class GRAPH_OT_monkey_handle_selecter(bpy.types.Operator):
     bl_idname = "graph.monkey_handle_selecter"
     bl_label = "Toggle Handle Selection"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {"REGISTER", "UNDO"}
 
     handle_direction: bpy.props.EnumProperty(
         name="Handle Direction",
-        items=[
-            ("Left", "Left", ""),
-            ("Right", "Right", "")
-        ],
-        default="Left"
+        items=[("Left", "Left", ""), ("Right", "Right", "")],
+        default="Left",
     )
     extend: bpy.props.BoolProperty(default=False)
 
     @classmethod
     def poll(cls, context):
-        if context.area.type != 'GRAPH_EDITOR':
+        if context.area.type != "GRAPH_EDITOR":
             return False
 
         dopesheet = context.space_data.dopesheet
@@ -306,7 +343,7 @@ class GRAPH_OT_monkey_handle_selecter(bpy.types.Operator):
         dopesheet = context.space_data.dopesheet
         visible_objects = get_visible_objects(dopesheet)
         toggle_handle_selection(self.handle_direction, self.extend, visible_objects)
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 def toggle_handle_selection(handle_direction, extend, visible_objects):
@@ -316,7 +353,9 @@ def toggle_handle_selection(handle_direction, extend, visible_objects):
     all_selected = True
 
     for obj in visible_objects:
-        selected_channels = [fcurve for fcurve in obj.animation_data.action.fcurves if fcurve.select]
+        selected_channels = [
+            fcurve for fcurve in obj.animation_data.action.fcurves if fcurve.select
+        ]
 
         if selected_channels:
             all_selected &= all_keyframes_have_selected_handle(obj, handle_direction)
@@ -324,10 +363,15 @@ def toggle_handle_selection(handle_direction, extend, visible_objects):
                 break
 
     for obj in visible_objects:
-        selected_channels = [fcurve for fcurve in obj.animation_data.action.fcurves if fcurve.select]
+        selected_channels = [
+            fcurve for fcurve in obj.animation_data.action.fcurves if fcurve.select
+        ]
 
         if selected_channels:
-            toggle_keyframe_handle_selection(obj, handle_direction, extend, all_selected)
+            toggle_keyframe_handle_selection(
+                obj, handle_direction, extend, all_selected
+            )
+
 
 def all_keyframes_have_selected_handle(obj, handle_direction):
     action = obj.animation_data.action
@@ -352,6 +396,7 @@ def all_keyframes_have_selected_handle(obj, handle_direction):
                     return False
     return True
 
+
 def toggle_keyframe_handle_selection(obj, handle_direction, extend, all_selected):
     action = obj.animation_data.action
 
@@ -366,7 +411,10 @@ def toggle_keyframe_handle_selection(obj, handle_direction, extend, all_selected
 
         for item in selected:
             keyframe = item["keyframe"]
-            update_keyframe_handle_selection(keyframe, handle_direction, extend, all_selected)
+            update_keyframe_handle_selection(
+                keyframe, handle_direction, extend, all_selected
+            )
+
 
 def update_keyframe_handle_selection(keyframe, handle_direction, extend, all_selected):
     if handle_direction == "Left":
@@ -392,11 +440,11 @@ def update_keyframe_handle_selection(keyframe, handle_direction, extend, all_sel
 class GRAPH_OT_select_adjacent_handles(bpy.types.Operator):
     bl_idname = "graph.select_adjacent_handles"
     bl_label = "Select Adjacent Handles"
-    bl_options = {'REGISTER', 'UNDO'}
+    bl_options = {"REGISTER", "UNDO"}
 
     @classmethod
     def poll(cls, context):
-        if context.area.type != 'GRAPH_EDITOR':
+        if context.area.type != "GRAPH_EDITOR":
             return False
 
         dopesheet = context.space_data.dopesheet
@@ -407,22 +455,28 @@ class GRAPH_OT_select_adjacent_handles(bpy.types.Operator):
         dopesheet = context.space_data.dopesheet
         visible_objects = get_visible_objects(dopesheet)
         select_adjacent_handles(visible_objects)
-        return {'FINISHED'}
+        return {"FINISHED"}
+
 
 def select_adjacent_handles(visible_objects):
     if visible_objects is None:
         return
 
     for obj in visible_objects:
-        selected_channels = [fcurve for fcurve in obj.animation_data.action.fcurves if fcurve.select]
+        selected_channels = [
+            fcurve for fcurve in obj.animation_data.action.fcurves if fcurve.select
+        ]
 
         if selected_channels:
             for fcurve in selected_channels:
                 select_keyframe_handles(fcurve)
 
+
 def select_keyframe_handles(fcurve):
     keyframe_points = fcurve.keyframe_points
-    selected_keyframes = [i for i, keyframe in enumerate(keyframe_points) if keyframe.select_control_point]
+    selected_keyframes = [
+        i for i, keyframe in enumerate(keyframe_points) if keyframe.select_control_point
+    ]
 
     for i in selected_keyframes:
         keyframe = keyframe_points[i]
@@ -461,36 +515,39 @@ def select_keyframe_handles(fcurve):
 
 
 def is_object_displayed(obj, dopesheet, type_filters):
-   # Check if the object's type is shown
-   obj_type = obj.type
-   if obj_type in type_filters and not type_filters[obj_type]:
-       return False
+    # Check if the object's type is shown
+    obj_type = obj.type
+    if obj_type in type_filters and not type_filters[obj_type]:
+        return False
 
-   # Check if the object is selected
-   if dopesheet.show_only_selected and not obj.select_get():
-       return False
+    # Check if the object is selected
+    if dopesheet.show_only_selected and not obj.select_get():
+        return False
 
-   # Check if the object is hidden
-   if not dopesheet.show_hidden and obj.hide_viewport:
-       return False
+    # Check if the object is hidden
+    if not dopesheet.show_hidden and obj.hide_viewport:
+        return False
 
-   return True
+    return True
 
 
 def get_visible_objects(dopesheet):
     type_filters = {
-        'SCENE': dopesheet.show_scenes,
-        'NODETREE': dopesheet.show_nodes,
-        'CAMERA': dopesheet.show_cameras,
-        'LIGHT': dopesheet.show_lights,
-        'MESH': dopesheet.show_meshes,
-        'WORLD': dopesheet.show_worlds,
-        'LINESTYLE': dopesheet.show_linestyles,
-        'MATERIAL': dopesheet.show_materials
+        "SCENE": dopesheet.show_scenes,
+        "NODETREE": dopesheet.show_nodes,
+        "CAMERA": dopesheet.show_cameras,
+        "LIGHT": dopesheet.show_lights,
+        "MESH": dopesheet.show_meshes,
+        "WORLD": dopesheet.show_worlds,
+        "LINESTYLE": dopesheet.show_linestyles,
+        "MATERIAL": dopesheet.show_materials,
     }
     visible_objects = [
-        obj for obj in bpy.context.scene.objects
-        if obj.animation_data and obj.animation_data.action and is_object_displayed(obj, dopesheet, type_filters)
+        obj
+        for obj in bpy.context.scene.objects
+        if obj.animation_data
+        and obj.animation_data.action
+        and is_object_displayed(obj, dopesheet, type_filters)
     ]
     visible_objects.sort(key=lambda obj: obj.name)
     return visible_objects
@@ -505,24 +562,34 @@ def get_selected_keyframes(keyframe_points):
             "right_handle": keyframe.select_right_handle,
         }
         for keyframe in keyframe_points
-        if keyframe.select_control_point or keyframe.select_left_handle or keyframe.select_right_handle
+        if keyframe.select_control_point
+        or keyframe.select_left_handle
+        or keyframe.select_right_handle
     ]
 
 
-def move_keyframe_selection_horizontally(direction="forward", extend=False, visible_objects=None):
+def move_keyframe_selection_horizontally(
+    direction="forward", extend=False, visible_objects=None
+):
     if visible_objects is None:
         return
 
     for obj in visible_objects:
-        selected_channels = [fcurve for fcurve in obj.animation_data.action.fcurves if fcurve.select]
+        selected_channels = [
+            fcurve for fcurve in obj.animation_data.action.fcurves if fcurve.select
+        ]
 
         if selected_channels:
             process_keyframe_selection_for_horizontal_move(obj, direction, extend)
 
 
-def process_keyframe_selection_for_horizontal_move(obj, direction="forward", extend=False):
+def process_keyframe_selection_for_horizontal_move(
+    obj, direction="forward", extend=False
+):
     if direction not in ("forward", "backward"):
-        raise ValueError("Invalid value for direction. Must be 'forward' or 'backward'.")
+        raise ValueError(
+            "Invalid value for direction. Must be 'forward' or 'backward'."
+        )
 
     action = obj.animation_data.action
 
@@ -576,7 +643,9 @@ def binary_search_keyframe(fcurve, target_frame, direction="forward"):
     return None
 
 
-def move_channel_selection_vertically(direction="downward", extend=False, visible_objects=None):
+def move_channel_selection_vertically(
+    direction="downward", extend=False, visible_objects=None
+):
     if direction not in ("downward", "upward"):
         raise ValueError("Invalid value for direction. Must be 'downward' or 'upward'.")
 
@@ -622,7 +691,10 @@ def process_keyframe_selection_for_vertical_move(fcurve_from, fcurve_to, extend=
     # Move the selection to the nearest keyframes in the new channel
     for item in selected:
         target_keyframes = [
-            min(fcurve_to.keyframe_points, key=lambda k: abs(k.co[0] - item["keyframe"].co[0]))
+            min(
+                fcurve_to.keyframe_points,
+                key=lambda k: abs(k.co[0] - item["keyframe"].co[0]),
+            )
             for item in selected
         ]
 
@@ -637,7 +709,10 @@ def transfer_keyframe_selection(selected, target_keyframes, extend=False):
             keyframe.select_control_point = False
         target_keyframe.select_control_point = item["control_point"]
 
-        if keyframe.interpolation == 'BEZIER' and target_keyframe.interpolation == 'BEZIER':
+        if (
+            keyframe.interpolation == "BEZIER"
+            and target_keyframe.interpolation == "BEZIER"
+        ):
             if item["left_handle"]:
                 target_keyframe.select_left_handle = True
                 if not extend:
@@ -652,13 +727,19 @@ class MonKeyPreferences(bpy.types.AddonPreferences):
     bl_idname = __name__
 
     forward_key: bpy.props.StringProperty(name="Forward Key", default="D")
-    forward_key_extend: bpy.props.StringProperty(name="Forward Key (Extend)", default="D")
+    forward_key_extend: bpy.props.StringProperty(
+        name="Forward Key (Extend)", default="D"
+    )
     backward_key: bpy.props.StringProperty(name="Backward Key", default="A")
-    backward_key_extend: bpy.props.StringProperty(name="Backward Key (Extend)", default="A")
+    backward_key_extend: bpy.props.StringProperty(
+        name="Backward Key (Extend)", default="A"
+    )
     upward_key: bpy.props.StringProperty(name="Upward Key", default="W")
     upward_key_extend: bpy.props.StringProperty(name="Upward Key (Extend)", default="W")
     downward_key: bpy.props.StringProperty(name="Downward Key", default="S")
-    downward_key_extend: bpy.props.StringProperty(name="Downward Key (Extend)", default="S")
+    downward_key_extend: bpy.props.StringProperty(
+        name="Downward Key (Extend)", default="S"
+    )
 
     # def draw(self, context):
     #     layout = self.layout
@@ -686,72 +767,138 @@ addon_keymaps = []
 
 def register_keymaps():
     wm = bpy.context.window_manager
-    km = wm.keyconfigs.addon.keymaps.new(name='Graph Editor', space_type='GRAPH_EDITOR')
+    km = wm.keyconfigs.addon.keymaps.new(name="Graph Editor", space_type="GRAPH_EDITOR")
 
     preferences = bpy.context.preferences.addons[__name__].preferences
 
     # Upward
-    kmi = km.keymap_items.new(GRAPH_OT_monkey_vertically.bl_idname, type=preferences.upward_key, value='PRESS', alt=True)
+    kmi = km.keymap_items.new(
+        GRAPH_OT_monkey_vertically.bl_idname,
+        type=preferences.upward_key,
+        value="PRESS",
+        alt=True,
+    )
     kmi.properties.direction = "upward"
     kmi.properties.extend = False
 
     # Upward Extend
-    kmi = km.keymap_items.new(GRAPH_OT_monkey_vertically.bl_idname, type=preferences.upward_key_extend, value='PRESS', alt=True, shift=True)
+    kmi = km.keymap_items.new(
+        GRAPH_OT_monkey_vertically.bl_idname,
+        type=preferences.upward_key_extend,
+        value="PRESS",
+        alt=True,
+        shift=True,
+    )
     kmi.properties.direction = "upward"
     kmi.properties.extend = True
 
     # Downward
-    kmi = km.keymap_items.new(GRAPH_OT_monkey_vertically.bl_idname, type=preferences.downward_key, value='PRESS', alt=True)
+    kmi = km.keymap_items.new(
+        GRAPH_OT_monkey_vertically.bl_idname,
+        type=preferences.downward_key,
+        value="PRESS",
+        alt=True,
+    )
     kmi.properties.direction = "downward"
     kmi.properties.extend = False
 
     # Downward Extend
-    kmi = km.keymap_items.new(GRAPH_OT_monkey_vertically.bl_idname, type=preferences.downward_key_extend, value='PRESS', alt=True, shift=True)
+    kmi = km.keymap_items.new(
+        GRAPH_OT_monkey_vertically.bl_idname,
+        type=preferences.downward_key_extend,
+        value="PRESS",
+        alt=True,
+        shift=True,
+    )
     kmi.properties.direction = "downward"
     kmi.properties.extend = True
 
     # Forward
-    kmi = km.keymap_items.new(GRAPH_OT_monkey_horizontally.bl_idname, type=preferences.forward_key, value='PRESS', alt=True)
+    kmi = km.keymap_items.new(
+        GRAPH_OT_monkey_horizontally.bl_idname,
+        type=preferences.forward_key,
+        value="PRESS",
+        alt=True,
+    )
     kmi.properties.direction = "forward"
     kmi.properties.extend = False
 
     # Forward Extend
-    kmi = km.keymap_items.new(GRAPH_OT_monkey_horizontally.bl_idname, type=preferences.forward_key_extend, value='PRESS', alt=True, shift=True)
+    kmi = km.keymap_items.new(
+        GRAPH_OT_monkey_horizontally.bl_idname,
+        type=preferences.forward_key_extend,
+        value="PRESS",
+        alt=True,
+        shift=True,
+    )
     kmi.properties.direction = "forward"
     kmi.properties.extend = True
 
     # Backward
-    kmi = km.keymap_items.new(GRAPH_OT_monkey_horizontally.bl_idname, type=preferences.backward_key, value='PRESS', alt=True)
+    kmi = km.keymap_items.new(
+        GRAPH_OT_monkey_horizontally.bl_idname,
+        type=preferences.backward_key,
+        value="PRESS",
+        alt=True,
+    )
     kmi.properties.direction = "backward"
     kmi.properties.extend = False
 
     # Backward Extend
-    kmi = km.keymap_items.new(GRAPH_OT_monkey_horizontally.bl_idname, type=preferences.backward_key_extend, value='PRESS', alt=True, shift=True)
+    kmi = km.keymap_items.new(
+        GRAPH_OT_monkey_horizontally.bl_idname,
+        type=preferences.backward_key_extend,
+        value="PRESS",
+        alt=True,
+        shift=True,
+    )
     kmi.properties.direction = "backward"
     kmi.properties.extend = True
 
     # Left
-    kmi = km.keymap_items.new(GRAPH_OT_monkey_handle_selecter.bl_idname, type='Q', value='PRESS', alt=True)
+    kmi = km.keymap_items.new(
+        GRAPH_OT_monkey_handle_selecter.bl_idname, type="Q", value="PRESS", alt=True
+    )
     kmi.properties.handle_direction = "Left"
     kmi.properties.extend = False
 
     # Left Extend
-    kmi = km.keymap_items.new(GRAPH_OT_monkey_handle_selecter.bl_idname, type='Q', value='PRESS', alt=True, shift=True)
+    kmi = km.keymap_items.new(
+        GRAPH_OT_monkey_handle_selecter.bl_idname,
+        type="Q",
+        value="PRESS",
+        alt=True,
+        shift=True,
+    )
     kmi.properties.handle_direction = "Left"
     kmi.properties.extend = True
 
     # Right
-    kmi = km.keymap_items.new(GRAPH_OT_monkey_handle_selecter.bl_idname, type='E', value='PRESS', alt=True)
+    kmi = km.keymap_items.new(
+        GRAPH_OT_monkey_handle_selecter.bl_idname, type="E", value="PRESS", alt=True
+    )
     kmi.properties.handle_direction = "Right"
     kmi.properties.extend = False
 
     # Right Extend
-    kmi = km.keymap_items.new(GRAPH_OT_monkey_handle_selecter.bl_idname, type='E', value='PRESS', alt=True, shift=True)
+    kmi = km.keymap_items.new(
+        GRAPH_OT_monkey_handle_selecter.bl_idname,
+        type="E",
+        value="PRESS",
+        alt=True,
+        shift=True,
+    )
     kmi.properties.handle_direction = "Right"
     kmi.properties.extend = True
 
     # Select Adjacent Handles
-    kmi = km.keymap_items.new(GRAPH_OT_select_adjacent_handles.bl_idname, type='E', value='PRESS', ctrl=True, alt=True)
+    kmi = km.keymap_items.new(
+        GRAPH_OT_select_adjacent_handles.bl_idname,
+        type="E",
+        value="PRESS",
+        ctrl=True,
+        alt=True,
+    )
 
     addon_keymaps.append(km)
 
@@ -761,6 +908,7 @@ def unregister_keymaps():
     for km in addon_keymaps:
         wm.keyconfigs.addon.keymaps.remove(km)
     addon_keymaps.clear()
+
 
 # # Update register and unregister functions
 # def register():
