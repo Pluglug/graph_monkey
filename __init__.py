@@ -1,12 +1,12 @@
 bl_info = {
-    "name": "MonKey",  # Monkey Keyframe, Graph Monkey
+    "name": "Graph Monkey",  # Monkey Keyframe, Graph Monkey
     "author": "Pluglug",
-    "version": (0, 7, 0),
+    "version": (0, 8, 0),
     "blender": (2, 80, 0),
     "location": "Graph Editor",
-    "description": "Move keyframe selection in the Graph Editor",
-    "warning": "It'll explode",
-    "wiki_url": "",
+    "description": "Move keyframe selection in the Graph Editor. and more",
+    "warning": "Bananas required",
+    "wiki_url": "https://github.com/Pluglug/MonKey/blob/main/README.md",
     "category": "Animation",
 }
 
