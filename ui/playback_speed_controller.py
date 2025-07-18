@@ -1,3 +1,4 @@
+# pyright: reportInvalidTypeForm=false
 # bl_info = {
 #     "name": "Playback Speed Controller",
 #     "blender": (2, 80, 0),
@@ -321,11 +322,7 @@ def store_range_on_load(dummy):
     controller.apply_speed(bpy.context.scene.playback_speed)
 
 
-# ===== 登録・登録解除 =====
-
-
 def register():
-    """アドオンの登録"""
     Scene.playback_speed = FloatProperty(
         name="Playback Speed",
         description="Control the playback speed of the animation",
@@ -345,7 +342,6 @@ def register():
 
 
 def unregister():
-    """アドオンの登録解除"""
     if hasattr(Scene, "playback_speed"):
         bpy.context.scene.playback_speed = 1.0
 
