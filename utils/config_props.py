@@ -432,233 +432,233 @@ def set_xray_state(enabled):
         log.error(f"X-Ray設定エラー: {e}")
 
 
-# 設定プロパティの定義（パフォーマンス最適化付き）
-SOLID_VIEW_CONFIG = BlenderConfigProperty(
-    name="ソリッドビュー",
-    description="ビューポートをソリッドシェーディングに設定",
-    get_func=get_solid_view_state,
-    set_func=set_solid_view_state,
-    cache_enabled=True,
-    async_update=False,
-)
+# # 設定プロパティの定義（パフォーマンス最適化付き）
+# SOLID_VIEW_CONFIG = BlenderConfigProperty(
+#     name="ソリッドビュー",
+#     description="ビューポートをソリッドシェーディングに設定",
+#     get_func=get_solid_view_state,
+#     set_func=set_solid_view_state,
+#     cache_enabled=True,
+#     async_update=False,
+# )
 
-RENDER_VIEW_CONFIG = BlenderConfigProperty(
-    name="レンダービュー",
-    description="ビューポートをレンダープレビューに設定",
-    get_func=get_render_view_state,
-    set_func=set_render_view_state,
-    cache_enabled=True,
-    async_update=True,  # レンダービューは重い処理なので非同期
-)
+# RENDER_VIEW_CONFIG = BlenderConfigProperty(
+#     name="レンダービュー",
+#     description="ビューポートをレンダープレビューに設定",
+#     get_func=get_render_view_state,
+#     set_func=set_render_view_state,
+#     cache_enabled=True,
+#     async_update=True,  # レンダービューは重い処理なので非同期
+# )
 
-WIREFRAME_CONFIG = BlenderConfigProperty(
-    name="ワイヤーフレーム",
-    description="ビューポートをワイヤーフレーム表示に設定",
-    get_func=get_wireframe_state,
-    set_func=set_wireframe_state,
-    cache_enabled=True,
-    async_update=False,
-)
+# WIREFRAME_CONFIG = BlenderConfigProperty(
+#     name="ワイヤーフレーム",
+#     description="ビューポートをワイヤーフレーム表示に設定",
+#     get_func=get_wireframe_state,
+#     set_func=set_wireframe_state,
+#     cache_enabled=True,
+#     async_update=False,
+# )
 
-XRAY_CONFIG = BlenderConfigProperty(
-    name="X-Ray表示",
-    description="オブジェクトのX-Ray表示を切り替え",
-    get_func=get_xray_state,
-    set_func=set_xray_state,
-    cache_enabled=True,
-    async_update=False,
-)
-
-
-class BlenderConfigSettings(PropertyGroup):
-    """Blender環境設定のPropertyGroup
-
-    新しい設定を追加する場合は：
-    1. 設定用の関数を定義 (get_xxx_state, set_xxx_state)
-    2. BlenderConfigPropertyインスタンスを作成
-    3. このクラスにプロパティを追加
-    """
-
-    # ビューポート設定（パフォーマンス最適化済み）
-    solid_view: SOLID_VIEW_CONFIG.create_property()
-    render_view: RENDER_VIEW_CONFIG.create_property()
-    wireframe_view: WIREFRAME_CONFIG.create_property()
-    xray_display: XRAY_CONFIG.create_property()
-
-    def batch_update(self, settings_dict: Dict[str, bool]):
-        """バッチ更新: 複数設定を効率的に更新"""
-        start_time = time.perf_counter()
-
-        # キャッシュを一時的に無効化
-        _performance_cache.invalidate()
-
-        try:
-            for setting_name, value in settings_dict.items():
-                if hasattr(self, setting_name):
-                    setattr(self, setting_name, value)
-
-            duration = time.perf_counter() - start_time
-            log.info(f"バッチ更新完了: {len(settings_dict)}項目 in {duration:.3f}s")
-
-        except Exception as e:
-            log.error(f"バッチ更新エラー: {e}")
-
-    def draw(self, layout):
-        """UIの描画"""
-        box = layout.box()
-        box.label(text="ビューポート設定", icon="SHADING_RENDERED")
-
-        # パフォーマンス情報の表示
-        stats = _profiler.get_stats()
-        if stats:
-            perf_box = box.box()
-            perf_box.label(text="パフォーマンス情報", icon="EXPERIMENTAL")
-            for operation, metrics in stats.items():
-                if metrics["count"] > 0:
-                    avg_ms = metrics["avg"] * 1000
-                    perf_box.label(text=f"{operation}: {avg_ms:.1f}ms (avg)")
-
-        # ビューモード設定
-        col = box.column(align=True)
-        col.label(text="表示モード:")
-        row = col.row(align=True)
-        row.prop(self, "solid_view", toggle=True)
-        row.prop(self, "render_view", toggle=True)
-        row.prop(self, "wireframe_view", toggle=True)
-
-        # 表示オプション
-        col.separator()
-        col.label(text="表示オプション:")
-        col.prop(self, "xray_display")
-
-        # キャッシュ情報
-        cache_stats = _performance_cache.get_stats()
-        col.separator()
-        col.label(text=f"キャッシュ: {cache_stats['size']}/{cache_stats['max_size']}")
+# XRAY_CONFIG = BlenderConfigProperty(
+#     name="X-Ray表示",
+#     description="オブジェクトのX-Ray表示を切り替え",
+#     get_func=get_xray_state,
+#     set_func=set_xray_state,
+#     cache_enabled=True,
+#     async_update=False,
+# )
 
 
-class MONKEY_OT_TestBlenderConfig(Operator):
-    """Blender設定テスト用オペレータ"""
+# class BlenderConfigSettings(PropertyGroup):
+#     """Blender環境設定のPropertyGroup
 
-    bl_idname = "monkey.test_blender_config"
-    bl_label = "設定テスト"
-    bl_description = "Blender設定システムのテスト"
-    bl_options = {"REGISTER", "UNDO"}
+#     新しい設定を追加する場合は：
+#     1. 設定用の関数を定義 (get_xxx_state, set_xxx_state)
+#     2. BlenderConfigPropertyインスタンスを作成
+#     3. このクラスにプロパティを追加
+#     """
 
-    def execute(self, context):
-        settings = getattr(context.scene, "monkey_blender_config", None)
-        if not settings:
-            self.report({"ERROR"}, "設定が見つかりません")
-            return {"CANCELLED"}
+#     # ビューポート設定（パフォーマンス最適化済み）
+#     solid_view: SOLID_VIEW_CONFIG.create_property()
+#     render_view: RENDER_VIEW_CONFIG.create_property()
+#     wireframe_view: WIREFRAME_CONFIG.create_property()
+#     xray_display: XRAY_CONFIG.create_property()
 
-        # パフォーマンス測定付きテスト
-        start_time = time.perf_counter()
+#     def batch_update(self, settings_dict: Dict[str, bool]):
+#         """バッチ更新: 複数設定を効率的に更新"""
+#         start_time = time.perf_counter()
 
-        # 現在の設定を表示
-        self.report(
-            {"INFO"},
-            f"現在の設定: ソリッド={settings.solid_view}, "
-            f"レンダー={settings.render_view}, "
-            f"ワイヤー={settings.wireframe_view}, "
-            f"X-Ray={settings.xray_display}",
-        )
+#         # キャッシュを一時的に無効化
+#         _performance_cache.invalidate()
 
-        # パフォーマンス統計の表示
-        stats = _profiler.get_stats()
-        if stats:
-            for operation, metrics in stats.items():
-                avg_ms = metrics["avg"] * 1000
-                self.report({"INFO"}, f"{operation}: {avg_ms:.1f}ms平均")
+#         try:
+#             for setting_name, value in settings_dict.items():
+#                 if hasattr(self, setting_name):
+#                     setattr(self, setting_name, value)
 
-        duration = time.perf_counter() - start_time
-        self.report({"INFO"}, f"テスト実行時間: {duration*1000:.1f}ms")
+#             duration = time.perf_counter() - start_time
+#             log.info(f"バッチ更新完了: {len(settings_dict)}項目 in {duration:.3f}s")
 
-        return {"FINISHED"}
+#         except Exception as e:
+#             log.error(f"バッチ更新エラー: {e}")
 
+#     def draw(self, layout):
+#         """UIの描画"""
+#         box = layout.box()
+#         box.label(text="ビューポート設定", icon="SHADING_RENDERED")
 
-class MONKEY_OT_ClearPerformanceCache(Operator):
-    """パフォーマンスキャッシュクリア"""
+#         # パフォーマンス情報の表示
+#         stats = _profiler.get_stats()
+#         if stats:
+#             perf_box = box.box()
+#             perf_box.label(text="パフォーマンス情報", icon="EXPERIMENTAL")
+#             for operation, metrics in stats.items():
+#                 if metrics["count"] > 0:
+#                     avg_ms = metrics["avg"] * 1000
+#                     perf_box.label(text=f"{operation}: {avg_ms:.1f}ms (avg)")
 
-    bl_idname = "monkey.clear_performance_cache"
-    bl_label = "キャッシュクリア"
-    bl_description = "パフォーマンスキャッシュをクリアします"
-    bl_options = {"REGISTER"}
+#         # ビューモード設定
+#         col = box.column(align=True)
+#         col.label(text="表示モード:")
+#         row = col.row(align=True)
+#         row.prop(self, "solid_view", toggle=True)
+#         row.prop(self, "render_view", toggle=True)
+#         row.prop(self, "wireframe_view", toggle=True)
 
-    def execute(self, context):
-        _performance_cache.invalidate()
-        _profiler.reset()
-        self.report({"INFO"}, "キャッシュとプロファイラをリセットしました")
-        return {"FINISHED"}
+#         # 表示オプション
+#         col.separator()
+#         col.label(text="表示オプション:")
+#         col.prop(self, "xray_display")
 
-
-class MONKEY_MT_BlenderConfigPie(Menu):
-    """Blender設定用のパイメニュー"""
-
-    bl_idname = "MONKEY_MT_blender_config_pie"
-    bl_label = "Blender設定"
-
-    def draw(self, context):
-        layout = self.layout
-        pie = layout.menu_pie()  # type: ignore
-
-        # 設定への参照を取得
-        settings = getattr(context.scene, "monkey_blender_config", None)
-        if not settings:
-            pie.label(text="設定が利用できません")
-            return
-
-        # 左 - ソリッドビュー
-        pie.prop(settings, "solid_view", icon="SHADING_SOLID")
-
-        # 右 - レンダービュー
-        pie.prop(settings, "render_view", icon="SHADING_RENDERED")
-
-        # 下 - ワイヤーフレーム
-        pie.prop(settings, "wireframe_view", icon="SHADING_WIRE")
-
-        # 上 - X-Ray
-        pie.prop(settings, "xray_display", icon="XRAY")
-
-        # 左下 - テスト
-        pie.operator("monkey.test_blender_config", icon="CONSOLE")
-
-        # 右下 - キャッシュクリア
-        pie.operator("monkey.clear_performance_cache", icon="TRASH")
-
-        # その他のスペース
-        pie.separator()
-        pie.separator()
+#         # キャッシュ情報
+#         cache_stats = _performance_cache.get_stats()
+#         col.separator()
+#         col.label(text=f"キャッシュ: {cache_stats['size']}/{cache_stats['max_size']}")
 
 
-from ..keymap_manager import keymap_registry, KeymapDefinition
+# class MONKEY_OT_TestBlenderConfig(Operator):
+#     """Blender設定テスト用オペレータ"""
 
-keymap_registry.register_keymap_group(
-    group_name="TEST",
-    keymaps=[
-        KeymapDefinition(
-            operator_id="wm.call_menu_pie",
-            key="W",
-            value="PRESS",
-            shift=1,
-            ctrl=1,
-            properties={"name": "MONKEY_MT_blender_config_pie"},
-            name="3D View",
-            space_type="VIEW_3D",
-            region_type="WINDOW",
-        ),
-    ],
-)
+#     bl_idname = "monkey.test_blender_config"
+#     bl_label = "設定テスト"
+#     bl_description = "Blender設定システムのテスト"
+#     bl_options = {"REGISTER", "UNDO"}
+
+#     def execute(self, context):
+#         settings = getattr(context.scene, "monkey_blender_config", None)
+#         if not settings:
+#             self.report({"ERROR"}, "設定が見つかりません")
+#             return {"CANCELLED"}
+
+#         # パフォーマンス測定付きテスト
+#         start_time = time.perf_counter()
+
+#         # 現在の設定を表示
+#         self.report(
+#             {"INFO"},
+#             f"現在の設定: ソリッド={settings.solid_view}, "
+#             f"レンダー={settings.render_view}, "
+#             f"ワイヤー={settings.wireframe_view}, "
+#             f"X-Ray={settings.xray_display}",
+#         )
+
+#         # パフォーマンス統計の表示
+#         stats = _profiler.get_stats()
+#         if stats:
+#             for operation, metrics in stats.items():
+#                 avg_ms = metrics["avg"] * 1000
+#                 self.report({"INFO"}, f"{operation}: {avg_ms:.1f}ms平均")
+
+#         duration = time.perf_counter() - start_time
+#         self.report({"INFO"}, f"テスト実行時間: {duration*1000:.1f}ms")
+
+#         return {"FINISHED"}
+
+
+# class MONKEY_OT_ClearPerformanceCache(Operator):
+#     """パフォーマンスキャッシュクリア"""
+
+#     bl_idname = "monkey.clear_performance_cache"
+#     bl_label = "キャッシュクリア"
+#     bl_description = "パフォーマンスキャッシュをクリアします"
+#     bl_options = {"REGISTER"}
+
+#     def execute(self, context):
+#         _performance_cache.invalidate()
+#         _profiler.reset()
+#         self.report({"INFO"}, "キャッシュとプロファイラをリセットしました")
+#         return {"FINISHED"}
+
+
+# class MONKEY_MT_BlenderConfigPie(Menu):
+#     """Blender設定用のパイメニュー"""
+
+#     bl_idname = "MONKEY_MT_blender_config_pie"
+#     bl_label = "Blender設定"
+
+#     def draw(self, context):
+#         layout = self.layout
+#         pie = layout.menu_pie()  # type: ignore
+
+#         # 設定への参照を取得
+#         settings = getattr(context.scene, "monkey_blender_config", None)
+#         if not settings:
+#             pie.label(text="設定が利用できません")
+#             return
+
+#         # 左 - ソリッドビュー
+#         pie.prop(settings, "solid_view", icon="SHADING_SOLID")
+
+#         # 右 - レンダービュー
+#         pie.prop(settings, "render_view", icon="SHADING_RENDERED")
+
+#         # 下 - ワイヤーフレーム
+#         pie.prop(settings, "wireframe_view", icon="SHADING_WIRE")
+
+#         # 上 - X-Ray
+#         pie.prop(settings, "xray_display", icon="XRAY")
+
+#         # 左下 - テスト
+#         pie.operator("monkey.test_blender_config", icon="CONSOLE")
+
+#         # 右下 - キャッシュクリア
+#         pie.operator("monkey.clear_performance_cache", icon="TRASH")
+
+#         # その他のスペース
+#         pie.separator()
+#         pie.separator()
+
+
+# from ..keymap_manager import keymap_registry, KeymapDefinition
+
+# keymap_registry.register_keymap_group(
+#     group_name="TEST",
+#     keymaps=[
+#         KeymapDefinition(
+#             operator_id="wm.call_menu_pie",
+#             key="W",
+#             value="PRESS",
+#             shift=1,
+#             ctrl=1,
+#             properties={"name": "MONKEY_MT_blender_config_pie"},
+#             name="3D View",
+#             space_type="VIEW_3D",
+#             region_type="WINDOW",
+#         ),
+#     ],
+# )
 
 
 def register():
-    bpy.types.Scene.monkey_blender_config = bpy.props.PointerProperty(  # type: ignore
-        type=BlenderConfigSettings
-    )
+    # bpy.types.Scene.monkey_blender_config = bpy.props.PointerProperty(  # type: ignore
+    #     type=BlenderConfigSettings
+    # )
 
 
 def unregister():
-    if hasattr(bpy.types.Scene, "monkey_blender_config"):
-        del bpy.types.Scene.monkey_blender_config  # type: ignore
+    # if hasattr(bpy.types.Scene, "monkey_blender_config"):
+    #     del bpy.types.Scene.monkey_blender_config  # type: ignore
 
     # キャッシュのクリア
     _performance_cache.invalidate()
