@@ -507,6 +507,7 @@ class CalculatorState:
 
     def _try_copy_data_path_button(self, context) -> bool:
         """copy_data_path_buttonを使用してプロパティパスを取得し、evalで解決"""
+
     def _try_copy_data_path_button(self, context) -> bool:
         """copy_data_path_buttonを使用してプロパティパスを取得し、evalで解決"""
         try:
@@ -541,6 +542,7 @@ class CalculatorState:
 
     def _resolve_path_by_eval(self, full_path: str) -> bool:
         """完全パスをevalで解決してプロパティ情報を取得"""
+
     def _resolve_path_by_eval(self, full_path: str) -> bool:
         """完全パスをevalで解決してプロパティ情報を取得"""
         try:
