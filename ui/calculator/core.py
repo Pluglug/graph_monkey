@@ -8,6 +8,7 @@ import ast
 import math
 import operator as op
 import re
+import re
 import weakref
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Union, Set
@@ -70,6 +71,39 @@ class PropertyInfo:
             return "Unknown"
 
         try:
+            # UIコンテキストオブジェクトの場合の特別処理
+            if hasattr(self.id_owner, "bl_rna"):
+                class_name = self.id_owner.bl_rna.identifier
+
+                # Screenオブジェクトの場合
+                if class_name == "Screen":
+                    base_path = "bpy.context.screen"
+                # Windowオブジェクトの場合
+                elif class_name == "Window":
+                    base_path = "bpy.context.window"
+                # Sceneオブジェクトの場合
+                elif class_name == "Scene":
+                    base_path = f'bpy.data.scenes["{self.id_owner.name}"]'
+                # Objectオブジェクトの場合
+                elif class_name == "Object":
+                    base_path = f'bpy.data.objects["{self.id_owner.name}"]'
+                # その他のデータブロックの場合
+                else:
+                    # 従来の処理
+                    id_path = f'bpy.data.{self.id_owner.__class__.__name__.lower()}s["{self.id_owner.name}"]'
+                    base_path = id_path
+            else:
+                # bl_rnaがない場合の fallback
+                base_path = str(self.id_owner)
+
+            # ネストしたパスの場合、sub_pathは空なので直接プロパティ名を追加
+            if self.sub_path:
+                full_path = f"{base_path}{self.sub_path}.{self.prop.identifier}"
+            else:
+                # UIコンテキストプロパティの場合、ネストしたパス全体を再構築する必要がある
+                # ただし、今回の実装では簡略化してプロパティ名のみ表示
+                full_path = f"{base_path}.{self.prop.identifier}"
+
             # UIコンテキストオブジェクトの場合の特別処理
             if hasattr(self.id_owner, "bl_rna"):
                 class_name = self.id_owner.bl_rna.identifier
@@ -468,8 +502,11 @@ class CalculatorState:
 
         except Exception as e:
             log.debug(f"Failed to resolve property via context: {e}")
+            log.debug(f"Failed to resolve property via context: {e}")
             return False
 
+    def _try_copy_data_path_button(self, context) -> bool:
+        """copy_data_path_buttonを使用してプロパティパスを取得し、evalで解決"""
     def _try_copy_data_path_button(self, context) -> bool:
         """copy_data_path_buttonを使用してプロパティパスを取得し、evalで解決"""
         try:
@@ -480,11 +517,13 @@ class CalculatorState:
 
             if result != {"FINISHED"}:
                 log.debug("copy_data_path_button failed")
+                log.debug("copy_data_path_button failed")
                 return False
 
             # クリップボードからパスを取得
             clipboard_text = context.window_manager.clipboard
             if not clipboard_text:
+                log.debug("No clipboard content available")
                 log.debug("No clipboard content available")
                 return False
 
@@ -492,14 +531,20 @@ class CalculatorState:
 
             # パスを直接evalで解決
             return self._resolve_path_by_eval(clipboard_text)
+            # パスを直接evalで解決
+            return self._resolve_path_by_eval(clipboard_text)
 
         except Exception as e:
+            log.debug(f"Failed to resolve property via copy_data_path_button: {e}")
             log.debug(f"Failed to resolve property via copy_data_path_button: {e}")
             return False
 
     def _resolve_path_by_eval(self, full_path: str) -> bool:
         """完全パスをevalで解決してプロパティ情報を取得"""
+    def _resolve_path_by_eval(self, full_path: str) -> bool:
+        """完全パスをevalで解決してプロパティ情報を取得"""
         try:
+            # パスの例: "bpy.data.objects['Cube'].location[0]"
             # パスの例: "bpy.data.objects['Cube'].location[0]"
             # 配列インデックスを抽出
             prop_index = -1
@@ -531,12 +576,15 @@ class CalculatorState:
                 return False
 
             prop_def = prop_owner.bl_rna.properties.get(prop_name)
+            prop_def = prop_owner.bl_rna.properties.get(prop_name)
             if not prop_def:
+                log.debug(f"Property definition not found: {prop_name}")
                 log.debug(f"Property definition not found: {prop_name}")
                 return False
 
             # 数値プロパティかチェック
             if prop_def.type not in {"INT", "FLOAT"}:
+                log.debug(f"Property is not numeric: {prop_def.type}")
                 log.debug(f"Property is not numeric: {prop_def.type}")
                 return False
 
@@ -546,8 +594,11 @@ class CalculatorState:
             # PropertyInfoを作成
             self.current_property = PropertyInfo(
                 ptr=prop_owner,
+                ptr=prop_owner,
                 prop=prop_def,
                 prop_index=prop_index,
+                sub_path="",  # 直接アクセスなので空
+                id_owner=id_owner,
                 sub_path="",  # 直接アクセスなので空
                 id_owner=id_owner,
             )
@@ -558,6 +609,7 @@ class CalculatorState:
             return True
 
         except Exception as e:
+            log.debug(f"Failed to resolve property via eval: {e}")
             log.debug(f"Failed to resolve property via eval: {e}")
             return False
 
