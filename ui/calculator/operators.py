@@ -1,9 +1,3 @@
-"""
-数値入力パネルのオペレータ定義
-
-元のkeypad.pyの機能を改良し、安全性とユーザビリティを向上させます。
-"""
-
 import bpy
 from bpy.types import Operator
 from bpy.props import StringProperty, BoolProperty
@@ -84,6 +78,15 @@ class WM_OT_numeric_input(Operator):
         # 現在値を表示するかチェック
         if prefs and prefs.should_show_current_value():
             current_value = calculator.current_property.get_current_value()
+            if (
+                current_value is not None
+                and calculator.current_property.is_angle_property()
+                and prefs.should_convert_angles()
+            ):
+                # ラジアン→度変換
+                import math
+                current_value = math.degrees(current_value)
+
             if current_value is not None:
                 # プリファレンスの小数点以下桁数でフォーマット
                 if prefs:
@@ -243,6 +246,10 @@ class WM_OT_numeric_input(Operator):
 
     def _draw_numpad(self, layout):
         """テンキーレイアウトを描画"""
+        BUTTON_SCALE_Y = 1.8
+        BUTTON_SCALE_X = 0.5
+        COMMON_SCALE_Y = 1.1
+        
         calculator = CalculatorState.get_instance()
         prefs = calculator.get_preferences()
 
@@ -250,7 +257,7 @@ class WM_OT_numeric_input(Operator):
 
         # クリアボタン（最上段）
         clear_row = num_box.row(align=True)
-        clear_row.scale_y = 1.1
+        clear_row.scale_y = COMMON_SCALE_Y
         clear_op = clear_row.operator(
             "wm.numeric_input_key", text="Clear", icon=ic("CANCEL")
         )
@@ -261,8 +268,8 @@ class WM_OT_numeric_input(Operator):
 
         # 左側：数字キーパッド（3x3グリッド）
         numbers_col = main_row.column(align=True)
-        numbers_col.scale_y = 1.1
-        numbers_col.scale_x = 0.8
+        numbers_col.scale_y = BUTTON_SCALE_Y
+        numbers_col.scale_x = BUTTON_SCALE_X
 
         # 電話風か電卓風かでレイアウトを切り替え
         phone_layout = prefs.phone_keypad_layout if prefs else False
@@ -304,8 +311,8 @@ class WM_OT_numeric_input(Operator):
 
         # 右側：四則演算（縦一列）
         operators_col = main_row.column(align=True)
-        operators_col.scale_y = 1.1
-        operators_col.scale_x = 0.8
+        operators_col.scale_y = BUTTON_SCALE_Y
+        operators_col.scale_x = BUTTON_SCALE_X
 
         arithmetic_ops = [
             ("÷", "/"),
@@ -321,7 +328,7 @@ class WM_OT_numeric_input(Operator):
 
         # 特殊操作行
         special_row = num_box.row(align=True)
-        special_row.scale_y = 1.0
+        special_row.scale_y = COMMON_SCALE_Y
 
         # 括弧と累乗、符号反転
         paren_open_op = special_row.operator("wm.numeric_input_key", text="(")

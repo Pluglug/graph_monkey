@@ -596,11 +596,8 @@ class CalculatorState:
             # PropertyInfoを作成
             self.current_property = PropertyInfo(
                 ptr=prop_owner,
-                ptr=prop_owner,
                 prop=prop_def,
                 prop_index=prop_index,
-                sub_path="",  # 直接アクセスなので空
-                id_owner=id_owner,
                 sub_path="",  # 直接アクセスなので空
                 id_owner=id_owner,
             )

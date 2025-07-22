@@ -1,12 +1,5 @@
 # pyright: reportInvalidTypeForm=false
-"""
-電卓機能のプリファレンス設定
-
-アドオンプリファレンスで電卓の動作をカスタマイズできます。
-"""
-
-import bpy
-from bpy.props import BoolProperty, EnumProperty, FloatProperty, IntProperty
+from bpy.props import BoolProperty, IntProperty
 from bpy.types import PropertyGroup
 
 from ...utils.logging import get_logger
