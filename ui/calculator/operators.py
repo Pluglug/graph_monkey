@@ -55,14 +55,23 @@ class WM_OT_numeric_input(Operator):
             return {"CANCELLED"}
 
         # プロパティ型をチェック（ホットキー呼び出し時の型検証）
-        if not calculator.current_property or calculator.current_property.prop.type not in {"INT", "FLOAT"}:
-            self.report({"ERROR"}, "Calculator can only be used with numeric properties (INT/FLOAT)")
+        if (
+            not calculator.current_property
+            or calculator.current_property.prop.type not in {"INT", "FLOAT"}
+        ):
+            self.report(
+                {"ERROR"},
+                "Calculator can only be used with numeric properties (INT/FLOAT)",
+            )
             return {"CANCELLED"}
 
         # Vector型プロパティ全体の場合はエラー
         current_value = calculator.current_property.get_current_value()
         if current_value is None:
-            self.report({"ERROR"}, "Calculator can only be used with individual numeric values, not vector properties")
+            self.report(
+                {"ERROR"},
+                "Calculator can only be used with individual numeric values, not vector properties",
+            )
             return {"CANCELLED"}
 
         # 電卓の参照を設定
@@ -296,11 +305,15 @@ class WM_OT_numeric_input_key(Operator):
 
         # 初期値が表示されている状態での自動クリア判定
         should_auto_clear = (
-            popup.initial_value_set and 
-            self.operation in ("INPUT", "FUNCTION") and
-            (self.value.isdigit() or self.value in [".", "("] or self.operation == "FUNCTION")
+            popup.initial_value_set
+            and self.operation in ("INPUT", "FUNCTION")
+            and (
+                self.value.isdigit()
+                or self.value in [".", "("]
+                or self.operation == "FUNCTION"
+            )
         )
-        
+
         if should_auto_clear:
             popup.expr = ""
             popup.initial_value_set = False

@@ -136,11 +136,11 @@ class CalculatorPreferences(PropertyGroup):
         # None値やVector型の場合は文字列として返す
         if value is None:
             return "N/A"
-        
+
         # Vector型やその他の非数値型の場合
         if not isinstance(value, (int, float)):
             return str(value)
-        
+
         # 数値の場合は小数点以下桁数でフォーマット
         if self.decimal_places == 0:
             return str(int(round(value)))

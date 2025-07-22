@@ -103,7 +103,9 @@ class PropertyInfo:
                 # スカラープロパティまたはベクタープロパティ全体
                 # Vector型の場合は電卓では処理できない
                 if hasattr(prop_value, "__len__") and len(prop_value) > 1:
-                    log.warning(f"Vector property detected: {self.prop.identifier}. Calculator supports individual components only.")
+                    log.warning(
+                        f"Vector property detected: {self.prop.identifier}. Calculator supports individual components only."
+                    )
                     return None
                 # スカラープロパティの場合
                 return prop_value
@@ -126,24 +128,28 @@ class PropertyInfo:
         try:
             subtype = getattr(self.prop, "subtype", "")
             prop_name = getattr(self.prop, "identifier", "")
-            
+
             # subtype が ANGLE の場合
             if subtype == "ANGLE":
                 return True
-            
+
             # rotation関連のプロパティ名の場合（クォータニオンは除外）
             angle_property_names = [
-                "rotation", "rotation_euler", "rotation_axis_angle",
-                "rotation_x", "rotation_y", "rotation_z"
+                "rotation",
+                "rotation_euler",
+                "rotation_axis_angle",
+                "rotation_x",
+                "rotation_y",
+                "rotation_z",
             ]
-            
+
             if prop_name in angle_property_names:
                 return True
-            
+
             # EULERサブタイプの場合（回転オイラー角）
             if subtype == "EULER":
                 return True
-                
+
             return False
         except Exception:
             return False
@@ -174,8 +180,9 @@ class SafeExpressionEvaluator:
 
         # Blender風の「.1」→「0.1」自動補完
         import re
+
         original_expr = expression
-        expression = re.sub(r'(^|[^0-9])\.([0-9]+)', r'\g<1>0.\2', expression)
+        expression = re.sub(r"(^|[^0-9])\.([0-9]+)", r"\g<1>0.\2", expression)
         if expression != original_expr:
             log.debug(f"Auto-completed decimal: '{original_expr}' → '{expression}'")
 
@@ -349,19 +356,19 @@ class CalculatorState:
             ptr = getattr(context, "button_pointer", None)
             prop = getattr(context, "button_prop", None)
             prop_index = getattr(context, "button_prop_index", -1)
-            
+
             # 通常のコンテキストが利用可能な場合
             if ptr and prop and prop.type in {"INT", "FLOAT"}:
                 return self._set_property_info_from_context(ptr, prop, prop_index)
-            
+
             # ホットキーからの呼び出しでコンテキストが無い場合
             log.debug("No button context available, trying copy_data_path_button")
             return self._set_property_info_from_clipboard(context)
-            
+
         except Exception as e:
             log.error(f"Failed to set property info: {e}")
             return False
-    
+
     def _set_property_info_from_context(self, ptr, prop, prop_index):
         """通常のコンテキストからプロパティ情報を設定"""
         try:
@@ -371,10 +378,10 @@ class CalculatorState:
             except Exception:
                 log.warning("Failed to get path_from_id, using empty path")
                 sub_path = ""
-            
+
             # ID オーナーを取得
             id_owner = ptr.id_data or ptr
-            
+
             self.current_property = PropertyInfo(
                 ptr=ptr,
                 prop=prop,
@@ -382,139 +389,143 @@ class CalculatorState:
                 sub_path=sub_path,
                 id_owner=id_owner,
             )
-            
-            log.debug(f"Property info set from context: {self.current_property.get_display_path()}")
+
+            log.debug(
+                f"Property info set from context: {self.current_property.get_display_path()}"
+            )
             return True
-            
+
         except Exception as e:
             log.error(f"Failed to set property info from context: {e}")
             return False
-    
+
     def _set_property_info_from_clipboard(self, context):
         """クリップボードからプロパティ情報を設定"""
         try:
             # copy_data_path_buttonを呼び出してクリップボードにパスをコピー
             result = bpy.ops.ui.copy_data_path_button(full_path=False)
-            
-            if result != {'FINISHED'}:
+
+            if result != {"FINISHED"}:
                 log.warning("copy_data_path_button failed")
                 return False
-            
+
             # クリップボードからパスを取得
             clipboard_text = context.window_manager.clipboard
             if not clipboard_text:
                 log.warning("No clipboard content available")
                 return False
-            
+
             log.debug(f"Got clipboard path: {clipboard_text}")
-            
+
             # パスを解析してプロパティ情報を取得
             return self._parse_property_path(clipboard_text)
-            
+
         except Exception as e:
             log.error(f"Failed to set property info from clipboard: {e}")
             return False
-    
+
     def _parse_property_path(self, data_path: str):
         """データパスを解析してプロパティ情報を設定"""
         try:
             # パスの例: "location[0]", "eevee.taa_samples", "world.node_tree.nodes[0].inputs[1].default_value"
             log.debug(f"Parsing property path: {data_path}")
-            
+
             # 配列インデックスを抽出
             prop_index = -1
             base_path = data_path
-            
-            if '[' in data_path and data_path.endswith(']'):
+
+            if "[" in data_path and data_path.endswith("]"):
                 # 配列プロパティの場合 "location[0]" -> "location", 0
-                bracket_pos = data_path.rfind('[')  # 最後の[を見つける
+                bracket_pos = data_path.rfind("[")  # 最後の[を見つける
                 base_path = data_path[:bracket_pos]
-                index_str = data_path[bracket_pos+1:-1]
+                index_str = data_path[bracket_pos + 1 : -1]
                 try:
                     prop_index = int(index_str)
                 except ValueError:
                     log.warning(f"Invalid array index in path: {index_str}")
                     prop_index = -1
-            
+
             # ネストしたパスかどうかチェック
-            if '.' in base_path:
+            if "." in base_path:
                 return self._resolve_nested_property_path(base_path, prop_index)
             else:
                 return self._resolve_simple_property_path(base_path, prop_index)
-            
+
         except Exception as e:
             log.error(f"Failed to parse property path '{data_path}': {e}")
             return False
-    
+
     def _resolve_nested_property_path(self, path: str, prop_index: int):
         """ネストしたプロパティパスを解決"""
         try:
             # パスをドットで分割
-            path_parts = path.split('.')
+            path_parts = path.split(".")
             log.debug(f"Nested path parts: {path_parts}")
-            
+
             # 様々なルートオブジェクトで試行
             root_candidates = [
                 ("scene", bpy.context.scene),
                 ("active_object", bpy.context.active_object),
                 ("view_layer", bpy.context.view_layer),
             ]
-            
+
             # worldオブジェクトを安全に追加
-            if bpy.context.scene and hasattr(bpy.context.scene, 'world'):
+            if bpy.context.scene and hasattr(bpy.context.scene, "world"):
                 root_candidates.append(("world", bpy.context.scene.world))
-            
+
             # 選択されたオブジェクトも追加
             for i, obj in enumerate(bpy.context.selected_objects[:5]):  # 最大5個まで
                 root_candidates.append((f"selected_object_{i}", obj))
-            
+
             for root_name, root_obj in root_candidates:
                 if root_obj is None:
                     continue
-                    
+
                 log.debug(f"Trying to resolve path on {root_name}: {root_obj}")
-                
+
                 if self._try_resolve_nested_path(root_obj, path_parts, prop_index):
                     log.debug(f"Successfully resolved nested path on {root_name}")
                     return True
-            
+
             log.warning(f"Could not resolve nested property path: {path}")
             return False
-            
+
         except Exception as e:
             log.error(f"Failed to resolve nested property path '{path}': {e}")
             return False
-    
+
     def _try_resolve_nested_path(self, root_obj, path_parts: list, prop_index: int):
         """ネストしたパスでプロパティ解決を試行"""
         try:
             # パスを順次辿る
             current_obj = root_obj
-            
+
             for i, part in enumerate(path_parts):
                 log.debug(f"Resolving path part {i}: '{part}' on {current_obj}")
-                
+
                 # プロパティが存在するかチェック
                 if not hasattr(current_obj, part):
                     log.debug(f"Property '{part}' not found on {current_obj}")
                     return False
-                
+
                 # 最後のパートの場合、プロパティ定義をチェック
                 if i == len(path_parts) - 1:
                     # 最終プロパティの定義を取得
                     prop_def = None
-                    if hasattr(current_obj, 'bl_rna') and hasattr(current_obj.bl_rna, 'properties'):
+                    if hasattr(current_obj, "bl_rna") and hasattr(
+                        current_obj.bl_rna, "properties"
+                    ):
                         prop_def = current_obj.bl_rna.properties.get(part)
-                    
+
                     if not prop_def:
                         log.debug(f"Property definition not found for '{part}'")
                         return False
-                    
+
                     # 数値プロパティかチェック
                     if prop_def.type not in {"INT", "FLOAT"}:
                         log.debug(f"Property '{part}' is not numeric: {prop_def.type}")
                         return False
-                    
+
                     # PropertyInfoを作成
                     self.current_property = PropertyInfo(
                         ptr=current_obj,  # 最終的なプロパティを持つオブジェクト
@@ -523,8 +534,10 @@ class CalculatorState:
                         sub_path="",
                         id_owner=root_obj,  # ルートオブジェクトをIDオーナーに
                     )
-                    
-                    log.debug(f"Nested property resolved: {'.'.join(path_parts)} on {root_obj}")
+
+                    log.debug(
+                        f"Nested property resolved: {'.'.join(path_parts)} on {root_obj}"
+                    )
                     return True
                 else:
                     # 中間パス - 次のオブジェクトに進む
@@ -532,61 +545,63 @@ class CalculatorState:
                     if current_obj is None:
                         log.debug(f"Intermediate path '{part}' returned None")
                         return False
-            
+
             return False
-            
+
         except Exception as e:
-            log.debug(f"Failed to resolve nested path {'.'.join(path_parts)} on {root_obj}: {e}")
+            log.debug(
+                f"Failed to resolve nested path {'.'.join(path_parts)} on {root_obj}: {e}"
+            )
             return False
-    
+
     def _resolve_simple_property_path(self, prop_name: str, prop_index: int):
         """単純なプロパティパスを解決（従来の処理）"""
         try:
             # アクティブオブジェクトから開始して解決を試みる
             target_objects = []
-            
+
             # 1. アクティブオブジェクト
             if bpy.context.active_object:
                 target_objects.append(bpy.context.active_object)
-            
+
             # 2. 選択されたオブジェクト
             target_objects.extend(bpy.context.selected_objects)
-            
+
             # 3. シーン
             target_objects.append(bpy.context.scene)
-            
+
             # 各候補でプロパティを探す
             for obj in target_objects:
                 if self._try_resolve_property(obj, prop_name, prop_index):
                     log.debug(f"Successfully resolved simple property on {obj}")
                     return True
-            
+
             log.warning(f"Could not resolve simple property path: {prop_name}")
             return False
-            
+
         except Exception as e:
             log.error(f"Failed to resolve simple property path '{prop_name}': {e}")
             return False
-    
+
     def _try_resolve_property(self, obj, prop_name: str, prop_index: int):
         """オブジェクトでプロパティの解決を試行"""
         try:
             # プロパティが存在するかチェック
             if not hasattr(obj, prop_name):
                 return False
-            
+
             # プロパティの定義を取得
             prop_def = None
-            if hasattr(obj, 'bl_rna') and hasattr(obj.bl_rna, 'properties'):
+            if hasattr(obj, "bl_rna") and hasattr(obj.bl_rna, "properties"):
                 prop_def = obj.bl_rna.properties.get(prop_name)
-            
+
             if not prop_def:
                 return False
-            
+
             # 数値プロパティかチェック
             if prop_def.type not in {"INT", "FLOAT"}:
                 return False
-            
+
             # PropertyInfoを作成
             self.current_property = PropertyInfo(
                 ptr=obj,
@@ -595,10 +610,10 @@ class CalculatorState:
                 sub_path="",  # ルートオブジェクトなので空
                 id_owner=obj,
             )
-            
+
             log.debug(f"Property resolved: {prop_name} on {obj}")
             return True
-            
+
         except Exception as e:
             log.debug(f"Failed to resolve property {prop_name} on {obj}: {e}")
             return False
@@ -630,7 +645,10 @@ class CalculatorState:
             try:
                 # ネストしたパスの場合は ptr を直接使用
                 # 単純なパスの場合は sub_path を使って解決
-                if self.current_property.sub_path and self.current_property.ptr == self.current_property.id_owner:
+                if (
+                    self.current_property.sub_path
+                    and self.current_property.ptr == self.current_property.id_owner
+                ):
                     # 単純なパス（従来の処理）
                     container = self.current_property.id_owner.path_resolve(
                         self.current_property.sub_path, False
@@ -669,16 +687,20 @@ class CalculatorState:
             return expression
 
         prefs = self.get_preferences()
-        log.debug(f"Angle conversion setting: {prefs.should_convert_angles() if prefs else 'No prefs'}")
-        
+        log.debug(
+            f"Angle conversion setting: {prefs.should_convert_angles() if prefs else 'No prefs'}"
+        )
+
         if not prefs or not prefs.should_convert_angles():
             log.debug("Angle conversion disabled in preferences")
             return expression
 
         # 角度プロパティかどうかをチェック
         is_angle = self.current_property.is_angle_property()
-        log.debug(f"Is angle property: {is_angle} (subtype: {getattr(self.current_property.prop, 'subtype', 'N/A')})")
-        
+        log.debug(
+            f"Is angle property: {is_angle} (subtype: {getattr(self.current_property.prop, 'subtype', 'N/A')})"
+        )
+
         # 角度プロパティの場合の自動変換
         if is_angle:
             # 数式に明示的にradians()やdegrees()が含まれていない場合
@@ -686,7 +708,7 @@ class CalculatorState:
                 func in expression.lower() for func in ["radians", "degrees", "pi"]
             )
             log.debug(f"Expression has angle functions: {has_angle_funcs}")
-            
+
             if not has_angle_funcs:
                 # 度数法として解釈してラジアンに変換
                 log.debug(
