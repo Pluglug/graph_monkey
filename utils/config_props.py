@@ -654,6 +654,7 @@ def register():
     # bpy.types.Scene.monkey_blender_config = bpy.props.PointerProperty(  # type: ignore
     #     type=BlenderConfigSettings
     # )
+    pass
 
 
 def unregister():
