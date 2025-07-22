@@ -10,6 +10,7 @@ from bpy.props import StringProperty, BoolProperty
 
 from ...addon import get_prefs
 from ...utils.logging import get_logger
+from ...utils.ui_utils import ic
 from .core import CalculatorState
 
 log = get_logger(__name__)
@@ -107,143 +108,255 @@ class WM_OT_numeric_input(Operator):
         return context.window_manager.invoke_props_dialog(self, width=dialog_width)
 
     def draw(self, context):
-        """UIを描画"""
+        """電卓UIを描画"""
         calculator = CalculatorState.get_instance()
         if not calculator.current_property:
             return
 
         prefs = calculator.get_preferences()
         layout = self.layout
+        layout.use_property_split = False
+        layout.use_property_decorate = False
 
-        # プロパティパス表示（オプション）
-        if prefs and prefs.show_property_path:
-            col = layout.column()
-            col.label(text=calculator.current_property.get_display_path(), icon="RNA")
-            col.separator()
+        # === プロパティ情報パネル ===
+        if calculator.current_property and prefs and prefs.show_property_path:
+            # プロパティ名をヘッダーに表示
+            prop_name = calculator.current_property.prop.identifier
+            header, body = layout.panel("calc_property_info", default_closed=True)
+            header.label(text=f"プロパティ: {prop_name}", icon=ic("RNA"))
 
-        # 入力フィールド
-        input_col = layout.column()
-        input_col.prop(self, "expr", text="", icon="OUTLINER_OB_FONT")
+            if body:
+                # プロパティパス
+                path_row = body.row()
+                path_row.scale_y = 0.8
+                path_row.label(text=calculator.current_property.get_display_path())
 
-        # プロパティ情報表示
-        if calculator.current_property:
-            info_row = input_col.row()
-            info_row.scale_y = 0.7
+                # プロパティ詳細情報
+                if (
+                    prefs.respect_property_limits
+                    or calculator.current_property.get_current_value() is not None
+                ):
+                    info_col = body.column(align=True)
+                    info_col.scale_y = 0.75
 
-            # 現在値表示
-            current_value = calculator.current_property.get_current_value()
-            if current_value is not None:
-                current_str = (
-                    prefs.format_result(current_value) if prefs else str(current_value)
-                )
-                info_row.label(text=f"Current: {current_str}")
+                    # 現在値と範囲を横並びで表示
+                    info_row = info_col.row(align=True)
 
-            # プロパティ制限表示
-            if prefs and prefs.respect_property_limits:
-                hard_min, hard_max = calculator.current_property.get_property_limits()
-                if hard_min is not None or hard_max is not None:
-                    limit_parts = []
-                    if hard_min is not None:
-                        limit_parts.append(f"min: {hard_min}")
-                    if hard_max is not None:
-                        limit_parts.append(f"max: {hard_max}")
-                    info_row.label(text=f"Limits: {', '.join(limit_parts)}")
+                    # 現在値
+                    current_value = calculator.current_property.get_current_value()
+                    if current_value is not None:
+                        current_str = (
+                            prefs.format_result(current_value)
+                            if prefs
+                            else str(current_value)
+                        )
+                        value_sub = info_row.row(align=True)
+                        value_sub.label(text="値:", icon=ic("DOT"))
+                        value_sub.label(text=current_str)
 
-            # 角度プロパティの通知
-            if (
-                calculator.current_property.is_angle_property()
-                and prefs
-                and prefs.auto_angle_conversion
-            ):
-                angle_row = input_col.row()
-                angle_row.scale_y = 0.6
-                angle_row.label(
-                    text="Note: Input in degrees will be auto-converted to radians",
-                    icon="INFO",
-                )
+                    # プロパティ制限
+                    if prefs.respect_property_limits:
+                        hard_min, hard_max = (
+                            calculator.current_property.get_property_limits()
+                        )
+                        if hard_min is not None or hard_max is not None:
+                            limit_sub = info_row.row(align=True)
+                            limit_sub.label(text="範囲:", icon=ic("DRIVER_DISTANCE"))
 
-        # 関数ボタン（オプション）
+                            min_str = str(hard_min) if hard_min is not None else "∞"
+                            max_str = str(hard_max) if hard_max is not None else "∞"
+                            limit_sub.label(text=f"[{min_str} ~ {max_str}]")
+
+        # === 入力エリア ===
+        input_box = layout.box()
+        input_col = input_box.column()
+
+        # 入力フィールド（大きめ）
+        expr_row = input_col.row()
+        expr_row.scale_y = 1.4
+        expr_row.prop(self, "expr", text="", icon=ic("CONSOLE"))
+
+        # 角度変換の注意書き
+        if (
+            calculator.current_property
+            and calculator.current_property.is_angle_property()
+            and prefs
+            and prefs.auto_angle_conversion
+        ):
+            angle_row = input_col.row()
+            angle_row.scale_y = 0.7
+            angle_row.alignment = "CENTER"
+            angle_row.label(text="🔄 度数入力は自動でラジアンに変換", icon=ic("INFO"))
+
+        # === 関数パレット ===
         if prefs and prefs.show_functions:
-            self._draw_function_buttons(input_col)
+            self._draw_function_buttons(layout)
 
-        # テンキー風ボタン配置
-        self._draw_numpad(input_col)
+        # === 数値キーパッド ===
+        self._draw_numpad(layout)
 
-        # 履歴表示（オプション）
+        # === 履歴パネル ===
         if prefs and prefs.show_history and calculator.expression_history:
-            input_col.separator()
-            history_box = input_col.box()
-            history_box.label(text="History:")
-            # 最新5件を表示
-            recent_history = calculator.expression_history[-5:]
-            for expr in recent_history:
-                row = history_box.row()
-                row.scale_y = 0.8
-                op = row.operator("wm.numeric_input_key", text=expr)
-                op.operation = "HISTORY"
-                op.value = expr
+            self._draw_history_panel(layout, calculator.expression_history)
 
     def _draw_function_buttons(self, layout):
         """関数ボタンを描画"""
-        func_box = layout.box()
-        func_box.label(text="Functions:")
-        func_grid = func_box.grid_flow(columns=4, align=True)
+        header, body = layout.panel("calc_functions", default_closed=True)
+        header.label(text="数学関数", icon=ic("SCRIPTPLUGINS"))
 
-        functions = [
-            ("sin", "sin"),
-            ("cos", "cos"),
-            ("tan", "tan"),
-            ("pi", "π"),
-            ("sqrt", "√"),
-            ("log", "log"),
-            ("exp", "exp"),
-            ("abs", "abs"),
-        ]
+        if body:
+            # 関数ボタンをカテゴリ分け
+            func_col = body.column(align=True)
+            func_col.scale_y = 0.9
 
-        for func, display in functions:
-            op = func_grid.operator("wm.numeric_input_key", text=display)
-            op.operation = "FUNCTION"
-            op.value = func
+            # 三角関数
+            trig_row = func_col.row(align=True)
+            for func, display in [
+                ("sin", "sin"),
+                ("cos", "cos"),
+                ("tan", "tan"),
+                ("pi", "π"),
+            ]:
+                op = trig_row.operator("wm.numeric_input_key", text=display)
+                op.operation = "FUNCTION"
+                op.value = func
+
+            # その他の関数
+            other_row = func_col.row(align=True)
+            for func, display in [
+                ("sqrt", "√"),
+                ("log", "log"),
+                ("exp", "exp"),
+                ("abs", "abs"),
+            ]:
+                op = other_row.operator("wm.numeric_input_key", text=display)
+                op.operation = "FUNCTION"
+                op.value = func
 
     def _draw_numpad(self, layout):
         """テンキーレイアウトを描画"""
-        # 数値キー
+        calculator = CalculatorState.get_instance()
+        prefs = calculator.get_preferences()
+
         num_box = layout.box()
 
-        # 最上段（クリア、バックスペース）
-        top_row = num_box.row(align=True)
-        op = top_row.operator("wm.numeric_input_key", text="Clear")
-        op.operation = "CLEAR"
-        op = top_row.operator("wm.numeric_input_key", text="←")
-        op.operation = "BACKSPACE"
+        # ヘッダー
+        header_row = num_box.row()
+        header_row.scale_y = 0.8
+        header_row.label(text="数値キーパッド", icon=ic("KEYINGSET"))
 
-        # 数値グリッド
-        grid = num_box.grid_flow(row_major=True, columns=4, align=True)
+        # クリアボタン（最上段）
+        clear_row = num_box.row(align=True)
+        clear_row.scale_y = 1.1
+        clear_op = clear_row.operator(
+            "wm.numeric_input_key", text="Clear", icon=ic("CANCEL")
+        )
+        clear_op.operation = "CLEAR"
 
-        # 数字ボタン（7-9, 4-6, 1-3, 0）
-        for row_nums in [
-            ["7", "8", "9", "/"],
-            ["4", "5", "6", "*"],
-            ["1", "2", "3", "-"],
-            ["0", ".", "(", "+"],
-        ]:
-            for char in row_nums:
-                op = grid.operator("wm.numeric_input_key", text=char)
+        # メインキーパッドレイアウト
+        main_row = num_box.row(align=False)
+
+        # 左側：数字キーパッド（3x3グリッド）
+        numbers_col = main_row.column(align=True)
+        numbers_col.scale_y = 1.1
+        numbers_col.scale_x = 0.8
+
+        # 電話風か電卓風かでレイアウトを切り替え
+        phone_layout = prefs.phone_keypad_layout if prefs else False
+
+        if phone_layout:
+            # 電話風レイアウト（1-2-3が上）
+            number_rows = [
+                ["1", "2", "3"],
+                ["4", "5", "6"],
+                ["7", "8", "9"],
+            ]
+        else:
+            # 電卓風レイアウト（7-8-9が上）
+            number_rows = [
+                ["7", "8", "9"],
+                ["4", "5", "6"],
+                ["1", "2", "3"],
+            ]
+
+        for row_numbers in number_rows:
+            row = numbers_col.row(align=True)
+            for num in row_numbers:
+                op = row.operator("wm.numeric_input_key", text=num)
                 op.operation = "INPUT"
-                op.value = char
+                op.value = num
 
-        # 特殊操作
+        # 最下段：0、ドット、バックスペース
+        bottom_row = numbers_col.row(align=True)
+
+        # 0とドットの順序を電話/電卓配列に応じて決定
+        keys = [".", "0"] if phone_layout else ["0", "."]
+        for key in keys:
+            op = bottom_row.operator("wm.numeric_input_key", text=key)
+            op.operation = "INPUT"
+            op.value = key
+
+        back_op = bottom_row.operator("wm.numeric_input_key", text="⌫")
+        back_op.operation = "BACKSPACE"
+
+        # 右側：四則演算（縦一列）
+        operators_col = main_row.column(align=True)
+        operators_col.scale_y = 1.1
+        operators_col.scale_x = 0.8
+
+        arithmetic_ops = [
+            ("÷", "/"),
+            ("×", "*"),
+            ("−", "-"),
+            ("+", "+"),
+        ]
+
+        for display, value in arithmetic_ops:
+            op = operators_col.operator("wm.numeric_input_key", text=display)
+            op.operation = "INPUT"
+            op.value = value
+
+        # 特殊操作行
         special_row = num_box.row(align=True)
-        op = special_row.operator("wm.numeric_input_key", text=")")
-        op.operation = "INPUT"
-        op.value = ")"
+        special_row.scale_y = 1.0
 
-        op = special_row.operator("wm.numeric_input_key", text="^")
-        op.operation = "INPUT"
-        op.value = "**"
+        # 括弧と累乗、符号反転
+        paren_open_op = special_row.operator("wm.numeric_input_key", text="(")
+        paren_open_op.operation = "INPUT"
+        paren_open_op.value = "("
 
-        op = special_row.operator("wm.numeric_input_key", text="±")
-        op.operation = "NEGATE"
+        paren_close_op = special_row.operator("wm.numeric_input_key", text=")")
+        paren_close_op.operation = "INPUT"
+        paren_close_op.value = ")"
+
+        power_op = special_row.operator("wm.numeric_input_key", text="^")
+        power_op.operation = "INPUT"
+        power_op.value = "**"
+
+        negate_op = special_row.operator("wm.numeric_input_key", text="±")
+        negate_op.operation = "NEGATE"
+
+    def _draw_history_panel(self, layout, history):
+        """履歴パネルを描画"""
+        header, body = layout.panel("calc_history", default_closed=True)
+        header.label(text="履歴", icon=ic("TIME"))
+
+        if body:
+            # 最新5件を表示
+            recent_history = history[-5:]
+            if recent_history:
+                history_col = body.column(align=True)
+                history_col.scale_y = 0.9
+
+                for expr in recent_history:
+                    row = history_col.row()
+                    op = row.operator("wm.numeric_input_key", text=f"📝 {expr}")
+                    op.operation = "HISTORY"
+                    op.value = expr
+            else:
+                empty_row = body.row()
+                empty_row.scale_y = 0.7
+                empty_row.label(text="履歴なし", icon=ic("INFO"))
 
     def execute(self, context):
         """計算を実行してプロパティに適用"""

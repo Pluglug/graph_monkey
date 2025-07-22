@@ -42,6 +42,12 @@ class CalculatorPreferences(PropertyGroup):
         default=True,
     )
 
+    phone_keypad_layout: BoolProperty(
+        name="Phone Keypad Layout",
+        description="Use phone-style keypad layout (1-2-3 at top) instead of calculator-style (7-8-9 at top)",
+        default=False,
+    )
+
     # 計算オプション
     respect_property_limits: BoolProperty(
         name="Respect Property Limits",
@@ -92,6 +98,7 @@ class CalculatorPreferences(PropertyGroup):
         col.prop(self, "show_property_path")
         col.prop(self, "show_history")
         col.prop(self, "show_functions")
+        col.prop(self, "phone_keypad_layout")
 
         # サイズ設定
         row = col.row(align=True)

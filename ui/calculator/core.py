@@ -673,6 +673,14 @@ class CalculatorState:
 
             # デプスグラフ更新でUI反映
             bpy.context.evaluated_depsgraph_get().update()
+
+            # Undo履歴にプッシュ（値の変更が成功した場合のみ）
+            try:
+                bpy.ops.ed.undo_push(message=f"Calculator: Set {prop_name} to {value}")
+                log.debug(f"Undo pushed for property change: {prop_name} = {value}")
+            except Exception as e:
+                log.warning(f"Failed to push undo: {e}")
+
             log.debug(f"Successfully wrote value {value} to property")
             return True
 

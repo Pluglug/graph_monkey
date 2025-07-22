@@ -79,6 +79,7 @@ def ic(icon):
     ICON_ALTERNATIVES = {
         "GREASEPENCIL_LAYER_GROUP": "TEXT",
         "EVENT_NDOF_BUTTON_1": "ONIONSKIN_ON",
+        "KEY_BACKSPACE": "BACK",
     }
 
     if icon in ICON_ALTERNATIVES:
