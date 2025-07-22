@@ -114,14 +114,6 @@ class CalculatorPreferences(PropertyGroup):
         col.prop(self, "auto_angle_conversion")
         col.prop(self, "history_size")
 
-        # 統計情報
-        stats_box = layout.box()
-        stats_box.label(text="Statistics", icon="INFO")
-
-        # 電卓の使用統計を表示（将来的な拡張）
-        stats_col = stats_box.column()
-        stats_col.label(text="Feature available in future version")
-
     def get_effective_history_size(self) -> int:
         """有効な履歴サイズを取得"""
         return max(5, min(100, self.history_size))

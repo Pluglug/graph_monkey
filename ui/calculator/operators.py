@@ -10,7 +10,7 @@ from bpy.props import StringProperty, BoolProperty
 
 from ...addon import get_prefs
 from ...utils.logging import get_logger
-from ...utils.ui_utils import ic
+from ...utils.ui_utils import ic, ui_text_block
 from .core import CalculatorState
 
 log = get_logger(__name__)
@@ -120,52 +120,57 @@ class WM_OT_numeric_input(Operator):
 
         # === プロパティ情報パネル ===
         if calculator.current_property and prefs and prefs.show_property_path:
-            # プロパティ名をヘッダーに表示
+            # プロパティ名をタイトルに、パスを本文に表示
             prop_name = calculator.current_property.prop.identifier
-            header, body = layout.panel("calc_property_info", default_closed=True)
-            header.label(text=f"プロパティ: {prop_name}", icon=ic("RNA"))
+            prop_path = calculator.current_property.get_display_path()
 
-            if body:
-                # プロパティパス
-                path_row = body.row()
-                path_row.scale_y = 0.8
-                path_row.label(text=calculator.current_property.get_display_path())
+            # # ダイアログ幅に基づいて折り返し幅を計算
+            # dialog_width = prefs.dialog_width if prefs else 300
+            # # 大体の文字数を計算（ピクセル幅 / 8px per character）
+            # wrap_width = max(30, dialog_width // 12)
 
-                # プロパティ詳細情報
-                if (
-                    prefs.respect_property_limits
-                    or calculator.current_property.get_current_value() is not None
-                ):
-                    info_col = body.column(align=True)
-                    info_col.scale_y = 0.75
+            # プロパティ詳細情報を追加
+            additional_info = []
+            if (
+                prefs.respect_property_limits
+                or calculator.current_property.get_current_value() is not None
+            ):
+                # 現在値
+                current_value = calculator.current_property.get_current_value()
+                if current_value is not None:
+                    current_str = (
+                        prefs.format_result(current_value)
+                        if prefs
+                        else str(current_value)
+                    )
+                    additional_info.append(f"Current Value: {current_str}")
 
-                    # 現在値と範囲を横並びで表示
-                    info_row = info_col.row(align=True)
+                # プロパティ制限
+                if prefs.respect_property_limits:
+                    hard_min, hard_max = (
+                        calculator.current_property.get_property_limits()
+                    )
+                    if hard_min is not None or hard_max is not None:
+                        min_str = str(hard_min) if hard_min is not None else "∞"
+                        max_str = str(hard_max) if hard_max is not None else "∞"
+                        additional_info.append(f"Range: [{min_str} ~ {max_str}]")
 
-                    # 現在値
-                    current_value = calculator.current_property.get_current_value()
-                    if current_value is not None:
-                        current_str = (
-                            prefs.format_result(current_value)
-                            if prefs
-                            else str(current_value)
-                        )
-                        value_sub = info_row.row(align=True)
-                        value_sub.label(text="値:", icon=ic("DOT"))
-                        value_sub.label(text=current_str)
+            # 表示テキストを組み立て
+            display_text = prop_path
+            if additional_info:
+                display_text += "\n" + "\n".join(additional_info)
 
-                    # プロパティ制限
-                    if prefs.respect_property_limits:
-                        hard_min, hard_max = (
-                            calculator.current_property.get_property_limits()
-                        )
-                        if hard_min is not None or hard_max is not None:
-                            limit_sub = info_row.row(align=True)
-                            limit_sub.label(text="範囲:", icon=ic("DRIVER_DISTANCE"))
-
-                            min_str = str(hard_min) if hard_min is not None else "∞"
-                            max_str = str(hard_max) if hard_max is not None else "∞"
-                            limit_sub.label(text=f"[{min_str} ~ {max_str}]")
+            # ui_text_blockを使用してプロパティ情報を表示
+            ui_text_block(
+                layout,
+                title=prop_name,
+                text=display_text,
+                icon="RNA",
+                collapsible=True,
+                default_closed=True,
+                panel_id="calc_property_info",
+                show_copy_button=True,
+            )
 
         # === 入力エリア ===
         input_box = layout.box()
@@ -186,14 +191,17 @@ class WM_OT_numeric_input(Operator):
             angle_row = input_col.row()
             angle_row.scale_y = 0.7
             angle_row.alignment = "CENTER"
-            angle_row.label(text="🔄 度数入力は自動でラジアンに変換", icon=ic("INFO"))
+            angle_row.label(
+                text="Degree inputs are automatically converted to radians",
+                icon=ic("INFO"),
+            )
+
+        # === 数値キーパッド ===
+        self._draw_numpad(input_box)
 
         # === 関数パレット ===
         if prefs and prefs.show_functions:
             self._draw_function_buttons(layout)
-
-        # === 数値キーパッド ===
-        self._draw_numpad(layout)
 
         # === 履歴パネル ===
         if prefs and prefs.show_history and calculator.expression_history:
@@ -202,7 +210,7 @@ class WM_OT_numeric_input(Operator):
     def _draw_function_buttons(self, layout):
         """関数ボタンを描画"""
         header, body = layout.panel("calc_functions", default_closed=True)
-        header.label(text="数学関数", icon=ic("SCRIPTPLUGINS"))
+        header.label(text="Math Functions", icon=ic("SCRIPTPLUGINS"))
 
         if body:
             # 関数ボタンをカテゴリ分け
@@ -239,11 +247,6 @@ class WM_OT_numeric_input(Operator):
         prefs = calculator.get_preferences()
 
         num_box = layout.box()
-
-        # ヘッダー
-        header_row = num_box.row()
-        header_row.scale_y = 0.8
-        header_row.label(text="数値キーパッド", icon=ic("KEYINGSET"))
 
         # クリアボタン（最上段）
         clear_row = num_box.row(align=True)
@@ -339,7 +342,7 @@ class WM_OT_numeric_input(Operator):
     def _draw_history_panel(self, layout, history):
         """履歴パネルを描画"""
         header, body = layout.panel("calc_history", default_closed=True)
-        header.label(text="履歴", icon=ic("TIME"))
+        header.label(text="History", icon=ic("TIME"))
 
         if body:
             # 最新5件を表示
@@ -350,13 +353,15 @@ class WM_OT_numeric_input(Operator):
 
                 for expr in recent_history:
                     row = history_col.row()
-                    op = row.operator("wm.numeric_input_key", text=f"📝 {expr}")
+                    op = row.operator(
+                        "wm.numeric_input_key", text=expr, icon=ic("GREASEPENCIL")
+                    )
                     op.operation = "HISTORY"
                     op.value = expr
             else:
                 empty_row = body.row()
                 empty_row.scale_y = 0.7
-                empty_row.label(text="履歴なし", icon=ic("INFO"))
+                empty_row.label(text="No history", icon=ic("INFO"))
 
     def execute(self, context):
         """計算を実行してプロパティに適用"""
