@@ -5,6 +5,7 @@ from bpy.types import AddonPreferences
 from .addon import ADDON_ID, get_prefs
 from .keymap_manager import keymap_registry
 from .operators.channel_selection_overlay import ChannelSelectionOverlaySettings
+from .ui.calculator.preferences import CalculatorPreferences
 from .utils.logger_prefs import MONKEY_LoggerPreferences
 from .utils.logging import LoggerRegistry, get_logger
 
@@ -21,12 +22,14 @@ class MonKeyPreferences(AddonPreferences):
         description="Tab to open",
         items=[
             ("HowToUse", "How to use", ""),
+            ("CALCULATOR", "Calculator", ""),
             ("KEYMAP", "Keymap", ""),
             ("OVERLAY", "Overlay", ""),
         ],
         default="HowToUse",
         options={"HIDDEN", "SKIP_SAVE"},
     )
+    calculator: PointerProperty(type=CalculatorPreferences)
     overlay: PointerProperty(type=ChannelSelectionOverlaySettings)
     logger_prefs: PointerProperty(type=MONKEY_LoggerPreferences)
 
@@ -39,6 +42,8 @@ class MonKeyPreferences(AddonPreferences):
         box = layout.box()
         if self.tab == "HowToUse":
             self.draw_description(context, box)
+        elif self.tab == "CALCULATOR":
+            self.calculator.draw(context, box)
         elif self.tab == "OVERLAY":
             self.overlay.draw(context, box)
         elif self.tab == "KEYMAP":
