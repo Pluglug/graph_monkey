@@ -51,7 +51,7 @@ class WM_OT_numeric_input(Operator):
         calculator = CalculatorState.get_instance()
 
         # プロパティ情報を設定
-        if not calculator.set_property_info(context):
+        if not calculator.detect_property_from_context(context):
             self.report({"ERROR"}, "Failed to get property information")
             return {"CANCELLED"}
 

@@ -7,6 +7,7 @@
 import ast
 import math
 import operator as op
+import re
 import weakref
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Union, Set
@@ -69,8 +70,39 @@ class PropertyInfo:
             return "Unknown"
 
         try:
-            id_path = f'bpy.data.{self.id_owner.__class__.__name__.lower()}s["{self.id_owner.name}"]'
-            full_path = f"{id_path}{self.sub_path}.{self.prop.identifier}"
+            # UIコンテキストオブジェクトの場合の特別処理
+            if hasattr(self.id_owner, "bl_rna"):
+                class_name = self.id_owner.bl_rna.identifier
+
+                # Screenオブジェクトの場合
+                if class_name == "Screen":
+                    base_path = "bpy.context.screen"
+                # Windowオブジェクトの場合
+                elif class_name == "Window":
+                    base_path = "bpy.context.window"
+                # Sceneオブジェクトの場合
+                elif class_name == "Scene":
+                    base_path = f'bpy.data.scenes["{self.id_owner.name}"]'
+                # Objectオブジェクトの場合
+                elif class_name == "Object":
+                    base_path = f'bpy.data.objects["{self.id_owner.name}"]'
+                # その他のデータブロックの場合
+                else:
+                    # 従来の処理
+                    id_path = f'bpy.data.{self.id_owner.__class__.__name__.lower()}s["{self.id_owner.name}"]'
+                    base_path = id_path
+            else:
+                # bl_rnaがない場合の fallback
+                base_path = str(self.id_owner)
+
+            # ネストしたパスの場合、sub_pathは空なので直接プロパティ名を追加
+            if self.sub_path:
+                full_path = f"{base_path}{self.sub_path}.{self.prop.identifier}"
+            else:
+                # UIコンテキストプロパティの場合、ネストしたパス全体を再構築する必要がある
+                # ただし、今回の実装では簡略化してプロパティ名のみ表示
+                full_path = f"{base_path}.{self.prop.identifier}"
+
             if self.prop_index != -1:
                 full_path += f"[{self.prop_index}]"
             return full_path
@@ -179,8 +211,6 @@ class SafeExpressionEvaluator:
             raise ValueError("Empty expression")
 
         # Blender風の「.1」→「0.1」自動補完
-        import re
-
         original_expr = expression
         expression = re.sub(r"(^|[^0-9])\.([0-9]+)", r"\g<1>0.\2", expression)
         if expression != original_expr:
@@ -278,7 +308,7 @@ class CalculatorState:
         return cls._instance
 
     def __init__(self):
-        if not hasattr(self, "_initialized") or not self._initialized:
+        if not getattr(self, "_initialized", False):
             self.evaluator = SafeExpressionEvaluator()
             self.current_property: Optional[PropertyInfo] = None
             self.expression_history: list[str] = []
@@ -350,272 +380,175 @@ class CalculatorState:
         log.debug(f"Evaluated: {expression} = {result}")
         return result
 
-    def set_property_info(self, context) -> bool:
-        """コンテキストからプロパティ情報を設定"""
+    def detect_property_from_context(self, context) -> bool:
+        """コンテキストからプロパティを検出"""
         try:
-            ptr = getattr(context, "button_pointer", None)
-            prop = getattr(context, "button_prop", None)
-            prop_index = getattr(context, "button_prop_index", -1)
+            # 方法1: bpy.context.property（最も直接的）
+            if self._try_context_property():
+                return True
 
-            # 通常のコンテキストが利用可能な場合
-            if ptr and prop and prop.type in {"INT", "FLOAT"}:
-                return self._set_property_info_from_context(ptr, prop, prop_index)
+            # 方法2: copy_data_path_button（フォールバック）
+            log.debug("Context property failed, trying copy_data_path_button")
+            if self._try_copy_data_path_button(context):
+                return True
 
-            # ホットキーからの呼び出しでコンテキストが無い場合
-            log.debug("No button context available, trying copy_data_path_button")
-            return self._set_property_info_from_clipboard(context)
-
-        except Exception as e:
-            log.error(f"Failed to set property info: {e}")
+            log.warning("Could not detect property from any method")
             return False
 
-    def _set_property_info_from_context(self, ptr, prop, prop_index):
-        """通常のコンテキストからプロパティ情報を設定"""
+        except Exception as e:
+            log.error(f"Failed to detect property from context: {e}")
+            return False
+
+    def _try_context_property(self) -> bool:
+        """bpy.context.propertyを使用してプロパティを直接取得"""
         try:
-            # 相対パスを安全に取得
-            try:
-                sub_path = ptr.path_from_id() or ""
-            except Exception:
-                log.warning("Failed to get path_from_id, using empty path")
-                sub_path = ""
+            prop_info = bpy.context.property
+            if not prop_info:
+                log.debug("No property context available")
+                return False
 
-            # ID オーナーを取得
-            id_owner = ptr.id_data or ptr
+            # prop_infoは(data_block, data_path, index)のタプル
+            data_block, data_path, prop_index = prop_info
+            
+            if not data_block or not data_path:
+                log.debug("Invalid property context")
+                return False
 
+            log.debug(f"Context property: {data_block}, {data_path}, {prop_index}")
+
+            # データパスから最終プロパティ名を取得
+            prop_name = data_path.split('.')[-1]
+            
+            # 配列アクセスを除去（例: "location[0]" -> "location"）
+            if '[' in prop_name:
+                prop_name = prop_name.split('[')[0]
+
+            # プロパティの所有者を解決
+            if '.' in data_path:
+                # ネストしたパス（例: "node_tree.nodes['Mix'].inputs[0].default_value"）
+                try:
+                    prop_owner = data_block.path_resolve(data_path.rsplit('.', 1)[0])
+                except:
+                    log.debug("Failed to resolve property owner from path")
+                    return False
+            else:
+                # 単純なパス（例: "location"）
+                prop_owner = data_block
+
+            # プロパティ定義を取得
+            if not hasattr(prop_owner, "bl_rna") or not hasattr(prop_owner.bl_rna, "properties"):
+                log.debug("Property owner has no bl_rna properties")
+                return False
+
+            prop_def = prop_owner.bl_rna.properties.get(prop_name)
+            if not prop_def:
+                log.debug(f"Property definition not found: {prop_name}")
+                return False
+
+            # 数値プロパティかチェック
+            if prop_def.type not in {"INT", "FLOAT"}:
+                log.debug(f"Property is not numeric: {prop_def.type}")
+                return False
+
+            # PropertyInfoを作成
             self.current_property = PropertyInfo(
-                ptr=ptr,
-                prop=prop,
-                prop_index=prop_index,
-                sub_path=sub_path,
-                id_owner=id_owner,
+                ptr=prop_owner,
+                prop=prop_def,
+                prop_index=prop_index if prop_index != -1 else -1,
+                sub_path="",  # 直接アクセスなので空
+                id_owner=data_block,
             )
 
-            log.debug(
-                f"Property info set from context: {self.current_property.get_display_path()}"
-            )
+            log.debug(f"Successfully resolved property via context: {self.current_property.get_display_path()}")
             return True
 
         except Exception as e:
-            log.error(f"Failed to set property info from context: {e}")
+            log.debug(f"Failed to resolve property via context: {e}")
             return False
 
-    def _set_property_info_from_clipboard(self, context):
-        """クリップボードからプロパティ情報を設定"""
+    def _try_copy_data_path_button(self, context) -> bool:
+        """copy_data_path_buttonを使用してプロパティパスを取得し、evalで解決"""
         try:
             # copy_data_path_buttonを呼び出してクリップボードにパスをコピー
-            result = bpy.ops.ui.copy_data_path_button(full_path=False)
+            result = bpy.ops.ui.copy_data_path_button(full_path=True)  # full_path=Trueで完全パスを取得
 
             if result != {"FINISHED"}:
-                log.warning("copy_data_path_button failed")
+                log.debug("copy_data_path_button failed")
                 return False
 
             # クリップボードからパスを取得
             clipboard_text = context.window_manager.clipboard
             if not clipboard_text:
-                log.warning("No clipboard content available")
+                log.debug("No clipboard content available")
                 return False
 
             log.debug(f"Got clipboard path: {clipboard_text}")
 
-            # パスを解析してプロパティ情報を取得
-            return self._parse_property_path(clipboard_text)
+            # パスを直接evalで解決
+            return self._resolve_path_by_eval(clipboard_text)
 
         except Exception as e:
-            log.error(f"Failed to set property info from clipboard: {e}")
+            log.debug(f"Failed to resolve property via copy_data_path_button: {e}")
             return False
 
-    def _parse_property_path(self, data_path: str):
-        """データパスを解析してプロパティ情報を設定"""
+    def _resolve_path_by_eval(self, full_path: str) -> bool:
+        """完全パスをevalで解決してプロパティ情報を取得"""
         try:
-            # パスの例: "location[0]", "eevee.taa_samples", "world.node_tree.nodes[0].inputs[1].default_value"
-            log.debug(f"Parsing property path: {data_path}")
-
+            # パスの例: "bpy.data.objects['Cube'].location[0]"
             # 配列インデックスを抽出
             prop_index = -1
-            base_path = data_path
-
-            if "[" in data_path and data_path.endswith("]"):
-                # 配列プロパティの場合 "location[0]" -> "location", 0
-                bracket_pos = data_path.rfind("[")  # 最後の[を見つける
-                base_path = data_path[:bracket_pos]
-                index_str = data_path[bracket_pos + 1 : -1]
+            base_path = full_path
+            
+            if '[' in full_path and full_path.endswith(']'):
+                bracket_pos = full_path.rfind('[')
+                base_path = full_path[:bracket_pos]
+                index_str = full_path[bracket_pos+1:-1]
                 try:
                     prop_index = int(index_str)
                 except ValueError:
-                    log.warning(f"Invalid array index in path: {index_str}")
-                    prop_index = -1
+                    # 文字列インデックスの場合は無視
+                    pass
 
-            # ネストしたパスかどうかチェック
-            if "." in base_path:
-                return self._resolve_nested_property_path(base_path, prop_index)
-            else:
-                return self._resolve_simple_property_path(base_path, prop_index)
-
-        except Exception as e:
-            log.error(f"Failed to parse property path '{data_path}': {e}")
-            return False
-
-    def _resolve_nested_property_path(self, path: str, prop_index: int):
-        """ネストしたプロパティパスを解決"""
-        try:
-            # パスをドットで分割
-            path_parts = path.split(".")
-            log.debug(f"Nested path parts: {path_parts}")
-
-            # 様々なルートオブジェクトで試行
-            root_candidates = [
-                ("scene", bpy.context.scene),
-                ("active_object", bpy.context.active_object),
-                ("view_layer", bpy.context.view_layer),
-            ]
-
-            # worldオブジェクトを安全に追加
-            if bpy.context.scene and hasattr(bpy.context.scene, "world"):
-                root_candidates.append(("world", bpy.context.scene.world))
-
-            # 選択されたオブジェクトも追加
-            for i, obj in enumerate(bpy.context.selected_objects[:5]):  # 最大5個まで
-                root_candidates.append((f"selected_object_{i}", obj))
-
-            for root_name, root_obj in root_candidates:
-                if root_obj is None:
-                    continue
-
-                log.debug(f"Trying to resolve path on {root_name}: {root_obj}")
-
-                if self._try_resolve_nested_path(root_obj, path_parts, prop_index):
-                    log.debug(f"Successfully resolved nested path on {root_name}")
-                    return True
-
-            log.warning(f"Could not resolve nested property path: {path}")
-            return False
-
-        except Exception as e:
-            log.error(f"Failed to resolve nested property path '{path}': {e}")
-            return False
-
-    def _try_resolve_nested_path(self, root_obj, path_parts: list, prop_index: int):
-        """ネストしたパスでプロパティ解決を試行"""
-        try:
-            # パスを順次辿る
-            current_obj = root_obj
-
-            for i, part in enumerate(path_parts):
-                log.debug(f"Resolving path part {i}: '{part}' on {current_obj}")
-
-                # プロパティが存在するかチェック
-                if not hasattr(current_obj, part):
-                    log.debug(f"Property '{part}' not found on {current_obj}")
-                    return False
-
-                # 最後のパートの場合、プロパティ定義をチェック
-                if i == len(path_parts) - 1:
-                    # 最終プロパティの定義を取得
-                    prop_def = None
-                    if hasattr(current_obj, "bl_rna") and hasattr(
-                        current_obj.bl_rna, "properties"
-                    ):
-                        prop_def = current_obj.bl_rna.properties.get(part)
-
-                    if not prop_def:
-                        log.debug(f"Property definition not found for '{part}'")
-                        return False
-
-                    # 数値プロパティかチェック
-                    if prop_def.type not in {"INT", "FLOAT"}:
-                        log.debug(f"Property '{part}' is not numeric: {prop_def.type}")
-                        return False
-
-                    # PropertyInfoを作成
-                    self.current_property = PropertyInfo(
-                        ptr=current_obj,  # 最終的なプロパティを持つオブジェクト
-                        prop=prop_def,
-                        prop_index=prop_index,
-                        sub_path="",
-                        id_owner=root_obj,  # ルートオブジェクトをIDオーナーに
-                    )
-
-                    log.debug(
-                        f"Nested property resolved: {'.'.join(path_parts)} on {root_obj}"
-                    )
-                    return True
-                else:
-                    # 中間パス - 次のオブジェクトに進む
-                    current_obj = getattr(current_obj, part)
-                    if current_obj is None:
-                        log.debug(f"Intermediate path '{part}' returned None")
-                        return False
-
-            return False
-
-        except Exception as e:
-            log.debug(
-                f"Failed to resolve nested path {'.'.join(path_parts)} on {root_obj}: {e}"
-            )
-            return False
-
-    def _resolve_simple_property_path(self, prop_name: str, prop_index: int):
-        """単純なプロパティパスを解決（従来の処理）"""
-        try:
-            # アクティブオブジェクトから開始して解決を試みる
-            target_objects = []
-
-            # 1. アクティブオブジェクト
-            if bpy.context.active_object:
-                target_objects.append(bpy.context.active_object)
-
-            # 2. 選択されたオブジェクト
-            target_objects.extend(bpy.context.selected_objects)
-
-            # 3. シーン
-            target_objects.append(bpy.context.scene)
-
-            # 各候補でプロパティを探す
-            for obj in target_objects:
-                if self._try_resolve_property(obj, prop_name, prop_index):
-                    log.debug(f"Successfully resolved simple property on {obj}")
-                    return True
-
-            log.warning(f"Could not resolve simple property path: {prop_name}")
-            return False
-
-        except Exception as e:
-            log.error(f"Failed to resolve simple property path '{prop_name}': {e}")
-            return False
-
-    def _try_resolve_property(self, obj, prop_name: str, prop_index: int):
-        """オブジェクトでプロパティの解決を試行"""
-        try:
-            # プロパティが存在するかチェック
-            if not hasattr(obj, prop_name):
+            # プロパティの所有者を取得
+            try:
+                prop_owner = eval(base_path.rsplit('.', 1)[0])
+                prop_name = base_path.split('.')[-1]
+            except:
+                log.debug(f"Failed to eval property owner from: {base_path}")
                 return False
 
-            # プロパティの定義を取得
-            prop_def = None
-            if hasattr(obj, "bl_rna") and hasattr(obj.bl_rna, "properties"):
-                prop_def = obj.bl_rna.properties.get(prop_name)
+            # プロパティ定義を取得
+            if not hasattr(prop_owner, "bl_rna") or not hasattr(prop_owner.bl_rna, "properties"):
+                log.debug("Property owner has no bl_rna properties")
+                return False
 
+            prop_def = prop_owner.bl_rna.properties.get(prop_name)
             if not prop_def:
+                log.debug(f"Property definition not found: {prop_name}")
                 return False
 
             # 数値プロパティかチェック
             if prop_def.type not in {"INT", "FLOAT"}:
+                log.debug(f"Property is not numeric: {prop_def.type}")
                 return False
+
+            # データブロックIDを取得
+            id_owner = getattr(prop_owner, 'id_data', prop_owner)
 
             # PropertyInfoを作成
             self.current_property = PropertyInfo(
-                ptr=obj,
+                ptr=prop_owner,
                 prop=prop_def,
                 prop_index=prop_index,
-                sub_path="",  # ルートオブジェクトなので空
-                id_owner=obj,
+                sub_path="",  # 直接アクセスなので空
+                id_owner=id_owner,
             )
 
-            log.debug(f"Property resolved: {prop_name} on {obj}")
+            log.debug(f"Successfully resolved property via eval: {self.current_property.get_display_path()}")
             return True
 
         except Exception as e:
-            log.debug(f"Failed to resolve property {prop_name} on {obj}: {e}")
+            log.debug(f"Failed to resolve property via eval: {e}")
             return False
 
     def write_value_to_property(self, value: Union[int, float]) -> bool:
