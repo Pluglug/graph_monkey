@@ -130,9 +130,20 @@ class MONKEY_MT_GraphEditorConfigPie(Menu):
         pie.separator()
         pie.separator()
         pie.separator()
+        pie.separator()
+        pie.separator()
 
+        col = pie.column()
+        gap = col.column()
+        gap.separator()
+        gap.scale_y = 10
+
+        item_col = col.column()
+        item_col.scale_y = 1.5
+        item_row = item_col.row(align=True)
+        item_row.scale_x = 1.5
         tool_settings = context.scene.tool_settings
-        pie.prop(tool_settings, "proportional_edit_falloff")
+        item_row.prop(tool_settings, "proportional_edit_falloff", expand=True, text="")
 
 
 from ..keymap_manager import keymap_registry, KeymapDefinition
