@@ -15,12 +15,7 @@ flowchart RL
     operators_keyframe_selection(operators.keyframe_selection)
     operators_view_selected_curves_range(operators.view_selected_curves_range)
     preferences[preferences]
-    ui_calculator_core(ui.calculator.core)
-    ui_calculator_keymaps(ui.calculator.keymaps)
-    ui_calculator_menu_integration(ui.calculator.menu_integration)
-    ui_calculator_operators(ui.calculator.operators)
-    ui_calculator_preferences(ui.calculator.preferences)
-    ui_pie(ui.pie)
+    ui_pies_graph_transform(ui.pies.graph_transform)
     ui_playback_speed_controller(ui.playback_speed_controller)
     utils_config_props(utils.config_props)
     utils_logger_prefs(utils.logger_prefs)
@@ -36,15 +31,12 @@ flowchart RL
     keymap_manager --> operators_keyframe_selection
     keymap_manager --> operators_view_selected_curves_range
     keymap_manager --> preferences
-    keymap_manager --> ui_calculator_keymaps
-    keymap_manager --> ui_pie
+    keymap_manager --> ui_pies_graph_transform
     operators_channel_selection_overlay --> preferences
     operators_dopesheet_helper --> operators_channel_selection_overlay
     operators_dopesheet_helper --> operators_handle_selection
     operators_dopesheet_helper --> operators_keyframe_selection
-    ui_calculator_core --> ui_calculator_operators
-    ui_calculator_preferences --> preferences
-    utils_config_props --> ui_pie
+    utils_config_props --> ui_pies_graph_transform
     utils_logger_prefs --> preferences
     utils_logging --> constants
     utils_logging --> keymap_manager
@@ -54,11 +46,7 @@ flowchart RL
     utils_logging --> operators_keyframe_jump
     utils_logging --> operators_keyframe_selection
     utils_logging --> preferences
-    utils_logging --> ui_calculator_core
-    utils_logging --> ui_calculator_menu_integration
-    utils_logging --> ui_calculator_operators
-    utils_logging --> ui_calculator_preferences
-    utils_logging --> ui_pie
+    utils_logging --> ui_pies_graph_transform
     utils_logging --> utils_config_props
     utils_logging --> utils_logger_prefs
     utils_logging --> utils_ui_utils
@@ -67,8 +55,6 @@ flowchart RL
     utils_timer --> utils_overlay_utils
     utils_ui_utils --> keymap_manager
     utils_ui_utils --> preferences
-    utils_ui_utils --> ui_calculator_menu_integration
-    utils_ui_utils --> ui_calculator_operators
-    utils_ui_utils --> ui_pie
+    utils_ui_utils --> ui_pies_graph_transform
     utils_ui_utils --> ui_playback_speed_controller
     utils_ui_utils --> utils_logger_prefs

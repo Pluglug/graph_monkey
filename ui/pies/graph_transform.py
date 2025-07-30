@@ -1,11 +1,11 @@
 # pyright: reportInvalidTypeForm=false
 # pyright: reportArgumentType=false
 import bpy
-from bpy.types import Menu, PropertyGroup, Scene
+from bpy.types import Menu, Panel
 
-from ..utils.config_props import BlenderConfigProperty
-from ..utils.logging import get_logger
-from ..utils.ui_utils import ic
+from ...utils.config_props import BlenderConfigProperty
+from ...utils.logging import get_logger
+from ...utils.ui_utils import ic
 
 log = get_logger(__name__)
 
@@ -96,11 +96,19 @@ PROPORTIONAL_FCURVE_CONFIG = BlenderConfigProperty(
 )
 
 
-class GraphEditorConfigSettings(PropertyGroup):
-    center_pivot: CENTER_PIVOT_CONFIG.create_property()
-    cursor_pivot: CURSOR_PIVOT_CONFIG.create_property()
-    individual_origins_pivot: INDIVIDUAL_ORIGINS_PIVOT_CONFIG.create_property()
-    proportional_fcurve: PROPORTIONAL_FCURVE_CONFIG.create_property()
+# class MONKEY_PT_GraphSnap(Panel):
+#     bl_idname = "MONKEY_PT_graph_snap"
+
+#     def draw(self, context):
+#         layout = self.layout
+#         layout.label(text="Graph Snap")
+
+#         scene = context.scene
+#         tool_settings = scene.tool_settings
+
+#         row1 = layout.row()
+#         row1.prop(tool_settings, "use_snap_playhead")
+#         row1.prop(tool_settings, "playhead_snap_distance")
 
 
 class MONKEY_MT_GraphEditorConfigPie(Menu):
@@ -120,33 +128,42 @@ class MONKEY_MT_GraphEditorConfigPie(Menu):
             pie.label(text="設定が利用できません")
             return
 
-        pie.prop(settings, "center_pivot", icon=ic("PIVOT_BOUNDBOX"))
-        pie.prop(settings, "cursor_pivot", icon=ic("PIVOT_CURSOR"))
+        pie.prop(settings, "center_pivot", icon=ic("PIVOT_BOUNDBOX"))  # LEFT
+        pie.prop(settings, "cursor_pivot", icon=ic("PIVOT_CURSOR"))  # RIGHT
         p_icon = "PROP_ON" if is_proportional_fcurve() else "PROP_OFF"
-        pie.prop(settings, "proportional_fcurve", icon=ic(p_icon))
-        pie.prop(settings, "individual_origins_pivot", icon=ic("PIVOT_INDIVIDUAL"))
+        pie.prop(settings, "proportional_fcurve", icon=ic(p_icon))  # BOTTOM
+        pie.prop(
+            settings, "individual_origins_pivot", icon=ic("PIVOT_INDIVIDUAL")
+        )  # TOP
 
         pie.separator()
         pie.separator()
         pie.separator()
         pie.separator()
-        pie.separator()
-        pie.separator()
+        pie.separator()  # Dummy
+        pie.separator()  # Dummy
 
-        col = pie.column()
+        col = pie.column()  # Extra Item Column
         gap = col.column()
         gap.separator()
-        gap.scale_y = 10
+        gap.scale_y = 8  # Extra Item Offset
 
         item_col = col.column()
-        item_col.scale_y = 1.5
+        item_col.alignment = "CENTER"
+
         item_row = item_col.row(align=True)
-        item_row.scale_x = 1.5
+        item_row.scale_y = 1.5
+        item_row.scale_x = 1.2
         tool_settings = context.scene.tool_settings
         item_row.prop(tool_settings, "proportional_edit_falloff", expand=True, text="")
 
+        size_row = col.row(align=True)
+        size_row.prop(
+            tool_settings, "proportional_size", expand=True, text="", slider=True
+        )
 
-from ..keymap_manager import keymap_registry, KeymapDefinition
+
+from ...keymap_manager import keymap_registry, KeymapDefinition
 
 keymap_registry.register_keymap_group(
     group_name="Graph Pie",
@@ -163,14 +180,3 @@ keymap_registry.register_keymap_group(
         ),
     ],
 )
-
-
-def register():
-    Scene.monkey_graph_editor_config = bpy.props.PointerProperty(  # type: ignore
-        type=GraphEditorConfigSettings
-    )
-
-
-def unregister():
-    if hasattr(bpy.types.Scene, "monkey_graph_editor_config"):
-        del bpy.types.Scene.monkey_graph_editor_config  # type: ignore
