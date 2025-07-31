@@ -20,8 +20,8 @@ class MESH_OT_pme_dummy_01(Operator):
     bl_description = "位置0: 北方向"
 
     def execute(self, context):
-        self.report({'INFO'}, f"実行: {self.bl_label}")
-        return {'FINISHED'}
+        self.report({"INFO"}, f"実行: {self.bl_label}")
+        return {"FINISHED"}
 
 
 class MESH_OT_pme_dummy_02(Operator):
@@ -30,8 +30,8 @@ class MESH_OT_pme_dummy_02(Operator):
     bl_description = "位置1: 北東方向"
 
     def execute(self, context):
-        self.report({'INFO'}, f"実行: {self.bl_label}")
-        return {'FINISHED'}
+        self.report({"INFO"}, f"実行: {self.bl_label}")
+        return {"FINISHED"}
 
 
 class MESH_OT_pme_dummy_03(Operator):
@@ -40,8 +40,8 @@ class MESH_OT_pme_dummy_03(Operator):
     bl_description = "位置2: 東方向"
 
     def execute(self, context):
-        self.report({'INFO'}, f"実行: {self.bl_label}")
-        return {'FINISHED'}
+        self.report({"INFO"}, f"実行: {self.bl_label}")
+        return {"FINISHED"}
 
 
 class MESH_OT_pme_dummy_04(Operator):
@@ -50,8 +50,8 @@ class MESH_OT_pme_dummy_04(Operator):
     bl_description = "位置3: 南東方向"
 
     def execute(self, context):
-        self.report({'INFO'}, f"実行: {self.bl_label}")
-        return {'FINISHED'}
+        self.report({"INFO"}, f"実行: {self.bl_label}")
+        return {"FINISHED"}
 
 
 class MESH_OT_pme_dummy_05(Operator):
@@ -60,8 +60,8 @@ class MESH_OT_pme_dummy_05(Operator):
     bl_description = "位置4: 南方向"
 
     def execute(self, context):
-        self.report({'INFO'}, f"実行: {self.bl_label}")
-        return {'FINISHED'}
+        self.report({"INFO"}, f"実行: {self.bl_label}")
+        return {"FINISHED"}
 
 
 class MESH_OT_pme_dummy_06(Operator):
@@ -70,8 +70,8 @@ class MESH_OT_pme_dummy_06(Operator):
     bl_description = "位置5: 南西方向"
 
     def execute(self, context):
-        self.report({'INFO'}, f"実行: {self.bl_label}")
-        return {'FINISHED'}
+        self.report({"INFO"}, f"実行: {self.bl_label}")
+        return {"FINISHED"}
 
 
 class MESH_OT_pme_dummy_07(Operator):
@@ -80,8 +80,8 @@ class MESH_OT_pme_dummy_07(Operator):
     bl_description = "位置6: 西方向"
 
     def execute(self, context):
-        self.report({'INFO'}, f"実行: {self.bl_label}")
-        return {'FINISHED'}
+        self.report({"INFO"}, f"実行: {self.bl_label}")
+        return {"FINISHED"}
 
 
 class MESH_OT_pme_dummy_08(Operator):
@@ -90,8 +90,8 @@ class MESH_OT_pme_dummy_08(Operator):
     bl_description = "位置7: 北西方向"
 
     def execute(self, context):
-        self.report({'INFO'}, f"実行: {self.bl_label}")
-        return {'FINISHED'}
+        self.report({"INFO"}, f"実行: {self.bl_label}")
+        return {"FINISHED"}
 
 
 class MESH_OT_pme_dummy_09(Operator):
@@ -100,8 +100,8 @@ class MESH_OT_pme_dummy_09(Operator):
     bl_description = "位置8: 中央上部（PME拡張）"
 
     def execute(self, context):
-        self.report({'INFO'}, f"実行: {self.bl_label} - PME拡張アイテム！")
-        return {'FINISHED'}
+        self.report({"INFO"}, f"実行: {self.bl_label} - PME拡張アイテム！")
+        return {"FINISHED"}
 
 
 class MESH_OT_pme_dummy_10(Operator):
@@ -110,8 +110,8 @@ class MESH_OT_pme_dummy_10(Operator):
     bl_description = "位置9: 中央下部（PME拡張）"
 
     def execute(self, context):
-        self.report({'INFO'}, f"実行: {self.bl_label} - PME拡張アイテム！")
-        return {'FINISHED'}
+        self.report({"INFO"}, f"実行: {self.bl_label} - PME拡張アイテム！")
+        return {"FINISHED"}
 
 
 class VIEW3D_MT_pme_10_items_demo_fixed(Menu):
@@ -128,23 +128,23 @@ class VIEW3D_MT_pme_10_items_demo_fixed(Menu):
 
         # PMEの設定を取得（存在しない場合は大きなデフォルト値を使用）
         pie_extra_slot_gap_size = getattr(
-            context.preferences.addons.get('pie_menu_editor', type('dummy', (), {})),
-            'preferences',
-            type('dummy', (), {'pie_extra_slot_gap_size': 25}),
+            context.preferences.addons.get("pie_menu_editor", type("dummy", (), {})),
+            "preferences",
+            type("dummy", (), {"pie_extra_slot_gap_size": 25}),
         ).pie_extra_slot_gap_size
 
         # 標準のPie Menuレイアウト（8個分）
         pie = layout.menu_pie()
 
         # 標準の8方向配置（Blender標準）
-        pie.operator("mesh.pme_dummy_01", icon='TRIA_UP')
-        pie.operator("mesh.pme_dummy_02", icon='TRIA_UP_BAR')
-        pie.operator("mesh.pme_dummy_03", icon='TRIA_RIGHT')
-        pie.operator("mesh.pme_dummy_04", icon='TRIA_RIGHT_BAR')
-        pie.operator("mesh.pme_dummy_05", icon='TRIA_DOWN')
-        pie.operator("mesh.pme_dummy_06", icon='TRIA_DOWN_BAR')
-        pie.operator("mesh.pme_dummy_07", icon='TRIA_LEFT')
-        pie.operator("mesh.pme_dummy_08", icon='TRIA_LEFT_BAR')
+        pie.operator("mesh.pme_dummy_01", icon="TRIA_UP")
+        pie.operator("mesh.pme_dummy_02", icon="TRIA_UP_BAR")
+        pie.operator("mesh.pme_dummy_03", icon="TRIA_RIGHT")
+        pie.operator("mesh.pme_dummy_04", icon="TRIA_RIGHT_BAR")
+        pie.operator("mesh.pme_dummy_05", icon="TRIA_DOWN")
+        pie.operator("mesh.pme_dummy_06", icon="TRIA_DOWN_BAR")
+        pie.operator("mesh.pme_dummy_07", icon="TRIA_LEFT")
+        pie.operator("mesh.pme_dummy_08", icon="TRIA_LEFT_BAR")
 
         # 【重要】PME独自拡張: 9番目と10番目のアイテム
         # 実際のPMEの実装に基づく正確な配置
@@ -210,15 +210,15 @@ class VIEW3D_OT_pme_demo_call_fixed(Operator):
 
     def execute(self, context):
         bpy.ops.wm.call_menu_pie(name="VIEW3D_MT_pme_10_items_demo_fixed")
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 # 設定パネル
 class VIEW3D_PT_pme_demo_settings(bpy.types.Panel):
     bl_label = "PME Demo Settings"
     bl_idname = "VIEW3D_PT_pme_demo_settings"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
     bl_category = "PME Demo"
 
     def draw(self, context):
@@ -263,9 +263,9 @@ def register():
     wm = bpy.context.window_manager
     kc = wm.keyconfigs.addon
     if kc:
-        km = kc.keymaps.new(name='3D View', space_type='VIEW_3D')
+        km = kc.keymaps.new(name="3D View", space_type="VIEW_3D")
         kmi = km.keymap_items.new(
-            "view3d.pme_demo_call_fixed", type='T', value='PRESS', shift=True
+            "view3d.pme_demo_call_fixed", type="T", value="PRESS", shift=True
         )
 
 
@@ -281,7 +281,7 @@ def unregister():
     wm = bpy.context.window_manager
     kc = wm.keyconfigs.addon
     if kc:
-        km = kc.keymaps.get('3D View')
+        km = kc.keymaps.get("3D View")
         if km:
             for kmi in km.keymap_items:
                 if kmi.idname == "view3d.pme_demo_call_fixed":

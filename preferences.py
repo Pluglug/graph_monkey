@@ -5,6 +5,7 @@ from bpy.types import AddonPreferences
 from .addon import ADDON_ID, get_prefs
 from .keymap_manager import keymap_registry
 from .operators.channel_selection_overlay import ChannelSelectionOverlaySettings
+
 # from .ui.calculator.preferences import CalculatorPreferences
 from .utils.logger_prefs import MONKEY_LoggerPreferences
 from .utils.logging import LoggerRegistry, get_logger

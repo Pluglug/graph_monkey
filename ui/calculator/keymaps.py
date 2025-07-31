@@ -16,4 +16,6 @@ calculator_keymaps = [
 ]
 
 
-keymap_registry.register_keymap_group("Calculator On Numeric Property Fields", calculator_keymaps)
+keymap_registry.register_keymap_group(
+    "Calculator On Numeric Property Fields", calculator_keymaps
+)
