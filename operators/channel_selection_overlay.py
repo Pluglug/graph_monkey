@@ -113,6 +113,10 @@ def gen_channel_selection_overlay_lines(context):
         lines.append(
             (f"...{len(selected_fcurves) - max_count} more", (1.0, 1.0, 1.0, 1.0))
         )
+
+    if "BOTTOM" in pr.overlay.alignment:
+        lines.reverse()
+
     return lines
 
 
@@ -163,7 +167,7 @@ class ChannelSelectionOverlaySettings(bpy.types.PropertyGroup):
         name="Offset Y",
         description="Offset from area edge",
         subtype="PIXEL",
-        default=10,
+        default=50,
         min=0,
     )
     # use_shadow: BoolProperty(
