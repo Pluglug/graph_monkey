@@ -228,23 +228,23 @@ class MONKEY_MT_GraphKeyAlignPie(Menu):
         layout = self.layout
         pie = layout.menu_pie()
 
-        # 選択中のKey, ハンドルを一番低いフレーム数の物に揃える。ハンドルや異なるチャンネルのKeyを選択している場合に効果的。
-        # 懸念点: 同じF-CurveのKeyを複数選択している場合は意図しない結果になる。
-        l = pie.operator("monkey.graph_key_align_horizontal", icon=ic("TRIA_LEFT"))
+        l = pie.operator("monkey.graph_key_align_horizontal", text="Left", icon=ic("TRIA_LEFT"))
         l.align_type = "LEFT"
 
-        # 選択中のKey, ハンドルを一番高いフレーム数の物に揃える
-        r = pie.operator("monkey.graph_key_align_horizontal", icon=ic("TRIA_RIGHT"))
+        r = pie.operator("monkey.graph_key_align_horizontal", text="Right", icon=ic("TRIA_RIGHT"))
         r.align_type = "RIGHT"
 
-        # 選択中のKey, ハンドルを一番値の低いものに揃える
-        # 懸念点: こちらは特にない。
-        b = pie.operator("monkey.graph_key_align_vertical", icon=ic("TRIA_DOWN"))
+        b = pie.operator("monkey.graph_key_align_vertical", text="Bottom", icon=ic("TRIA_DOWN"))
         b.align_type = "BOTTOM"
 
-        # 選択中のKey, ハンドルを一番値の高いものに揃える
-        t = pie.operator("monkey.graph_key_align_vertical", icon=ic("TRIA_UP"))
+        t = pie.operator("monkey.graph_key_align_vertical", text="Top", icon=ic("TRIA_UP"))
         t.align_type = "TOP"
+
+        # ----- Flat Tangents -----
+        pie.separator()
+        f = pie.operator("anim.flat_tangents", text="Flat (Free)", icon=ic("HANDLE_FREE"))
+        f.apply_handle_type = True
+        f.handle_type = "FREE"
 
 
 keymap_registry.register_keymap_group(
@@ -252,10 +252,9 @@ keymap_registry.register_keymap_group(
     keymaps=[
         KeymapDefinition(
             operator_id="wm.call_menu_pie",
-            key="A",
+            key="T",
             value="PRESS",
             shift=1,
-            alt=1,
             properties={"name": "MONKEY_MT_graph_key_align_pie"},
             name="Graph Editor",
             space_type="GRAPH_EDITOR",

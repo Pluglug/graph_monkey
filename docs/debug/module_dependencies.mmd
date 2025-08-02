@@ -10,6 +10,7 @@ flowchart RL
     keymap_manager[keymap_manager]
     operators_channel_selection_overlay(operators.channel_selection_overlay)
     operators_dopesheet_helper(operators.dopesheet_helper)
+    operators_flat_tangents(operators.flat_tangents)
     operators_handle_selection(operators.handle_selection)
     operators_keyframe_jump(operators.keyframe_jump)
     operators_keyframe_selection(operators.keyframe_selection)
@@ -36,6 +37,7 @@ flowchart RL
     keymap_manager --> ui_pies_graph_transform
     operators_channel_selection_overlay --> preferences
     operators_dopesheet_helper --> operators_channel_selection_overlay
+    operators_dopesheet_helper --> operators_flat_tangents
     operators_dopesheet_helper --> operators_handle_selection
     operators_dopesheet_helper --> operators_keyframe_selection
     operators_dopesheet_helper --> ui_pies_graph_key_align
@@ -45,6 +47,7 @@ flowchart RL
     utils_logging --> keymap_manager
     utils_logging --> operators_channel_selection_overlay
     utils_logging --> operators_dopesheet_helper
+    utils_logging --> operators_flat_tangents
     utils_logging --> operators_handle_selection
     utils_logging --> operators_keyframe_jump
     utils_logging --> operators_keyframe_selection
