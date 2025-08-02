@@ -60,8 +60,8 @@ def set_proportional_fcurve(_value: bool):
 
 
 CENTER_PIVOT_CONFIG = BlenderConfigProperty(
-    name="センターピボット",
-    description="センターピボットを設定",
+    name="Center Pivot",
+    description="Center Pivot",
     get_func=is_pivot_point_center,
     set_func=set_pivot_point_center,
     cache_enabled=True,
@@ -69,8 +69,8 @@ CENTER_PIVOT_CONFIG = BlenderConfigProperty(
 )
 
 CURSOR_PIVOT_CONFIG = BlenderConfigProperty(
-    name="カーソルピボット",
-    description="カーソルピボットを設定",
+    name="Cursor Pivot",
+    description="Cursor Pivot",
     get_func=is_pivot_point_cursor,
     set_func=set_pivot_point_cursor,
     cache_enabled=True,
@@ -78,8 +78,8 @@ CURSOR_PIVOT_CONFIG = BlenderConfigProperty(
 )
 
 INDIVIDUAL_ORIGINS_PIVOT_CONFIG = BlenderConfigProperty(
-    name="個別オリジンピボット",
-    description="個別オリジンピボットを設定",
+    name="Individual Origins",
+    description="Individual Origins",
     get_func=is_pivot_point_individual_origins,
     set_func=set_pivot_point_individual_origins,
     cache_enabled=True,
@@ -87,8 +87,8 @@ INDIVIDUAL_ORIGINS_PIVOT_CONFIG = BlenderConfigProperty(
 )
 
 PROPORTIONAL_FCURVE_CONFIG = BlenderConfigProperty(
-    name="比例フィードバック",
-    description="比例フィードバックを設定",
+    name="Proportional Fcurve",
+    description="Proportional Fcurve",
     get_func=is_proportional_fcurve,
     set_func=set_proportional_fcurve,
     cache_enabled=True,
@@ -128,13 +128,13 @@ class MONKEY_MT_GraphEditorConfigPie(Menu):
             pie.label(text="設定が利用できません")
             return
 
-        pie.prop(settings, "center_pivot", icon=ic("PIVOT_BOUNDBOX"))  # LEFT
+        pie.prop(
+            settings, "individual_origins_pivot", icon=ic("PIVOT_INDIVIDUAL")
+        )  # LEFT
         pie.prop(settings, "cursor_pivot", icon=ic("PIVOT_CURSOR"))  # RIGHT
         p_icon = "PROP_ON" if is_proportional_fcurve() else "PROP_OFF"
         pie.prop(settings, "proportional_fcurve", icon=ic(p_icon))  # BOTTOM
-        pie.prop(
-            settings, "individual_origins_pivot", icon=ic("PIVOT_INDIVIDUAL")
-        )  # TOP
+        pie.prop(settings, "center_pivot", icon=ic("PIVOT_BOUNDBOX"))  # TOP
 
         pie.separator()
         pie.separator()
@@ -146,7 +146,7 @@ class MONKEY_MT_GraphEditorConfigPie(Menu):
         col = pie.column()  # Extra Item Column
         gap = col.column()
         gap.separator()
-        gap.scale_y = 8  # Extra Item Offset
+        gap.scale_y = 6  # Extra Item Offset
 
         item_col = col.column()
         item_col.alignment = "CENTER"
