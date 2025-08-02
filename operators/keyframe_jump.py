@@ -225,7 +225,7 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
         self.original_frame = context.scene.frame_current
 
         # タイムラインエリアを探す
-        timeline_area = MONKEY_OT_JUMP_WITHIN_RANGE.find_area_with_visible_fcurves(
+        timeline_area = MONKEY_OT_JUMP_WITHIN_RANGE._find_timeline_area(
             context
         )
 
