@@ -85,6 +85,7 @@ class WM_OT_numeric_input(Operator):
             ):
                 # ラジアン→度変換
                 import math
+
                 current_value = math.degrees(current_value)
 
             if current_value is not None:
@@ -249,7 +250,7 @@ class WM_OT_numeric_input(Operator):
         BUTTON_SCALE_Y = 1.8
         BUTTON_SCALE_X = 0.5
         COMMON_SCALE_Y = 1.1
-        
+
         calculator = CalculatorState.get_instance()
         prefs = calculator.get_preferences()
 
