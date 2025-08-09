@@ -66,9 +66,20 @@ class KeymapRegistry:
         self._registered_keymap_items: List = []  # (km, kmi)
 
     def register_keymap_group(self, group_name: str, keymaps: List[KeymapDefinition]):
-        """キーマップグループを登録"""
-        self._keymaps[group_name] = keymaps
-        log.debug(f"Registered keymap group: {group_name} with {len(keymaps)} keymaps")
+        """キーマップグループを登録（既存のグループがある場合は追加）"""
+        if group_name in self._keymaps:
+            self._keymaps[group_name].extend(keymaps)
+            log.debug(
+                f"Appended {len(keymaps)} keymaps to existing group: {group_name}"
+            )
+        else:
+            self._keymaps[group_name] = keymaps
+            log.debug(
+                f"Registered new keymap group: {group_name} with {len(keymaps)} keymaps"
+            )
+
+        total_keymaps = len(self._keymaps[group_name])
+        log.debug(f"Group '{group_name}' now has {total_keymaps} total keymaps")
 
     def get_all_keymaps(self) -> Dict[str, List[KeymapDefinition]]:
         """全てのキーマップを取得"""

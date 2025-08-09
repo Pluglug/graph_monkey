@@ -191,14 +191,19 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
     bl_description = (
         "Peek next/previous keyframe while key is held down, return to original frame when released. "
         "Ctrl key to stay at the destination frame. "
+        "1/2 keys to offset by additional frames. Q to reset to original position."
     )
 
     next: BoolProperty(default=True, options={"SKIP_SAVE"})
+
+    # クラス変数でオフセット状態を保持
+    _offset_frames = 0
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.original_frame = None
         self.peek_key_type = None
+        self.current_offset = 0
 
     def modal(self, context, event):
         # 押されたキーと同じキーが離されたかを判定
@@ -206,16 +211,91 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
             # Ctrlキーが押されている場合は、現在のフレームにとどまって終了
             if event.ctrl:
                 # 移動先にとどまる（original_frameには戻らない）
+                # オフセット状態を更新
+                MONKEY_OT_KEYFRAME_PEEK._offset_frames = self.current_offset
                 self.original_frame = None
                 return {"FINISHED"}
 
             # 通常の場合は元のフレームに戻る
             if self.original_frame is not None:
                 context.scene.frame_set(self.original_frame)
+                # オフセット状態を更新
+                MONKEY_OT_KEYFRAME_PEEK._offset_frames = self.current_offset
                 self.original_frame = None
             return {"FINISHED"}
 
+        # 追加機能: 1キーで前のキーフレームに移動
+        if event.type == "ONE" and event.value == "PRESS":
+            self.current_offset -= 1
+            self._apply_offset(context)
+            return {"RUNNING_MODAL"}
+
+        # 追加機能: 2キーで次のキーフレームに移動
+        if event.type == "TWO" and event.value == "PRESS":
+            self.current_offset += 1
+            self._apply_offset(context)
+            return {"RUNNING_MODAL"}
+
+        # 追加機能: Qキーでリセット
+        if event.type == "Q" and event.value == "PRESS":
+            self.current_offset = 0
+            MONKEY_OT_KEYFRAME_PEEK._offset_frames = 0
+            self._apply_offset(context)
+            return {"RUNNING_MODAL"}
+
         return {"PASS_THROUGH"}
+
+    def _apply_offset(self, context):
+        """オフセットを適用してキーフレーム位置を計算"""
+        if self.original_frame is None:
+            return
+
+        # 基本位置（オリジナルフレーム + 初期ジャンプ方向）を計算
+        base_frame = self._get_base_keyframe_position(context)
+
+        # オフセットを適用
+        if self.current_offset == 0:
+            # オフセットが0の場合は基本位置
+            target_frame = base_frame
+        else:
+            # オフセットに応じてキーフレーム移動
+            target_frame = self._calculate_offset_frame(
+                context, base_frame, self.current_offset
+            )
+
+        # フレームを設定
+        context.scene.frame_set(target_frame)
+
+    def _get_base_keyframe_position(self, context):
+        """基本のキーフレーム位置（初期ジャンプ先）を取得"""
+        # オリジナルフレームに戻って、初期ジャンプを実行
+        context.scene.frame_set(self.original_frame)
+
+        timeline_area = MONKEY_OT_JUMP_WITHIN_RANGE._find_timeline_area(context)
+
+        if timeline_area:
+            with context.temp_override(area=timeline_area):
+                bpy.ops.screen.keyframe_jump(next=self.next)
+        else:
+            bpy.ops.screen.keyframe_jump(next=self.next)
+
+        return context.scene.frame_current
+
+    def _calculate_offset_frame(self, context, base_frame, offset):
+        """オフセット分だけキーフレーム移動した位置を計算"""
+        context.scene.frame_set(base_frame)
+
+        timeline_area = MONKEY_OT_JUMP_WITHIN_RANGE._find_timeline_area(context)
+
+        # 正の値なら次のキーフレーム方向、負の値なら前のキーフレーム方向
+        for _ in range(abs(offset)):
+            if timeline_area:
+                with context.temp_override(area=timeline_area):
+                    bpy.ops.screen.keyframe_jump(next=(offset > 0))
+            else:
+                bpy.ops.screen.keyframe_jump(next=(offset > 0))
+
+        return context.scene.frame_current
 
     def invoke(self, context, event):
         # キータイプを設定
@@ -224,10 +304,11 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
         # 元のフレームを記憶
         self.original_frame = context.scene.frame_current
 
+        # 保存されたオフセットを適用
+        self.current_offset = MONKEY_OT_KEYFRAME_PEEK._offset_frames
+
         # タイムラインエリアを探す
-        timeline_area = MONKEY_OT_JUMP_WITHIN_RANGE._find_timeline_area(
-            context
-        )
+        timeline_area = MONKEY_OT_JUMP_WITHIN_RANGE._find_timeline_area(context)
 
         if timeline_area:
             with context.temp_override(area=timeline_area):
@@ -236,6 +317,10 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
         else:
             # タイムラインエリアがない場合は通常ジャンプ
             bpy.ops.screen.keyframe_jump(next=self.next)
+
+        # 保存されたオフセットがある場合は追加で適用
+        if self.current_offset != 0:
+            self._apply_offset(context)
 
         # モーダル開始
         context.window_manager.modal_handler_add(self)
