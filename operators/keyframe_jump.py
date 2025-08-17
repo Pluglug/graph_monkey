@@ -208,12 +208,13 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
     def modal(self, context, event):
         # 押されたキーと同じキーが離されたかを判定
         if event.type == self.peek_key_type and event.value == "RELEASE":
-            # Ctrlキーが押されている場合は、現在のフレームにとどまって終了
-            if event.ctrl:
+            # Shiftキーが押されていない場合は、現在のフレームにとどまって終了
+            if not event.shift:
                 # 移動先にとどまる（original_frameには戻らない）
                 # オフセット状態を更新
                 MONKEY_OT_KEYFRAME_PEEK._offset_frames = self.current_offset
                 self.original_frame = None
+                # TODO: peek keyが押されたままだと、続いてjumpが実行されちゃう。
                 return {"FINISHED"}
 
             # 通常の場合は元のフレームに戻る
