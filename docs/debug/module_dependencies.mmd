@@ -16,6 +16,7 @@ flowchart RL
     operators_keyframe_selection(operators.keyframe_selection)
     operators_view_selected_curves_range(operators.view_selected_curves_range)
     preferences[preferences]
+    ui_anim_channels(ui.anim_channels)
     ui_pies_graph_key_align(ui.pies.graph_key_align)
     ui_pies_graph_transform(ui.pies.graph_transform)
     ui_playback_speed_controller(ui.playback_speed_controller)
@@ -33,6 +34,7 @@ flowchart RL
     keymap_manager --> operators_keyframe_selection
     keymap_manager --> operators_view_selected_curves_range
     keymap_manager --> preferences
+    keymap_manager --> ui_anim_channels
     keymap_manager --> ui_pies_graph_key_align
     keymap_manager --> ui_pies_graph_transform
     operators_channel_selection_overlay --> preferences
