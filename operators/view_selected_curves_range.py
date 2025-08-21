@@ -1,3 +1,4 @@
+# pyright: reportInvalidTypeForm=false
 import bpy
 from bpy.types import Operator
 from bpy.props import BoolProperty
@@ -63,27 +64,46 @@ class GRAPH_OT_view_selected_curves_range(Operator):
                 )
             original_selection[curve] = keyframe_states
 
-        # キーフレームの選択状態を変更（再生範囲内のすべてのキーフレームを選択）
+        # 各チャンネルで選択キーが1つずつかどうかを判定
+        per_channel_single = True
         for curve in selected_curves:
-            for keyframe in curve.keyframe_points:
-                x = keyframe.co[0]
-                in_range = frame_start <= x <= frame_end
-                keyframe.select_control_point = in_range
-                keyframe.select_left_handle = in_range
-                keyframe.select_right_handle = in_range
+            selected_count = 0
+            for kf in curve.keyframe_points:
+                if (
+                    kf.select_control_point
+                    or kf.select_left_handle
+                    or kf.select_right_handle
+                ):
+                    selected_count += 1
+            if selected_count != 1:
+                per_channel_single = False
+                break
+
+        # キーフレームの選択状態を変更（再生範囲内のすべてのキーフレームを選択）
+        # 条件に一致したときのみ一時的に選択を変更する
+        if per_channel_single:
+            for curve in selected_curves:
+                for keyframe in curve.keyframe_points:
+                    x = keyframe.co[0]
+                    in_range = frame_start <= x <= frame_end
+                    keyframe.select_control_point = in_range
+                    keyframe.select_left_handle = in_range
+                    keyframe.select_right_handle = in_range
 
         # graph.view_selectedを実行してフォーカス
         bpy.ops.graph.view_selected(include_handles=self.include_handles)
 
         # 元の選択状態に戻す
-        for curve in selected_curves:
-            if curve in original_selection:
-                for i, state in enumerate(original_selection[curve]):
-                    if i < len(curve.keyframe_points):
-                        kf = curve.keyframe_points[i]
-                        kf.select_control_point = state["control"]
-                        kf.select_left_handle = state["left"]
-                        kf.select_right_handle = state["right"]
+        # 一時選択を行った場合のみ復元する
+        if per_channel_single:
+            for curve in selected_curves:
+                if curve in original_selection:
+                    for i, state in enumerate(original_selection[curve]):
+                        if i < len(curve.keyframe_points):
+                            kf = curve.keyframe_points[i]
+                            kf.select_control_point = state["control"]
+                            kf.select_left_handle = state["left"]
+                            kf.select_right_handle = state["right"]
 
         return {"FINISHED"}
 
