@@ -2,6 +2,8 @@ from typing import Dict
 import time
 
 import bpy
+from bpy.types import Operator
+from bpy.props import IntProperty, FloatProperty
 
 from ..addon import ADDON_PREFIX, ADDON_PREFIX_PY
 
@@ -49,8 +51,8 @@ class Timeout:
     bl_label = ""
     bl_options = {"INTERNAL"}
 
-    idx: bpy.props.IntProperty(options={"SKIP_SAVE", "HIDDEN"})
-    delay: bpy.props.FloatProperty(default=0.0001, options={"SKIP_SAVE", "HIDDEN"})
+    idx: IntProperty(options={"SKIP_SAVE", "HIDDEN"})
+    delay: FloatProperty(default=0.0001, options={"SKIP_SAVE", "HIDDEN"})
 
     _data: Dict[int, tuple] = dict()  # タイムアウト関数のデータ保持用
     _timer = None
@@ -82,7 +84,7 @@ class Timeout:
 
 
 TimeoutOperator = type(
-    "%s_OT_timeout" % ADDON_PREFIX, (Timeout, bpy.types.Operator), {}
+    "%s_OT_timeout" % ADDON_PREFIX, (Timeout, Operator), {}
 )
 
 
