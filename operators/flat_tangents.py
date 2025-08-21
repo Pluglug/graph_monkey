@@ -21,6 +21,7 @@ log = get_logger(__name__)
 # Utility
 # --------------------------------------------------------------
 
+
 def get_handle_type_items():
     """Returns handle-type enum items used in UI/Properties."""
     return [
@@ -129,7 +130,9 @@ class FLAT_TANGENTS_OT_operator(bpy.types.Operator):
                 sel_rh = keyframe.select_right_handle
 
                 # Decide which handles should be flattened
-                both = (sel_cp and not (sel_lh or sel_rh)) or (not sel_cp and sel_lh and sel_rh)
+                both = (sel_cp and not (sel_lh or sel_rh)) or (
+                    not sel_cp and sel_lh and sel_rh
+                )
 
                 if both or sel_cp or sel_lh:
                     self._flatten_handle(keyframe, left=True)

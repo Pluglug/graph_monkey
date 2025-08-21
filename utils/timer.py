@@ -83,9 +83,7 @@ class Timeout:
         return {"RUNNING_MODAL"}
 
 
-TimeoutOperator = type(
-    "%s_OT_timeout" % ADDON_PREFIX, (Timeout, Operator), {}
-)
+TimeoutOperator = type("%s_OT_timeout" % ADDON_PREFIX, (Timeout, Operator), {})
 
 
 def timeout(func: callable, *args) -> None:

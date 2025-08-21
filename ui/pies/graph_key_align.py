@@ -228,21 +228,31 @@ class MONKEY_MT_GraphKeyAlignPie(Menu):
         layout = self.layout
         pie = layout.menu_pie()
 
-        l = pie.operator("monkey.graph_key_align_horizontal", text="Left", icon=ic("TRIA_LEFT"))
+        l = pie.operator(
+            "monkey.graph_key_align_horizontal", text="Left", icon=ic("TRIA_LEFT")
+        )
         l.align_type = "LEFT"
 
-        r = pie.operator("monkey.graph_key_align_horizontal", text="Right", icon=ic("TRIA_RIGHT"))
+        r = pie.operator(
+            "monkey.graph_key_align_horizontal", text="Right", icon=ic("TRIA_RIGHT")
+        )
         r.align_type = "RIGHT"
 
-        b = pie.operator("monkey.graph_key_align_vertical", text="Bottom", icon=ic("TRIA_DOWN"))
+        b = pie.operator(
+            "monkey.graph_key_align_vertical", text="Bottom", icon=ic("TRIA_DOWN")
+        )
         b.align_type = "BOTTOM"
 
-        t = pie.operator("monkey.graph_key_align_vertical", text="Top", icon=ic("TRIA_UP"))
+        t = pie.operator(
+            "monkey.graph_key_align_vertical", text="Top", icon=ic("TRIA_UP")
+        )
         t.align_type = "TOP"
 
         # ----- Flat Tangents -----
         pie.separator()
-        f = pie.operator("anim.flat_tangents", text="Flat (Free)", icon=ic("HANDLE_FREE"))
+        f = pie.operator(
+            "anim.flat_tangents", text="Flat (Free)", icon=ic("HANDLE_FREE")
+        )
         f.apply_handle_type = True
         f.handle_type = "FREE"
 
