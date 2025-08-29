@@ -196,8 +196,9 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
 
     next: BoolProperty(default=True, options={"SKIP_SAVE"})
 
-    # クラス変数でオフセット状態を保持
-    _offset_frames = 0
+    # クラス変数でオフセット状態を保持（方向別）
+    _offset_frames_next = 0  # 前方向のオフセット
+    _offset_frames_prev = 0  # 後方向のオフセット
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -211,8 +212,11 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
             # Shiftキーが押されていない場合は、現在のフレームにとどまって終了
             if not event.shift:
                 # 移動先にとどまる（original_frameには戻らない）
-                # オフセット状態を更新
-                MONKEY_OT_KEYFRAME_PEEK._offset_frames = self.current_offset
+                # オフセット状態を方向別に更新
+                if self.next:
+                    MONKEY_OT_KEYFRAME_PEEK._offset_frames_next = self.current_offset
+                else:
+                    MONKEY_OT_KEYFRAME_PEEK._offset_frames_prev = self.current_offset
                 self.original_frame = None
                 # TODO: peek keyが押されたままだと、続いてjumpが実行されちゃう。
                 return {"FINISHED"}
@@ -220,8 +224,11 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
             # 通常の場合は元のフレームに戻る
             if self.original_frame is not None:
                 context.scene.frame_set(self.original_frame)
-                # オフセット状態を更新
-                MONKEY_OT_KEYFRAME_PEEK._offset_frames = self.current_offset
+                # オフセット状態を方向別に更新
+                if self.next:
+                    MONKEY_OT_KEYFRAME_PEEK._offset_frames_next = self.current_offset
+                else:
+                    MONKEY_OT_KEYFRAME_PEEK._offset_frames_prev = self.current_offset
                 self.original_frame = None
             return {"FINISHED"}
 
@@ -240,7 +247,8 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
         # 追加機能: Qキーでリセット
         if event.type == "Q" and event.value == "PRESS":
             self.current_offset = 0
-            MONKEY_OT_KEYFRAME_PEEK._offset_frames = 0
+            MONKEY_OT_KEYFRAME_PEEK._offset_frames_next = 0
+            MONKEY_OT_KEYFRAME_PEEK._offset_frames_prev = 0
             self._apply_offset(context)
             return {"RUNNING_MODAL"}
 
@@ -305,8 +313,11 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
         # 元のフレームを記憶
         self.original_frame = context.scene.frame_current
 
-        # 保存されたオフセットを適用
-        self.current_offset = MONKEY_OT_KEYFRAME_PEEK._offset_frames
+        # 保存されたオフセットを方向に応じて適用
+        if self.next:
+            self.current_offset = MONKEY_OT_KEYFRAME_PEEK._offset_frames_next
+        else:
+            self.current_offset = MONKEY_OT_KEYFRAME_PEEK._offset_frames_prev
 
         # タイムラインエリアを探す
         timeline_area = MONKEY_OT_JUMP_WITHIN_RANGE._find_timeline_area(context)
