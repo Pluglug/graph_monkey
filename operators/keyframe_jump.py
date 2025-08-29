@@ -205,12 +205,18 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
         self.original_frame = None
         self.peek_key_type = None
         self.current_offset = 0
+        self.stay_on_release = False
 
     def modal(self, context, event):
+        # Shiftが離されたら、最終的に移動先にとどまるフラグを立てて、peekキーが離されるまで維持
+        if event.type in {"LEFT_SHIFT", "RIGHT_SHIFT"} and event.value == "RELEASE":
+            self.stay_on_release = True
+            return {"RUNNING_MODAL"}
         # 押されたキーと同じキーが離されたかを判定
         if event.type == self.peek_key_type and event.value == "RELEASE":
-            # Shiftキーが押されていない場合は、現在のフレームにとどまって終了
-            if not event.shift:
+            # Shiftが離されたことがある、または現在Shiftが押されていない場合は滞在
+            should_stay = self.stay_on_release or (not event.shift)
+            if should_stay:
                 # 移動先にとどまる（original_frameには戻らない）
                 # オフセット状態を方向別に更新
                 if self.next:
@@ -218,7 +224,6 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
                 else:
                     MONKEY_OT_KEYFRAME_PEEK._offset_frames_prev = self.current_offset
                 self.original_frame = None
-                # TODO: peek keyが押されたままだと、続いてjumpが実行されちゃう。
                 return {"FINISHED"}
 
             # 通常の場合は元のフレームに戻る
@@ -232,15 +237,20 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
                 self.original_frame = None
             return {"FINISHED"}
 
+        # peekキーが押され続けている間のリピート/押下イベントは消費して他オペレーターへ渡さない
+        if event.type == self.peek_key_type:
+            # RELEASE以外（PRESS/REPEAT等）は消費して滞留
+            return {"RUNNING_MODAL"}
+
         # 追加機能: 1キーで前のキーフレームに移動
         if event.type == "ONE" and event.value == "PRESS":
-            self.current_offset -= 1
+            self.current_offset = self._clamp_offset_by_direction(self.current_offset - 1)
             self._apply_offset(context)
             return {"RUNNING_MODAL"}
 
         # 追加機能: 2キーで次のキーフレームに移動
         if event.type == "TWO" and event.value == "PRESS":
-            self.current_offset += 1
+            self.current_offset = self._clamp_offset_by_direction(self.current_offset + 1)
             self._apply_offset(context)
             return {"RUNNING_MODAL"}
 
@@ -272,8 +282,8 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
                 context, base_frame, self.current_offset
             )
 
-        # フレームを設定
-        context.scene.frame_set(target_frame)
+        # 基準フレームを跨がないようにクランプ
+        context.scene.frame_set(self._clamp_target_frame_by_origin(target_frame))
 
     def _get_base_keyframe_position(self, context):
         """基本のキーフレーム位置（初期ジャンプ先）を取得"""
@@ -319,6 +329,9 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
         else:
             self.current_offset = MONKEY_OT_KEYFRAME_PEEK._offset_frames_prev
 
+        # 進行方向を跨がないように、符号を方向に合わせてクランプ
+        self.current_offset = self._clamp_offset_by_direction(self.current_offset)
+
         # タイムラインエリアを探す
         timeline_area = MONKEY_OT_JUMP_WITHIN_RANGE._find_timeline_area(context)
 
@@ -337,6 +350,20 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
         # モーダル開始
         context.window_manager.modal_handler_add(self)
         return {"RUNNING_MODAL"}
+
+    def _clamp_offset_by_direction(self, offset: int) -> int:
+        """進行方向を跨がないようにオフセット符号をクランプ"""
+        if self.next:
+            return max(0, offset)
+        return min(0, offset)
+
+    def _clamp_target_frame_by_origin(self, target_frame: int) -> int:
+        """基準フレームを跨がないようにターゲットフレームをクランプ"""
+        if self.next:
+            # 前方ピーク中は元フレームより前へ行かない（最低 original+1）
+            return max(self.original_frame + 1, target_frame)
+        # 後方ピーク中は元フレームより後へ行かない（最大 original-1）
+        return min(self.original_frame - 1, target_frame)
 
 
 KEYFRAME_JUMP_KEYMAPS = [
