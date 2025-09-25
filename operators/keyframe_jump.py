@@ -1,11 +1,23 @@
+# pyright: reportInvalidTypeForm=false
 import bpy
 from bpy.types import Operator, Context, Area
-from bpy.props import BoolProperty, StringProperty
+from bpy.props import BoolProperty, StringProperty, EnumProperty
 
 from ..utils.logging import get_logger
 from ..keymap_manager import KeymapDefinition, keymap_registry
 
 log = get_logger(__name__)
+ 
+
+# フラグ型（複数選択）用の列挙（4タプル: id, name, desc, number）
+KEYFRAME_TYPE_FLAGS = [
+    ("KEYFRAME", "Keyframe", "Normal keyframe, e.g. for key poses.", 1),
+    ("BREAKDOWN", "Breakdown", "A breakdown pose, e.g. for transitions between key poses.", 2),
+    ("MOVING_HOLD", "Moving Hold", "A keyframe that is part of a moving hold.", 4),
+    ("EXTREME", "Extreme", "An “extreme” pose, or some other purpose as needed.", 8),
+    ("JITTER", "Jitter", "A filler or baked keyframe for keying on ones, or some other purpose as needed.", 16),
+    ("GENERATED", "Generated", "A key generated automatically by a tool, not manually created.", 32),
+]
 
 
 class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
@@ -66,64 +78,89 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
             self.end_frame = scene.frame_end
 
     def _execute_keyframe_jump(self, context: Context) -> bool:
-        """キーフレームジャンプの実行（エラーハンドリング付き）"""
-        try:
-            bpy.ops.screen.keyframe_jump(next=self.next)
+        """キーフレームジャンプの実行（フィルタ有りは直接ターゲットへ、無しは通常ジャンプ）"""
+        scene = context.scene
+        allowed_types = self._parse_allowed_key_types(context)
+
+        # フィルタ未指定: 既存のBlenderオペレーターに委譲
+        if not allowed_types:
+            try:
+                bpy.ops.screen.keyframe_jump(next=self.next)
+                return True
+            except RuntimeError as e:
+                log.warning(f"keyframe_jump failed in {context.area.ui_type}: {e}")
+                if self.next:
+                    bpy.ops.screen.frame_offset(delta=1)
+                else:
+                    bpy.ops.screen.frame_offset(delta=-1)
+                return False
+
+        # フィルタ指定: 可視Fカーブから許可タイプのフレームを抽出して直接移動
+        allowed_frames = self._collect_allowed_frames_in_range(context, allowed_types)
+        if not allowed_frames:
             return True
-        except RuntimeError as e:
-            log.warning(f"keyframe_jump failed in {context.area.ui_type}: {e}")
-            # フォールバック: 通常のフレーム移動
-            if self.next:
-                bpy.ops.screen.frame_offset(delta=1)
-            else:
-                bpy.ops.screen.frame_offset(delta=-1)
-            return False
+
+        current = scene.frame_current
+        target = self._select_target_frame_from_list(allowed_frames, current, self.next, self.loop)
+        if target is None:
+            return True
+
+        scene.frame_set(target)
+        return True
 
     def _handle_loop_jump(self, context: Context):
         """ループ処理：範囲の逆端に移動してキーフレームをチェック"""
         scene = context.scene
+        allowed_types = self._parse_allowed_key_types(context)
 
-        # 逆端に移動
-        if self.next:
-            scene.frame_set(self.start_frame)
-        else:
-            scene.frame_set(self.end_frame)
-
-        # 逆端に可視キーフレームがあれば終了
-        if self._has_visible_keyframe_at_current_frame(context):
+        # フィルタ未指定: 従来動作（端へ移動→通常ジャンプ）
+        if not allowed_types:
+            if self.next:
+                scene.frame_set(self.start_frame)
+            else:
+                scene.frame_set(self.end_frame)
+            if self._has_visible_keyframe_at_current_frame(context, None):
+                return
+            self._execute_keyframe_jump(context)
             return
 
-        # なければもう一度ジャンプ
-        self._execute_keyframe_jump(context)
+        # フィルタ指定: 端に寄せず、リストから直接選択（先頭/末尾）
+        allowed_frames = self._collect_allowed_frames_in_range(context, allowed_types)
+        if not allowed_frames:
+            return
+        if self.next:
+            scene.frame_set(allowed_frames[0])
+        else:
+            scene.frame_set(allowed_frames[-1])
 
     # ===========================================
     # キーフレーム検出メソッド
     # ===========================================
 
-    def _has_visible_keyframe_at_current_frame(self, context: Context) -> bool:
+    def _has_visible_keyframe_at_current_frame(self, context: Context, allowed_types: set[str] | None = None) -> bool:
         """
         現在のフレームに可視キーフレームがあるかチェック
         必要に応じてTIMELINEコンテキストに切り替える
         """
         # 1. 現在のコンテキストで試す
         if self._check_visible_fcurves(context):
-            return self._check_keyframe_at_frame(context)
+            return self._check_keyframe_at_frame(context, allowed_types)
 
         # 2. TIMELINEエリアで試す
         timeline_area = self._find_timeline_area(context)
         if timeline_area:
             with context.temp_override(area=timeline_area):
                 if self._check_visible_fcurves(context):
-                    return self._check_keyframe_at_frame(context)
+                    return self._check_keyframe_at_frame(context, allowed_types)
 
         # 3. 他のアニメーションエリアで試す
-        return self._try_animation_areas(context)
+        return self._try_animation_areas(context, allowed_types)
 
     def _check_visible_fcurves(self, context: Context) -> bool:
         """visible_fcurvesが利用可能かチェック"""
         return hasattr(context, "visible_fcurves") and context.visible_fcurves
 
-    def _check_keyframe_at_frame(self, context: Context) -> bool:
+    def _check_keyframe_at_frame(self, context: Context, allowed_types: set[str] | None = None) -> bool:
         """現在のフレームにキーフレームがあるかチェック"""
         scene = context.scene
         current_frame = scene.frame_current
@@ -135,10 +172,70 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
         for fcurve in visible_fcurves:
             for kp in fcurve.keyframe_points:
                 if int(kp.co.x) == current_frame:
-                    return True
+                    if not allowed_types or getattr(kp, "type", None) in allowed_types:
+                        return True
         return False
 
-    def _try_animation_areas(self, context: Context) -> bool:
+    # ===========================================
+    # 許可タイプのフレーム抽出とターゲット選定
+    # ===========================================
+
+    def _collect_allowed_frames_in_range(self, context: Context, allowed_types: set[str]) -> list[int]:
+        """可視Fカーブから許可タイプのキーフレームを収集し、範囲内で昇順のユニークリストを返す"""
+        frames: set[int] = set()
+
+        def collect() -> bool:
+            visible_fcurves = getattr(context, "visible_fcurves", None)
+            if not visible_fcurves:
+                return False
+            for fcurve in visible_fcurves:
+                for kp in fcurve.keyframe_points:
+                    kf_type = getattr(kp, "type", None)
+                    if kf_type in allowed_types:
+                        frame_int = int(kp.co.x)
+                        if self.start_frame <= frame_int <= self.end_frame:
+                            frames.add(frame_int)
+            return True
+
+        # 現在のコンテキスト
+        if not collect():
+            # タイムライン
+            timeline_area = self._find_timeline_area(context)
+            if timeline_area:
+                with context.temp_override(area=timeline_area):
+                    if not collect():
+                        pass
+            # 他アニメーションエリア
+            if not frames:
+                animation_areas = ["DOPESHEET_EDITOR", "GRAPH_EDITOR", "NLA_EDITOR"]
+                for area_type in animation_areas:
+                    for area in context.window.screen.areas:
+                        if area.type == area_type:
+                            with context.temp_override(area=area):
+                                if collect():
+                                    break
+                    if frames:
+                        break
+
+        return sorted(frames)
+
+    @staticmethod
+    def _select_target_frame_from_list(frames: list[int], current: int, go_next: bool, allow_loop: bool) -> int | None:
+        """昇順framesから現在位置に対する次/前のターゲットを返す。見つからなければループ考慮。"""
+        if not frames:
+            return None
+        if go_next:
+            for f in frames:
+                if f > current:
+                    return f
+            return frames[0] if allow_loop else None
+        else:
+            for f in reversed(frames):
+                if f < current:
+                    return f
+            return frames[-1] if allow_loop else None
+
+    def _try_animation_areas(self, context: Context, allowed_types: set[str] | None = None) -> bool:
         """他のアニメーションエリアでvisible_fcurvesを試す"""
         animation_areas = ["DOPESHEET_EDITOR", "GRAPH_EDITOR", "NLA_EDITOR"]
         for area_type in animation_areas:
@@ -146,7 +243,7 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
                 if area.type == area_type:
                     with context.temp_override(area=area):
                         if self._check_visible_fcurves(context):
-                            return self._check_keyframe_at_frame(context)
+                            return self._check_keyframe_at_frame(context, allowed_types)
         return False
 
     # ===========================================
@@ -160,6 +257,33 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
             if area.ui_type == "TIMELINE":
                 return area
         return None
+
+    # ===========================================
+    # キーフレームタイプ フィルタ ユーティリティ
+    # ===========================================
+
+    def _parse_allowed_key_types(self, context: Context) -> set[str]:
+        """シーンのフラグ型Enumから選択タイプ集合を返す。未選択なら空集合（=全許可）。"""
+        value = getattr(context.scene, "monkey_keyframe_filter_type", None)
+        # BlenderのENUM_FLAGは set[str] になる。未定義/空はフィルタなし。
+        if not value:
+            return set()
+        if isinstance(value, str):
+            return {value.upper()}
+        try:
+            return {str(v).upper() for v in value}
+        except Exception:
+            return set()
+
+    # ===========================================
+    # タイムライン メニュー UI
+    # ===========================================
+
+    @staticmethod
+    def _draw_timeline_filter_menu(menu, context: Context):
+        layout = menu.layout
+        layout.separator()
+        layout.prop(context.scene, "monkey_keyframe_filter_type", text="Keyframe Jump Filter")
 
     # ===========================================
     # 旧メソッド（互換性のため残す）
@@ -446,11 +570,37 @@ for keymap_name, keymap_space_type in KEYFRAME_JUMP_KEYMAPS:
 keymap_registry.register_keymap_group("Keyframe Jump", keymap_definitions)
 
 
-# def register():
-#     bpy.types.Scene.keyframe_jump_wrap = BoolProperty(
-#         name="Loop Keyframe Jump",
-#         description="Loop keyframe jump within frame range",
-#         default=True,
-#     )
-# def unregister():
-#     del bpy.types.Scene.keyframe_jump_wrap
+def register():
+    # シーンプロパティ: キーフレームジャンプのフィルタタイプ
+    try:
+        if not hasattr(bpy.types.Scene, "monkey_keyframe_filter_type"):
+            # ビットフラグで複数選択可能（'ANY' は特別扱いし、全許可として運用）
+            bpy.types.Scene.monkey_keyframe_filter_type = EnumProperty(  # type: ignore
+                items=KEYFRAME_TYPE_FLAGS,
+                name="Keyframe Jump Filter",
+                description="Filter keyframe types (multi-select)",
+                options={"ENUM_FLAG", "SKIP_SAVE"},
+            )
+    except Exception:
+        pass
+
+    # タイムラインメニューにUIを追加
+    try:
+        bpy.types.TIME_MT_editor_menus.append(MONKEY_OT_JUMP_WITHIN_RANGE._draw_timeline_filter_menu)
+    except Exception:
+        pass
+
+
+def unregister():
+    # タイムラインメニューからUIを削除
+    try:
+        bpy.types.TIME_MT_editor_menus.remove(MONKEY_OT_JUMP_WITHIN_RANGE._draw_timeline_filter_menu)
+    except Exception:
+        pass
+
+    # シーンプロパティを削除
+    try:
+        if hasattr(bpy.types.Scene, "monkey_keyframe_filter_type"):
+            del bpy.types.Scene.monkey_keyframe_filter_type  # type: ignore
+    except Exception:
+        pass
