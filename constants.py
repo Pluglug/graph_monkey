@@ -7,6 +7,16 @@ SINCE_4_0_0 = BLENDER_VERSION >= (4, 0, 0)
 
 log = get_logger(__name__)
 
+
+KEYFRAME_TYPE_FLAGS = [
+    ("KEYFRAME", "Keyframe", "", "KEYTYPE_KEYFRAME_VEC", 1),
+    ("BREAKDOWN", "Breakdown", "", "KEYTYPE_BREAKDOWN_VEC", 2),
+    ("MOVING_HOLD", "Moving Hold", "", "KEYTYPE_MOVING_HOLD_VEC", 4),
+    ("EXTREME", "Extreme", "", "KEYTYPE_EXTREME_VEC", 8),
+    ("JITTER", "Jitter", "", "KEYTYPE_JITTER_VEC", 16),
+    ("GENERATED", "Generated", "", "KEYTYPE_GENERATED_VEC", 32),
+]
+
 OVERLAY_ALIGNMENT_ITEMS = [
     ("TOP", "Top", ""),
     ("TOP_LEFT", "Top Left", ""),

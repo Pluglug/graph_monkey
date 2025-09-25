@@ -1,23 +1,21 @@
 # pyright: reportInvalidTypeForm=false
 import bpy
-from bpy.types import Operator, Context, Area
+from bpy.types import Operator, Context
 from bpy.props import BoolProperty, StringProperty, EnumProperty
 
 from ..utils.logging import get_logger
 from ..keymap_manager import KeymapDefinition, keymap_registry
+from ..utils.anim_utils import (
+    collect_allowed_frames_in_range,
+    select_target_frame_from_list,
+    find_timeline_area,
+    get_allowed_frames_in_range_cached,
+    invalidate_allowed_frames_cache,
+)
+from ..constants import KEYFRAME_TYPE_FLAGS
+
 
 log = get_logger(__name__)
- 
-
-# フラグ型（複数選択）用の列挙（4タプル: id, name, desc, number）
-KEYFRAME_TYPE_FLAGS = [
-    ("KEYFRAME", "Keyframe", "Normal keyframe, e.g. for key poses.", 1),
-    ("BREAKDOWN", "Breakdown", "A breakdown pose, e.g. for transitions between key poses.", 2),
-    ("MOVING_HOLD", "Moving Hold", "A keyframe that is part of a moving hold.", 4),
-    ("EXTREME", "Extreme", "An “extreme” pose, or some other purpose as needed.", 8),
-    ("JITTER", "Jitter", "A filler or baked keyframe for keying on ones, or some other purpose as needed.", 16),
-    ("GENERATED", "Generated", "A key generated automatically by a tool, not manually created.", 32),
-]
 
 
 class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
@@ -28,7 +26,7 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
 
     next: BoolProperty(default=True, options={"SKIP_SAVE"})
     loop: BoolProperty(default=True, options={"SKIP_SAVE"})
-    called_from: StringProperty(default="", options={"SKIP_SAVE"})
+    called_from: StringProperty(default="", options={"SKIP_SAVE"})  # debug
 
     def execute(self, context: Context):
         log.debug(f"Called from: {self.called_from}")
@@ -96,12 +94,19 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
                 return False
 
         # フィルタ指定: 可視Fカーブから許可タイプのフレームを抽出して直接移動
-        allowed_frames = self._collect_allowed_frames_in_range(context, allowed_types)
+        allowed_frames = get_allowed_frames_in_range_cached(
+            context,
+            self.start_frame,
+            self.end_frame,
+            allowed_types,
+        )
         if not allowed_frames:
             return True
 
         current = scene.frame_current
-        target = self._select_target_frame_from_list(allowed_frames, current, self.next, self.loop)
+        target = select_target_frame_from_list(
+            allowed_frames, current, self.next, self.loop
+        )
         if target is None:
             return True
 
@@ -125,7 +130,12 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
             return
 
         # フィルタ指定: 端に寄せず、リストから直接選択（先頭/末尾）
-        allowed_frames = self._collect_allowed_frames_in_range(context, allowed_types)
+        allowed_frames = get_allowed_frames_in_range_cached(
+            context,
+            self.start_frame,
+            self.end_frame,
+            allowed_types,
+        )
         if not allowed_frames:
             return
         if self.next:
@@ -137,7 +147,9 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
     # キーフレーム検出メソッド
     # ===========================================
 
-    def _has_visible_keyframe_at_current_frame(self, context: Context, allowed_types: set[str] | None = None) -> bool:
+    def _has_visible_keyframe_at_current_frame(
+        self, context: Context, allowed_types: set[str] | None = None
+    ) -> bool:
         """
         現在のフレームに可視キーフレームがあるかチェック
         必要に応じてTIMELINEコンテキストに切り替える
@@ -147,7 +159,7 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
             return self._check_keyframe_at_frame(context, allowed_types)
 
         # 2. TIMELINEエリアで試す
-        timeline_area = self._find_timeline_area(context)
+        timeline_area = find_timeline_area(context)
         if timeline_area:
             with context.temp_override(area=timeline_area):
                 if self._check_visible_fcurves(context):
@@ -160,7 +172,9 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
         """visible_fcurvesが利用可能かチェック"""
         return hasattr(context, "visible_fcurves") and context.visible_fcurves
 
-    def _check_keyframe_at_frame(self, context: Context, allowed_types: set[str] | None = None) -> bool:
+    def _check_keyframe_at_frame(
+        self, context: Context, allowed_types: set[str] | None = None
+    ) -> bool:
         """現在のフレームにキーフレームがあるかチェック"""
         scene = context.scene
         current_frame = scene.frame_current
@@ -180,7 +194,9 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
     # 許可タイプのフレーム抽出とターゲット選定
     # ===========================================
 
-    def _collect_allowed_frames_in_range(self, context: Context, allowed_types: set[str]) -> list[int]:
+    def _collect_allowed_frames_in_range(
+        self, context: Context, allowed_types: set[str]
+    ) -> list[int]:
         """可視Fカーブから許可タイプのキーフレームを収集し、範囲内で昇順のユニークリストを返す"""
         frames: set[int] = set()
 
@@ -200,7 +216,7 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
         # 現在のコンテキスト
         if not collect():
             # タイムライン
-            timeline_area = self._find_timeline_area(context)
+            timeline_area = find_timeline_area(context)
             if timeline_area:
                 with context.temp_override(area=timeline_area):
                     if not collect():
@@ -220,7 +236,9 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
         return sorted(frames)
 
     @staticmethod
-    def _select_target_frame_from_list(frames: list[int], current: int, go_next: bool, allow_loop: bool) -> int | None:
+    def _select_target_frame_from_list(
+        frames: list[int], current: int, go_next: bool, allow_loop: bool
+    ) -> int | None:
         """昇順framesから現在位置に対する次/前のターゲットを返す。見つからなければループ考慮。"""
         if not frames:
             return None
@@ -235,7 +253,9 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
                     return f
             return frames[-1] if allow_loop else None
 
-    def _try_animation_areas(self, context: Context, allowed_types: set[str] | None = None) -> bool:
+    def _try_animation_areas(
+        self, context: Context, allowed_types: set[str] | None = None
+    ) -> bool:
         """他のアニメーションエリアでvisible_fcurvesを試す"""
         animation_areas = ["DOPESHEET_EDITOR", "GRAPH_EDITOR", "NLA_EDITOR"]
         for area_type in animation_areas:
@@ -245,18 +265,6 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
                         if self._check_visible_fcurves(context):
                             return self._check_keyframe_at_frame(context, allowed_types)
         return False
-
-    # ===========================================
-    # ユーティリティメソッド
-    # ===========================================
-
-    @staticmethod
-    def _find_timeline_area(context: Context) -> Area | None:
-        """TIMELINEエリアを探す"""
-        for area in context.window.screen.areas:
-            if area.ui_type == "TIMELINE":
-                return area
-        return None
 
     # ===========================================
     # キーフレームタイプ フィルタ ユーティリティ
@@ -283,30 +291,8 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
     def _draw_timeline_filter_menu(menu, context: Context):
         layout = menu.layout
         layout.separator()
-        layout.prop(context.scene, "monkey_keyframe_filter_type", text="Keyframe Jump Filter")
-
-    # ===========================================
-    # 旧メソッド（互換性のため残す）
-    # ===========================================
-
-    @staticmethod
-    def visible_key_on_current_frame(context: Context) -> bool:
-        """
-        【非推奨】現在のフレーム位置に可視状態のキーフレームがあればTrue
-        新しいコードでは _has_visible_keyframe_at_current_frame を使用してください
-        """
-        scene = context.scene
-        current_frame = scene.frame_current
-
-        visible_fcurves = getattr(context, "visible_fcurves", None)
-        if not visible_fcurves:
-            return False
-
-        for fcurve in visible_fcurves:
-            for kp in fcurve.keyframe_points:
-                if int(kp.co.x) == current_frame:
-                    return True
-        return False
+        layout.prop(context.scene, "monkey_keyframe_filter_type", icon_only=True)
+        layout.separator()
 
 
 class MONKEY_OT_KEYFRAME_PEEK(Operator):
@@ -368,13 +354,17 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
 
         # 追加機能: 1キーで前のキーフレームに移動
         if event.type == "ONE" and event.value == "PRESS":
-            self.current_offset = self._clamp_offset_by_direction(self.current_offset - 1)
+            self.current_offset = self._clamp_offset_by_direction(
+                self.current_offset - 1
+            )
             self._apply_offset(context)
             return {"RUNNING_MODAL"}
 
         # 追加機能: 2キーで次のキーフレームに移動
         if event.type == "TWO" and event.value == "PRESS":
-            self.current_offset = self._clamp_offset_by_direction(self.current_offset + 1)
+            self.current_offset = self._clamp_offset_by_direction(
+                self.current_offset + 1
+            )
             self._apply_offset(context)
             return {"RUNNING_MODAL"}
 
@@ -414,7 +404,7 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
         # オリジナルフレームに戻って、初期ジャンプを実行
         context.scene.frame_set(self.original_frame)
 
-        timeline_area = MONKEY_OT_JUMP_WITHIN_RANGE._find_timeline_area(context)
+        timeline_area = find_timeline_area(context)
 
         if timeline_area:
             with context.temp_override(area=timeline_area):
@@ -428,7 +418,7 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
         """オフセット分だけキーフレーム移動した位置を計算"""
         context.scene.frame_set(base_frame)
 
-        timeline_area = MONKEY_OT_JUMP_WITHIN_RANGE._find_timeline_area(context)
+        timeline_area = find_timeline_area(context)
 
         # 正の値なら次のキーフレーム方向、負の値なら前のキーフレーム方向
         for _ in range(abs(offset)):
@@ -457,7 +447,7 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
         self.current_offset = self._clamp_offset_by_direction(self.current_offset)
 
         # タイムラインエリアを探す
-        timeline_area = MONKEY_OT_JUMP_WITHIN_RANGE._find_timeline_area(context)
+        timeline_area = find_timeline_area(context)
 
         if timeline_area:
             with context.temp_override(area=timeline_area):
@@ -586,7 +576,9 @@ def register():
 
     # タイムラインメニューにUIを追加
     try:
-        bpy.types.TIME_MT_editor_menus.append(MONKEY_OT_JUMP_WITHIN_RANGE._draw_timeline_filter_menu)
+        bpy.types.TIME_MT_editor_menus.append(
+            MONKEY_OT_JUMP_WITHIN_RANGE._draw_timeline_filter_menu
+        )
     except Exception:
         pass
 
@@ -594,7 +586,9 @@ def register():
 def unregister():
     # タイムラインメニューからUIを削除
     try:
-        bpy.types.TIME_MT_editor_menus.remove(MONKEY_OT_JUMP_WITHIN_RANGE._draw_timeline_filter_menu)
+        bpy.types.TIME_MT_editor_menus.remove(
+            MONKEY_OT_JUMP_WITHIN_RANGE._draw_timeline_filter_menu
+        )
     except Exception:
         pass
 
@@ -602,5 +596,11 @@ def unregister():
     try:
         if hasattr(bpy.types.Scene, "monkey_keyframe_filter_type"):
             del bpy.types.Scene.monkey_keyframe_filter_type  # type: ignore
+    except Exception:
+        pass
+
+    # キャッシュのクリア
+    try:
+        invalidate_allowed_frames_cache()
     except Exception:
         pass
