@@ -20,6 +20,8 @@ flowchart RL
     ui_pies_graph_key_align(ui.pies.graph_key_align)
     ui_pies_graph_transform(ui.pies.graph_transform)
     ui_playback_speed_controller(ui.playback_speed_controller)
+    ui_sync_visible_range(ui.sync_visible_range)
+    utils_anim_utils(utils.anim_utils)
     utils_config_props(utils.config_props)
     utils_logger_prefs(utils.logger_prefs)
     utils_logging(utils.logging)
@@ -28,6 +30,7 @@ flowchart RL
     utils_ui_utils(utils.ui_utils)
     constants --> keymap_manager
     constants --> operators_channel_selection_overlay
+    constants --> operators_keyframe_jump
     constants --> utils_overlay_utils
     keymap_manager --> operators_handle_selection
     keymap_manager --> operators_keyframe_jump
@@ -43,6 +46,7 @@ flowchart RL
     operators_dopesheet_helper --> operators_handle_selection
     operators_dopesheet_helper --> operators_keyframe_selection
     operators_dopesheet_helper --> ui_pies_graph_key_align
+    utils_anim_utils --> operators_keyframe_jump
     utils_config_props --> ui_pies_graph_transform
     utils_logger_prefs --> preferences
     utils_logging --> constants
@@ -56,6 +60,7 @@ flowchart RL
     utils_logging --> preferences
     utils_logging --> ui_pies_graph_key_align
     utils_logging --> ui_pies_graph_transform
+    utils_logging --> ui_sync_visible_range
     utils_logging --> utils_config_props
     utils_logging --> utils_logger_prefs
     utils_logging --> utils_ui_utils
@@ -66,4 +71,5 @@ flowchart RL
     utils_ui_utils --> ui_pies_graph_key_align
     utils_ui_utils --> ui_pies_graph_transform
     utils_ui_utils --> ui_playback_speed_controller
+    utils_ui_utils --> ui_sync_visible_range
     utils_ui_utils --> utils_logger_prefs
