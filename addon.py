@@ -32,7 +32,7 @@ log = get_logger(__name__)
 # グローバル設定
 # ======================================================
 
-CREATE_DEPENDENCY_GRAPH = True  # Create dependency graph
+CREATE_DEPENDENCY_GRAPH = False  # Create dependency graph
 BACKGROUND = False
 VERSION = (0, 0, 0)  # Addon version
 BL_VERSION = (0, 0, 0)  # Supported Blender version
