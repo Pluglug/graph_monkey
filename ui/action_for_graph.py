@@ -352,10 +352,9 @@ def draw_func(self, context):
     layout = self.layout
     row = layout.row(align=True)
 
+    row.menu("DOPESHEET_MT_action") if BL_VERSION >= (4, 4, 0) else None
+    row.separator()
     if BL_VERSION >= (4, 4, 0):
-        row.menu("DOPESHEET_MT_action")
-
-        # Action management operators for layered actions
         row.operator(
             "graph_editor.slot_channels_move_to_new_action", text="", icon="DUPLICATE"
         )
