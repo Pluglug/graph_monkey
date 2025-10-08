@@ -6,7 +6,6 @@ from bpy.props import BoolProperty, StringProperty, EnumProperty
 from ..utils.logging import get_logger
 from ..keymap_manager import KeymapDefinition, keymap_registry
 from ..utils.anim_utils import (
-    collect_allowed_frames_in_range,
     select_target_frame_from_list,
     find_timeline_area,
     get_allowed_frames_in_range_cached,
@@ -83,7 +82,13 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
         # フィルタ未指定: 既存のBlenderオペレーターに委譲
         if not allowed_types:
             try:
-                bpy.ops.screen.keyframe_jump(next=self.next)
+                # View3Dからでもタイムラインの可視キー基準でジャンプさせる
+                timeline_area = find_timeline_area(context)
+                if timeline_area:
+                    with context.temp_override(area=timeline_area):
+                        bpy.ops.screen.keyframe_jump(next=self.next)
+                else:
+                    bpy.ops.screen.keyframe_jump(next=self.next)
                 return True
             except RuntimeError as e:
                 log.warning(f"keyframe_jump failed in {context.area.ui_type}: {e}")
