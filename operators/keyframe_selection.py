@@ -262,6 +262,7 @@ keymap_monkey_vertically = [
         name="Graph Editor",
         space_type="GRAPH_EDITOR",
         description="上方向にチャンネル選択を移動",
+        repeat=True,
     ),
     # 上方向（拡張）
     KeymapDefinition(
@@ -274,6 +275,7 @@ keymap_monkey_vertically = [
         name="Graph Editor",
         space_type="GRAPH_EDITOR",
         description="上方向にチャンネル選択を拡張移動",
+        repeat=True,
     ),
     # 下方向
     KeymapDefinition(
@@ -286,6 +288,7 @@ keymap_monkey_vertically = [
         name="Graph Editor",
         space_type="GRAPH_EDITOR",
         description="下方向にチャンネル選択を移動",
+        repeat=True,
     ),
     # 下方向（拡張）
     KeymapDefinition(
@@ -298,6 +301,7 @@ keymap_monkey_vertically = [
         name="Graph Editor",
         space_type="GRAPH_EDITOR",
         description="下方向にチャンネル選択を拡張移動",
+        repeat=True,
     ),
 ]
 
@@ -313,6 +317,7 @@ keymap_monkey_horizontally = [
         name="Graph Editor",
         space_type="GRAPH_EDITOR",
         description="右方向にキーフレーム選択を移動",
+        repeat=True,
     ),
     # 右方向（拡張）
     KeymapDefinition(
@@ -325,6 +330,7 @@ keymap_monkey_horizontally = [
         name="Graph Editor",
         space_type="GRAPH_EDITOR",
         description="右方向にキーフレーム選択を拡張移動",
+        repeat=True,
     ),
     # 左方向
     KeymapDefinition(
@@ -337,6 +343,7 @@ keymap_monkey_horizontally = [
         name="Graph Editor",
         space_type="GRAPH_EDITOR",
         description="左方向にキーフレーム選択を移動",
+        repeat=True,
     ),
     # 左方向（拡張）
     KeymapDefinition(
@@ -349,6 +356,7 @@ keymap_monkey_horizontally = [
         name="Graph Editor",
         space_type="GRAPH_EDITOR",
         description="左方向にキーフレーム選択を拡張移動",
+        repeat=True,
     ),
 ]
 
