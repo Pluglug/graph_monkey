@@ -203,108 +203,108 @@ class GRAPH_EDITOR_OT_slot_channels_move_to_new_action(Operator):
             current_area.type = original_area_type
 
 
-class GRAPH_EDITOR_OT_layer_prev(Operator):
-    bl_idname = "graph_editor.layer_prev"
-    bl_label = "Previous Layer"
-    bl_description = "Switch to previous action layer from Graph Editor"
+# class GRAPH_EDITOR_OT_layer_prev(Operator):
+#     bl_idname = "graph_editor.layer_prev"
+#     bl_label = "Previous Layer"
+#     bl_description = "Switch to previous action layer from Graph Editor"
 
-    @classmethod
-    def poll(cls, context):
-        return context.active_object and context.active_object.animation_data
+#     @classmethod
+#     def poll(cls, context):
+#         return context.active_object and context.active_object.animation_data
 
-    def execute(self, context):
-        obj = context.active_object
-        if not obj or not obj.animation_data:
-            self.report({"WARNING"}, "No animation data")
-            return {"CANCELLED"}
+#     def execute(self, context):
+#         obj = context.active_object
+#         if not obj or not obj.animation_data:
+#             self.report({"WARNING"}, "No animation data")
+#             return {"CANCELLED"}
 
-        # Get current area (should be Graph Editor)
-        current_area = context.area
-        if not current_area:
-            self.report({"WARNING"}, "No area context")
-            return {"CANCELLED"}
+#         # Get current area (should be Graph Editor)
+#         current_area = context.area
+#         if not current_area:
+#             self.report({"WARNING"}, "No area context")
+#             return {"CANCELLED"}
 
-        # Store original area type
-        original_area_type = current_area.type
+#         # Store original area type
+#         original_area_type = current_area.type
 
-        try:
-            # Temporarily change area to DOPESHEET_EDITOR
-            current_area.type = "DOPESHEET_EDITOR"
+#         try:
+#             # Temporarily change area to DOPESHEET_EDITOR
+#             current_area.type = "DOPESHEET_EDITOR"
 
-            # Set dopesheet mode to ACTION
-            dopesheet_space = current_area.spaces.active
-            dopesheet_space.mode = "ACTION"
+#             # Set dopesheet mode to ACTION
+#             dopesheet_space = current_area.spaces.active
+#             dopesheet_space.mode = "ACTION"
 
-            # Execute layer prev with proper context
-            with context.temp_override(
-                area=current_area,
-                space_data=dopesheet_space,
-                object=obj,
-                active_object=obj,
-                selected_objects=[obj] if obj else [],
-            ):
-                result = bpy.ops.action.layer_prev()
+#             # Execute layer prev with proper context
+#             with context.temp_override(
+#                 area=current_area,
+#                 space_data=dopesheet_space,
+#                 object=obj,
+#                 active_object=obj,
+#                 selected_objects=[obj] if obj else [],
+#             ):
+#                 result = bpy.ops.action.layer_prev()
 
-            return result
+#             return result
 
-        except Exception as e:
-            self.report({"WARNING"}, f"Cannot switch to previous layer: {str(e)}")
-            return {"CANCELLED"}
-        finally:
-            # Always restore original area type
-            current_area.type = original_area_type
+#         except Exception as e:
+#             self.report({"WARNING"}, f"Cannot switch to previous layer: {str(e)}")
+#             return {"CANCELLED"}
+#         finally:
+#             # Always restore original area type
+#             current_area.type = original_area_type
 
 
-class GRAPH_EDITOR_OT_layer_next(Operator):
-    bl_idname = "graph_editor.layer_next"
-    bl_label = "Next Layer"
-    bl_description = "Switch to next action layer from Graph Editor"
+# class GRAPH_EDITOR_OT_layer_next(Operator):
+#     bl_idname = "graph_editor.layer_next"
+#     bl_label = "Next Layer"
+#     bl_description = "Switch to next action layer from Graph Editor"
 
-    @classmethod
-    def poll(cls, context):
-        return context.active_object and context.active_object.animation_data
+#     @classmethod
+#     def poll(cls, context):
+#         return context.active_object and context.active_object.animation_data
 
-    def execute(self, context):
-        obj = context.active_object
-        if not obj or not obj.animation_data:
-            self.report({"WARNING"}, "No animation data")
-            return {"CANCELLED"}
+#     def execute(self, context):
+#         obj = context.active_object
+#         if not obj or not obj.animation_data:
+#             self.report({"WARNING"}, "No animation data")
+#             return {"CANCELLED"}
 
-        # Get current area (should be Graph Editor)
-        current_area = context.area
-        if not current_area:
-            self.report({"WARNING"}, "No area context")
-            return {"CANCELLED"}
+#         # Get current area (should be Graph Editor)
+#         current_area = context.area
+#         if not current_area:
+#             self.report({"WARNING"}, "No area context")
+#             return {"CANCELLED"}
 
-        # Store original area type
-        original_area_type = current_area.type
+#         # Store original area type
+#         original_area_type = current_area.type
 
-        try:
-            # Temporarily change area to DOPESHEET_EDITOR
-            current_area.type = "DOPESHEET_EDITOR"
+#         try:
+#             # Temporarily change area to DOPESHEET_EDITOR
+#             current_area.type = "DOPESHEET_EDITOR"
 
-            # Set dopesheet mode to ACTION
-            dopesheet_space = current_area.spaces.active
-            dopesheet_space.mode = "ACTION"
+#             # Set dopesheet mode to ACTION
+#             dopesheet_space = current_area.spaces.active
+#             dopesheet_space.mode = "ACTION"
 
-            # Execute layer next with proper context
-            with context.temp_override(
-                area=current_area,
-                space_data=dopesheet_space,
-                object=obj,
-                active_object=obj,
-                selected_objects=[obj] if obj else [],
-            ):
-                result = bpy.ops.action.layer_next()
+#             # Execute layer next with proper context
+#             with context.temp_override(
+#                 area=current_area,
+#                 space_data=dopesheet_space,
+#                 object=obj,
+#                 active_object=obj,
+#                 selected_objects=[obj] if obj else [],
+#             ):
+#                 result = bpy.ops.action.layer_next()
 
-            return result
+#             return result
 
-        except Exception as e:
-            self.report({"WARNING"}, f"Cannot switch to next layer: {str(e)}")
-            return {"CANCELLED"}
-        finally:
-            # Always restore original area type
-            current_area.type = original_area_type
+#         except Exception as e:
+#             self.report({"WARNING"}, f"Cannot switch to next layer: {str(e)}")
+#             return {"CANCELLED"}
+#         finally:
+#             # Always restore original area type
+#             current_area.type = original_area_type
 
 
 def _get_animated_id(context):
@@ -362,8 +362,8 @@ def draw_func(self, context):
     row.operator("graph_editor.push_down", text="", icon="NLA_PUSHDOWN")
     row.operator("graph_editor.stash", text="", icon="FREEZE")
 
-    row.operator("graph_editor.layer_prev", text="", icon="TRIA_DOWN")
-    row.operator("graph_editor.layer_next", text="", icon="TRIA_UP")
+    # row.operator("graph_editor.layer_prev", text="", icon="TRIA_DOWN")
+    # row.operator("graph_editor.layer_next", text="", icon="TRIA_UP")
 
     obj = context.active_object
     layout.separator()
