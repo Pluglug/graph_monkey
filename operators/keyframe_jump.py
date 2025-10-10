@@ -352,19 +352,52 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
         """基本のキーフレーム位置（初期ジャンプ先）を取得"""
         # オリジナルフレームに戻って、初期ジャンプを実行
         context.scene.frame_set(self.original_frame)
+        # フィルタ対応：選択されているキータイプがある場合はそのリストから直接算出
+        allowed_types = self._parse_allowed_key_types(context)
+        if allowed_types:
+            start, end = self._get_frame_range(context)
+            frames = get_allowed_frames_in_range_cached(
+                context, start, end, allowed_types
+            )
+            if frames:
+                current = context.scene.frame_current
+                target = select_target_frame_from_list(frames, current, self.next, True)
+                if target is not None:
+                    context.scene.frame_set(target)
+                    return context.scene.frame_current
 
+        # フィルタ未指定または候補なし: 通常のジャンプ
         keyframe_jump_in_timeline(context, self.next)
-
         return context.scene.frame_current
 
     def _calculate_offset_frame(self, context, base_frame, offset):
         """オフセット分だけキーフレーム移動した位置を計算"""
         context.scene.frame_set(base_frame)
+        allowed_types = self._parse_allowed_key_types(context)
+        direction_next = offset > 0
+        steps = abs(offset)
 
-        # 正の値なら次のキーフレーム方向、負の値なら前のキーフレーム方向
-        for _ in range(abs(offset)):
-            keyframe_jump_in_timeline(context, (offset > 0))
+        if allowed_types:
+            start, end = self._get_frame_range(context)
+            frames = get_allowed_frames_in_range_cached(
+                context, start, end, allowed_types
+            )
+            if not frames:
+                return context.scene.frame_current
+            cursor = base_frame
+            for _ in range(steps):
+                nxt = select_target_frame_from_list(
+                    frames, int(cursor), direction_next, True
+                )
+                if nxt is None:
+                    break
+                cursor = nxt
+            context.scene.frame_set(int(cursor))
+            return context.scene.frame_current
 
+        # フィルタ未指定: 従来のジャンプを繰り返し
+        for _ in range(steps):
+            keyframe_jump_in_timeline(context, direction_next)
         return context.scene.frame_current
 
     def invoke(self, context, event):
@@ -383,9 +416,8 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
         # 進行方向を跨がないように、符号を方向に合わせてクランプ
         self.current_offset = self._clamp_offset_by_direction(self.current_offset)
 
-        # タイムラインエリアを探す
-        # 次のキーフレームへジャンプ（タイムライン基準）
-        keyframe_jump_in_timeline(context, self.next)
+        # 次のキーフレームへジャンプ（フィルタ考慮）
+        self._get_base_keyframe_position(context)
 
         # 保存されたオフセットがある場合は追加で適用
         if self.current_offset != 0:
@@ -408,6 +440,23 @@ class MONKEY_OT_KEYFRAME_PEEK(Operator):
             return max(self.original_frame + 1, target_frame)
         # 後方ピーク中は元フレームより後へ行かない（最大 original-1）
         return min(self.original_frame - 1, target_frame)
+
+    def _get_frame_range(self, context: Context) -> tuple[int, int]:
+        scene = context.scene
+        if scene.use_preview_range:
+            return int(scene.frame_preview_start), int(scene.frame_preview_end)
+        return int(scene.frame_start), int(scene.frame_end)
+
+    def _parse_allowed_key_types(self, context: Context) -> set[str]:
+        value = getattr(context.scene, "monkey_keyframe_filter_type", None)
+        if not value:
+            return set()
+        if isinstance(value, str):
+            return {value.upper()}
+        try:
+            return {str(v).upper() for v in value}
+        except Exception:
+            return set()
 
 
 KEYFRAME_JUMP_KEYMAPS = [
