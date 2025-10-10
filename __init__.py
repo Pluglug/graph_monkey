@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Graph Monkey",  # Monkey Keyframe, Graph Monkey
     "author": "Pluglug",
-    "version": (0, 8, 0),
+    "version": (0, 9, 0),
     "blender": (2, 80, 0),
     "location": "Graph Editor",
     "description": "Move keyframe selection in the Graph Editor. and more",
