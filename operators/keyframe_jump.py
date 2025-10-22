@@ -1,7 +1,10 @@
 # pyright: reportInvalidTypeForm=false
 import bpy
+from bpy.app import version as BL_VERSION
 from bpy.types import Operator, Context
 from bpy.props import BoolProperty, StringProperty, EnumProperty
+
+from ..ui.sync_visible_range import draw_sync_visible_range
 
 from ..utils.logging import get_logger
 from ..keymap_manager import KeymapDefinition, keymap_registry
@@ -239,9 +242,16 @@ class MONKEY_OT_JUMP_WITHIN_RANGE(Operator):
 
 def draw_timeline_filter_menu(menu, context: Context):
     layout = menu.layout
-    layout.separator()
-    layout.prop(context.scene, "monkey_keyframe_filter_type", icon_only=True)
-    layout.separator()
+
+    if BL_VERSION < (5, 0, 0):
+        layout.separator()
+    else:
+        sd = getattr(context, "space_data", None)
+        if not getattr(sd, "show_region_header", True):
+            draw_sync_visible_range(menu, context)
+
+    layout.prop(context.scene, "monkey_keyframe_filter_type", text="", icon_only=True)
+    BL_VERSION < (5, 0, 0) and layout.separator()
 
 
 class MONKEY_OT_KEYFRAME_PEEK(Operator):
@@ -553,19 +563,33 @@ def register():
     except Exception:
         pass
 
-    # タイムラインメニューにUIを追加
-    try:
-        bpy.types.TIME_MT_editor_menus.append(draw_timeline_filter_menu)
-    except Exception:
-        pass
+    # 5.0 以上は Dope Sheet の再生コントロールへ、未満は旧 Timeline へ
+    if BL_VERSION >= (5, 0, 0):
+        ds_ctrl = getattr(bpy.types, "DOPESHEET_HT_playback_controls", None)
+        if ds_ctrl is not None:
+            ds_ctrl.prepend(draw_timeline_filter_menu)
+    else:
+        time_menu = getattr(bpy.types, "TIME_MT_editor_menus", None)
+        if time_menu is not None:
+            time_menu.append(draw_timeline_filter_menu)
 
 
 def unregister():
-    # タイムラインメニューからUIを削除
-    try:
-        bpy.types.TIME_MT_editor_menus.remove(draw_timeline_filter_menu)
-    except Exception:
-        pass
+    # 5.0 以上は Dope Sheet から、未満は旧 Timeline から削除
+    if BL_VERSION >= (5, 0, 0):
+        ds_ctrl = getattr(bpy.types, "DOPESHEET_HT_playback_controls", None)
+        if ds_ctrl is not None:
+            try:
+                ds_ctrl.remove(draw_timeline_filter_menu)
+            except Exception:
+                pass
+    else:
+        time_menu = getattr(bpy.types, "TIME_MT_editor_menus", None)
+        if time_menu is not None:
+            try:
+                time_menu.remove(draw_timeline_filter_menu)
+            except Exception:
+                pass
 
     # シーンプロパティを削除
     try:

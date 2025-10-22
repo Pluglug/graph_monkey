@@ -8,8 +8,19 @@ from bpy.types import Context, Area
 
 
 def find_timeline_area(context: Context) -> Area | None:
+    """Return an animation area suitable for timeline-like operations.
+
+    Blender 5.0 以降は専用のタイムライン領域が廃止され、再生コントロールは
+    Dope Sheet のヘッダーに統合されたため、まず Dope Sheet を優先して返す。
+    互換目的で旧 TIMELINE もフォールバックとして探す。
+    """
+    # 1) Prefer Dope Sheet editor in 5.x+
     for area in context.window.screen.areas:
-        if getattr(area, "ui_type", None) == "TIMELINE":
+        if getattr(area, "type", None) == "DOPESHEET_EDITOR":
+            return area
+    # 2) Fallback: legacy Timeline (pre-5.0)
+    for area in context.window.screen.areas:
+        if getattr(area, "ui_type", None) == "TIMELINE" or getattr(area, "type", None) == "TIMELINE":
             return area
     return None
 
