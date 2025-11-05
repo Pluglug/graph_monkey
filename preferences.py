@@ -5,6 +5,7 @@ from bpy.types import AddonPreferences
 from .addon import ADDON_ID, get_prefs
 from .keymap_manager import keymap_registry
 from .operators.channel_selection_overlay import ChannelSelectionOverlaySettings
+from .operators.pose_rotation_visualizer import PoseRotationVisualizerSettings
 
 # from .ui.calculator.preferences import CalculatorPreferences
 from .utils.logger_prefs import MONKEY_LoggerPreferences
@@ -26,12 +27,14 @@ class MonKeyPreferences(AddonPreferences):
             # ("CALCULATOR", "Calculator", ""),
             ("KEYMAP", "Keymap", ""),
             ("OVERLAY", "Overlay", ""),
+            ("POSE_VISUALIZER", "Pose Visualizer", ""),
         ],
         default="HowToUse",
         options={"HIDDEN", "SKIP_SAVE"},
     )
     # calculator: PointerProperty(type=CalculatorPreferences)
     overlay: PointerProperty(type=ChannelSelectionOverlaySettings)
+    pose_visualizer: PointerProperty(type=PoseRotationVisualizerSettings)
     logger_prefs: PointerProperty(type=MONKEY_LoggerPreferences)
 
     def draw(self, context):
@@ -47,6 +50,8 @@ class MonKeyPreferences(AddonPreferences):
         #     self.calculator.draw(context, box)
         elif self.tab == "OVERLAY":
             self.overlay.draw(context, box)
+        elif self.tab == "POSE_VISUALIZER":
+            self.pose_visualizer.draw(context, box)
         elif self.tab == "KEYMAP":
             keymap_registry.draw_keymap_settings(context, box)
 
