@@ -92,6 +92,28 @@ Smart viewport focusing for selected curves within the current frame range.
 - Preserves original keyframe selection
 - Optional handle inclusion in focus calculation
 
+### 6. Pose Rotation Visualizer 🆕
+
+Real-time visualization of bone rotations in Pose Mode. Displays rest pose axes and current pose axes with rotation arcs in the 3D viewport.
+
+![Pose Visualizer](docs/images/bone_transform_visualization.png)
+
+**Features:**
+- **Axis Display**: Shows rest pose (semi-transparent gray) and current pose (X=red, Y=green, Z=blue) axes
+- **Rotation Arcs**: Visualizes rotation amount with customizable colored arcs
+- **Local Transform**: Displays only the bone's own rotation, excluding parent influence
+- **Customizable Colors**: Individual color settings for X, Y, Z rotation arcs
+- **Angle Threshold**: Filter display by minimum rotation angle
+- **Draw on Top**: Optional overlay to ensure visibility
+
+**Settings** (Edit > Preferences > Add-ons > Graph Monkey > Pose Visualizer):
+- Enable/Disable visualization
+- Display style: Both / Axes Only / Difference Only
+- Axis length and thickness
+- Arc radius, segments, and opacity
+- Custom arc colors per axis
+- Draw on top option
+
 ## Requirements
 
 - Blender 3.6+
