@@ -42,7 +42,8 @@ def get_bone_current_matrix(pose_bone) -> Matrix:
 
 def get_rotation_difference(pose_bone) -> tuple[Quaternion, float]:
     """
-    レストポーズと現在のポーズの回転差分を計算。
+    レストポーズと現在のポーズの回転差分を計算（ローカル空間）。
+    親ボーンの影響を受けない、そのボーン自身の回転のみを計算。
     
     Args:
         pose_bone: bpy.types.PoseBone
@@ -52,12 +53,12 @@ def get_rotation_difference(pose_bone) -> tuple[Quaternion, float]:
             - rotation_quaternion: 回転差分のQuaternion
             - angle_degrees: 回転角度（度数法）
     """
-    rest_matrix = get_bone_rest_matrix(pose_bone)
-    current_matrix = get_bone_current_matrix(pose_bone)
+    # ローカル空間での回転を取得（親の影響を除外）
+    # matrix_basis は親の変形を含まない、ボーン自身の変形のみ
+    current_rotation = pose_bone.matrix_basis.to_quaternion()
     
-    # 回転成分のみを抽出
-    rest_rotation = rest_matrix.to_quaternion()
-    current_rotation = current_matrix.to_quaternion()
+    # レストポーズはアイデンティティ（回転なし）と比較
+    rest_rotation = Quaternion()
     
     # 回転差分を計算
     rotation_diff = rest_rotation.rotation_difference(current_rotation)
@@ -91,7 +92,8 @@ def get_rotation_axis_angle(pose_bone) -> tuple[Vector, float]:
 
 def get_euler_rotation_differences(pose_bone) -> tuple[float, float, float]:
     """
-    レストポーズからのEuler角での回転差分を取得（各軸ごと）。
+    レストポーズからのEuler角での回転差分を取得（各軸ごと、ローカル空間）。
+    親ボーンの影響を除いた、そのボーン自身の回転のみ。
     ボーンの回転モードに従う。
     
     Args:
@@ -100,29 +102,26 @@ def get_euler_rotation_differences(pose_bone) -> tuple[float, float, float]:
     Returns:
         tuple: (x_degrees, y_degrees, z_degrees)
     """
-    rest_matrix = get_bone_rest_matrix(pose_bone)
-    current_matrix = get_bone_current_matrix(pose_bone)
+    # ローカル空間での現在の回転（matrix_basis）
+    current_matrix = pose_bone.matrix_basis
     
     # 回転モードを取得
     rotation_mode = pose_bone.rotation_mode
     
     if rotation_mode == 'QUATERNION':
         # Quaternionモードの場合はEuler角に変換（XYZ順）
-        rest_euler = rest_matrix.to_euler('XYZ')
         current_euler = current_matrix.to_euler('XYZ')
     elif rotation_mode == 'AXIS_ANGLE':
         # Axis-Angleモードの場合もEuler角に変換
-        rest_euler = rest_matrix.to_euler('XYZ')
         current_euler = current_matrix.to_euler('XYZ')
     else:
         # Eulerモード（XYZ, XZY, YXZ, YZX, ZXY, ZYX）
-        rest_euler = rest_matrix.to_euler(rotation_mode)
         current_euler = current_matrix.to_euler(rotation_mode)
     
-    # 差分を計算
-    diff_x = math.degrees(current_euler.x - rest_euler.x)
-    diff_y = math.degrees(current_euler.y - rest_euler.y)
-    diff_z = math.degrees(current_euler.z - rest_euler.z)
+    # レストポーズは回転なし（0, 0, 0）として差分を計算
+    diff_x = math.degrees(current_euler.x)
+    diff_y = math.degrees(current_euler.y)
+    diff_z = math.degrees(current_euler.z)
     
     return diff_x, diff_y, diff_z
 
@@ -148,32 +147,47 @@ def get_bone_axes_world(pose_bone, rest_pose: bool = False) -> tuple[Vector, Vec
     """
     ボーンのローカル軸（X, Y, Z）をワールド空間のベクトルとして取得。
     
+    Blenderのボーン座標系：
+    - Y軸: ヘッド→テール方向（ボーンの長軸）
+    - X軸, Z軸: ロール角で決定される
+    
     Args:
         pose_bone: bpy.types.PoseBone
         rest_pose: Trueの場合はレストポーズの軸を取得
         
     Returns:
         tuple: (origin, x_axis, y_axis, z_axis)
-            - origin: 軸の原点（ボーンのhead位置）
-            - x_axis, y_axis, z_axis: 各軸の方向ベクトル（正規化済み）
+            - origin: 軸の原点（ボーンのhead位置、ワールド空間）
+            - x_axis, y_axis, z_axis: 各軸の方向ベクトル（正規化済み、ワールド空間）
     """
-    if rest_pose:
-        matrix = get_bone_rest_matrix(pose_bone)
-    else:
-        matrix = get_bone_current_matrix(pose_bone)
-    
-    # ボーンのheadを原点とする
     armature = pose_bone.id_data
+    
+    # ボーンのheadをワールド空間で取得
     origin = armature.matrix_world @ pose_bone.head
     
-    # 各軸の方向ベクトル（回転のみ適用）
-    x_axis = matrix.to_3x3() @ Vector((1, 0, 0))
-    y_axis = matrix.to_3x3() @ Vector((0, 1, 0))
-    z_axis = matrix.to_3x3() @ Vector((0, 0, 1))
-    
-    x_axis.normalize()
-    y_axis.normalize()
-    z_axis.normalize()
+    if rest_pose:
+        # レストポーズの軸を計算
+        # 現在のポーズの軸から、matrix_basisの逆回転を適用してレストポーズに戻す
+        
+        # 現在のワールド空間での完全なマトリックス（親の影響込み）
+        full_matrix = armature.matrix_world @ pose_bone.matrix
+        
+        # matrix_basis の逆行列（このボーンのローカル変形を取り消す）
+        matrix_basis_inv = pose_bone.matrix_basis.inverted()
+        
+        # レストポーズのマトリックス = 完全なマトリックス × basis の逆
+        # つまり：親の姿勢 × レスト方向 = (親の姿勢 × レスト方向 × basis) × basis^-1
+        rest_matrix = full_matrix @ matrix_basis_inv
+        
+        x_axis = (rest_matrix.to_3x3() @ Vector((1, 0, 0))).normalized()
+        y_axis = (rest_matrix.to_3x3() @ Vector((0, 1, 0))).normalized()
+        z_axis = (rest_matrix.to_3x3() @ Vector((0, 0, 1))).normalized()
+    else:
+        # 現在のポーズの軸
+        # Blenderが計算済みの軸を直接使用（最も正確）
+        x_axis = pose_bone.x_axis.copy()
+        y_axis = pose_bone.y_axis.copy()
+        z_axis = pose_bone.z_axis.copy()
     
     return origin, x_axis, y_axis, z_axis
 
