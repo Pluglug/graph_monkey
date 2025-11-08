@@ -1,4 +1,4 @@
-"""Pose rotation visualizer for displaying bone rotation differences in 3D viewport."""
+"""Pose transform visualizer for displaying bone transform differences in 3D viewport."""
 
 import math
 
@@ -20,6 +20,7 @@ from ..keymap_manager import KeymapDefinition, keymap_registry
 from ..utils.bone_transform_utils import (
     get_bone_axes_world,
     get_bone_transform_difference,
+    magnitude_to_color,
     should_display_bone,
 )
 from ..utils.logging import get_logger
@@ -124,11 +125,11 @@ def create_rotation_arc_geometry(
 def _update_enabled(self, context):
     """Called when enabled property is changed."""
     if self.enabled:
-        pose_rotation_visualizer_handler.start()
-        log.info("Pose rotation visualizer enabled via preferences")
+        pose_transform_visualizer_handler.start()
+        log.info("Pose transform visualizer enabled via preferences")
     else:
-        pose_rotation_visualizer_handler.stop()
-        log.info("Pose rotation visualizer disabled via preferences")
+        pose_transform_visualizer_handler.stop()
+        log.info("Pose transform visualizer disabled via preferences")
 
     # リドロー
     for area in context.screen.areas:
@@ -136,12 +137,12 @@ def _update_enabled(self, context):
             area.tag_redraw()
 
 
-class PoseRotationVisualizerSettings(bpy.types.PropertyGroup):
-    """Pose rotation visualizer settings."""
+class PoseTransformVisualizerSettings(bpy.types.PropertyGroup):
+    """Pose transform visualizer settings."""
 
     enabled: BoolProperty(
-        name="Enable Rotation Visualizer",
-        description="Display bone rotation differences in 3D viewport",
+        name="Enable Transform Visualizer",
+        description="Display bone transform differences (rotation, location, scale) in 3D viewport",
         default=False,
         update=_update_enabled,
     )
@@ -262,19 +263,94 @@ class PoseRotationVisualizerSettings(bpy.types.PropertyGroup):
         default=False,
     )
 
+    # Location visualization settings
+    show_location: BoolProperty(
+        name="Show Location Offset",
+        description="Display location offset from rest pose",
+        default=False,
+    )
+
+    location_line_thickness: FloatProperty(
+        name="Location Line Thickness",
+        description="Thickness of the location offset line",
+        default=2.0,
+        min=1.0,
+        max=10.0,
+    )
+
+    location_threshold: FloatProperty(
+        name="Location Threshold",
+        description="Minimum location offset to display (0 = always display)",
+        default=0.01,
+        min=0.0,
+        max=1.0,
+        subtype="DISTANCE",
+    )
+
+    location_line_color: FloatVectorProperty(
+        name="Location Line Color",
+        description="Color of the location offset line",
+        default=(1.0, 0.5, 0.0),  # Orange
+        size=3,
+        min=0.0,
+        max=1.0,
+        subtype="COLOR",
+    )
+
+    location_line_opacity: FloatProperty(
+        name="Location Line Opacity",
+        description="Opacity of the location offset line",
+        default=0.6,
+        min=0.0,
+        max=1.0,
+        subtype="FACTOR",
+    )
+
+    use_dashed_line: BoolProperty(
+        name="Use Dashed Line",
+        description="Draw location offset line as dashed line",
+        default=True,
+    )
+
+    dash_length: FloatProperty(
+        name="Dash Length",
+        description="Length of each dash segment",
+        default=0.02,
+        min=0.001,
+        max=1.0,
+        subtype="DISTANCE",
+    )
+
+    gap_length: FloatProperty(
+        name="Gap Length",
+        description="Length of gap between dashes",
+        default=0.01,
+        min=0.001,
+        max=1.0,
+        subtype="DISTANCE",
+    )
+
+    # TODO: 将来的に色のマッピングを実装
+    # use_location_color_mapping: BoolProperty(
+    #     name="Color by Distance",
+    #     description="Color the line based on distance (heat map)",
+    #     default=False,
+    # )
+
     def draw(self, _context, layout):
         layout.use_property_split = True
         layout.use_property_decorate = False
 
         col = layout.column()
 
-        col.label(text="Pose Rotation Visualizer", icon="ARMATURE_DATA")
+        col.label(text="Pose Transform Visualizer", icon="ARMATURE_DATA")
         col.prop(self, "enabled")
 
         col.separator()
 
         col.prop(self, "display_style")
         col.prop(self, "angle_threshold")
+        col.prop(self, "draw_on_top")
 
         col.separator()
         col.label(text="Axis Display")
@@ -299,11 +375,26 @@ class PoseRotationVisualizerSettings(bpy.types.PropertyGroup):
             sub.prop(self, "arc_color_z")
 
         col.separator()
-        col.prop(self, "draw_on_top")
+        col.label(text="Location Offset")
+        col.prop(self, "show_location")
+
+        if self.show_location:
+            sub = col.column()
+            sub.prop(self, "location_threshold")
+            sub.prop(self, "location_line_thickness")
+            sub.prop(self, "location_line_color")
+            sub.prop(self, "location_line_opacity")
+            
+            sub.separator()
+            sub.prop(self, "use_dashed_line")
+            if self.use_dashed_line:
+                subsub = sub.column()
+                subsub.prop(self, "dash_length")
+                subsub.prop(self, "gap_length")
 
 
-class PoseRotationVisualizerHandler:
-    """Handler for drawing pose rotation visualization in 3D viewport."""
+class PoseTransformVisualizerHandler:
+    """Handler for drawing pose transform visualization in 3D viewport."""
 
     def __init__(self):
         self.draw_handler = None
@@ -316,14 +407,14 @@ class PoseRotationVisualizerHandler:
             self.draw_handler = bpy.types.SpaceView3D.draw_handler_add(
                 self._draw_callback_wrapper, (), "WINDOW", "POST_VIEW"
             )
-            log.info("Pose rotation visualizer started")
+            log.info("Pose transform visualizer started")
 
     def stop(self):
         """Stop the draw handler."""
         if self.draw_handler is not None:
             bpy.types.SpaceView3D.draw_handler_remove(self.draw_handler, "WINDOW")
             self.draw_handler = None
-            log.info("Pose rotation visualizer stopped")
+            log.info("Pose transform visualizer stopped")
 
     def is_active(self):
         """Check if the handler is active."""
@@ -387,14 +478,14 @@ class PoseRotationVisualizerHandler:
                 if not should_display_bone(pose_bone, threshold_degrees):
                     continue
 
-                self._draw_bone_rotation(context, pose_bone, settings)
+                self._draw_bone_transform(context, pose_bone, settings)
         finally:
             # 状態をリセット
             gpu.state.depth_test_set("NONE")
             gpu.state.blend_set("NONE")
 
-    def _draw_bone_rotation(self, context, pose_bone, settings):
-        """Draw rotation visualization for a single bone."""
+    def _draw_bone_transform(self, context, pose_bone, settings):
+        """Draw transform visualization (rotation, location, etc.) for a single bone."""
         # レストポーズと現在のポーズの軸を取得
         rest_origin, rest_x, rest_y, rest_z = get_bone_axes_world(
             pose_bone, rest_pose=True
@@ -455,6 +546,10 @@ class PoseRotationVisualizerHandler:
                 current_z,
                 settings,
             )
+
+        # 位置オフセットを描画
+        if settings.show_location:
+            self._draw_location_offset(pose_bone, transform_diff, settings)
 
     def _draw_axes(
         self, origin, x_axis, y_axis, z_axis, length, alpha=1.0, use_rest_colors=False
@@ -539,27 +634,128 @@ class PoseRotationVisualizerHandler:
             self.shader_3d_uniform_color.uniform_float("color", color)
             batch.draw(self.shader_3d_uniform_color)
 
+    def _draw_location_offset(self, pose_bone, transform_diff, settings):
+        """Draw location offset from rest pose as a line."""
+        # 閾値チェック
+        if not transform_diff.has_location_change:
+            return
+
+        location_magnitude = transform_diff.location_offset.length
+        if location_magnitude < settings.location_threshold:
+            return
+
+        armature = pose_bone.id_data
+
+        # 現在の位置（ボーンのhead）
+        current_pos = armature.matrix_world @ pose_bone.head
+
+        # レストポーズの位置を計算
+        # pose_bone.locationはレストポーズからのオフセット（ローカル空間）
+        # これをワールド空間に変換してから引く
+        rest_matrix = armature.matrix_world @ pose_bone.bone.matrix_local
+        location_offset_world = rest_matrix.to_3x3() @ transform_diff.location_offset
+        rest_pos = current_pos - location_offset_world
+
+        # 色の計算
+        # TODO: 将来的に距離に応じた色マッピングを実装
+        # if settings.use_location_color_mapping:
+        #     color = magnitude_to_color(
+        #         location_magnitude,
+        #         min_value=0.0,
+        #         max_value=1.0,
+        #         color_scheme="heat",
+        #         alpha=settings.location_line_opacity,
+        #     )
+        # else:
+        #     color = (*settings.location_line_color, settings.location_line_opacity)
+        color = (*settings.location_line_color, settings.location_line_opacity)
+
+        # ラインの太さを設定
+        gpu.state.line_width_set(settings.location_line_thickness)
+
+        # 点線または実線で描画
+        if settings.use_dashed_line:
+            coords = self._create_dashed_line(
+                rest_pos, 
+                current_pos, 
+                settings.dash_length, 
+                settings.gap_length
+            )
+        else:
+            coords = [rest_pos, current_pos]
+
+        if not coords:
+            return
+
+        batch = batch_for_shader(
+            self.shader_3d_uniform_color,
+            "LINES",
+            {"pos": coords},
+        )
+
+        self.shader_3d_uniform_color.bind()
+        self.shader_3d_uniform_color.uniform_float("color", color)
+        batch.draw(self.shader_3d_uniform_color)
+
+    def _create_dashed_line(self, start: Vector, end: Vector, dash_length: float, gap_length: float) -> list:
+        """
+        Create a dashed line by generating alternating dash segments.
+        
+        Args:
+            start: Start position
+            end: End position
+            dash_length: Length of each dash
+            gap_length: Length of gap between dashes
+            
+        Returns:
+            list: Line segment coordinates [(p1, p2), (p3, p4), ...]
+        """
+        direction = end - start
+        total_length = direction.length
+        
+        if total_length < 0.001:
+            return []
+        
+        direction.normalize()
+        
+        coords = []
+        current_length = 0.0
+        pattern_length = dash_length + gap_length
+        
+        while current_length < total_length:
+            # ダッシュの開始
+            dash_start = start + direction * current_length
+            dash_end_length = min(current_length + dash_length, total_length)
+            dash_end = start + direction * dash_end_length
+            
+            coords.extend([dash_start, dash_end])
+            
+            # 次のダッシュへ移動（ギャップを含む）
+            current_length += pattern_length
+        
+        return coords
+
 
 # グローバルハンドラーインスタンス
-pose_rotation_visualizer_handler = PoseRotationVisualizerHandler()
+pose_transform_visualizer_handler = PoseTransformVisualizerHandler()
 
 
-class MONKEY_OT_toggle_pose_rotation_visualizer(Operator):
-    """Toggle the pose rotation visualizer"""
+class MONKEY_OT_toggle_pose_transform_visualizer(Operator):
+    """Toggle the pose transform visualizer"""
 
-    bl_idname = "pose.toggle_rotation_visualizer"
-    bl_label = "Toggle Pose Rotation Visualizer"
+    bl_idname = "pose.toggle_transform_visualizer"
+    bl_label = "Toggle Pose Transform Visualizer"
 
     def execute(self, context):
         pr = get_prefs(context)
         pr.pose_visualizer.enabled = not pr.pose_visualizer.enabled
 
         if pr.pose_visualizer.enabled:
-            pose_rotation_visualizer_handler.start()
-            self.report({"INFO"}, "Pose rotation visualizer enabled")
+            pose_transform_visualizer_handler.start()
+            self.report({"INFO"}, "Pose transform visualizer enabled")
         else:
-            pose_rotation_visualizer_handler.stop()
-            self.report({"INFO"}, "Pose rotation visualizer disabled")
+            pose_transform_visualizer_handler.stop()
+            self.report({"INFO"}, "Pose transform visualizer disabled")
 
         # リドロー
         for area in context.screen.areas:
@@ -571,21 +767,21 @@ class MONKEY_OT_toggle_pose_rotation_visualizer(Operator):
 
 keymaps = [
     KeymapDefinition(
-        operator_id="pose.toggle_rotation_visualizer",
+        operator_id="pose.toggle_transform_visualizer",
         key="V",
         value="PRESS",
         name="Pose",
         space_type="EMPTY",
         region_type="WINDOW",
-        description="Toggle pose rotation visualizer",
+        description="Toggle pose transform visualizer",
     ),
 ]
-keymap_registry.register_keymap_group("Pose Rotation Visualizer", keymaps)
+keymap_registry.register_keymap_group("Pose Transform Visualizer", keymaps)
 
 
 def register():
     """Register the visualizer on addon enable."""
-    log.info("pose_rotation_visualizer.register() called")
+    log.info("pose_transform_visualizer.register() called")
 
     # タイマーで遅延起動（Preferencesがロードされた後に実行）
     def delayed_start():
@@ -594,8 +790,8 @@ def register():
             pr = get_prefs(context)
             log.info(f"Delayed start: enabled={pr.pose_visualizer.enabled}")
             if pr.pose_visualizer.enabled:
-                pose_rotation_visualizer_handler.start()
-                log.info("Auto-started pose rotation visualizer")
+                pose_transform_visualizer_handler.start()
+                log.info("Auto-started pose transform visualizer")
         except Exception as e:
             log.warning(f"Could not auto-start pose visualizer: {e}")
             import traceback
@@ -609,4 +805,4 @@ def register():
 
 def unregister():
     """Unregister the visualizer on addon disable."""
-    pose_rotation_visualizer_handler.stop()
+    pose_transform_visualizer_handler.stop()

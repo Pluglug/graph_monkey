@@ -5,7 +5,8 @@ from bpy.types import AddonPreferences
 from .addon import ADDON_ID, get_prefs
 from .keymap_manager import keymap_registry
 from .operators.channel_selection_overlay import ChannelSelectionOverlaySettings
-from .operators.pose_rotation_visualizer import PoseRotationVisualizerSettings
+# TODO: Rename to pose_transform_visualizer
+from .operators.pose_rotation_visualizer import PoseTransformVisualizerSettings
 
 # from .ui.calculator.preferences import CalculatorPreferences
 from .utils.logger_prefs import MONKEY_LoggerPreferences
@@ -34,7 +35,7 @@ class MonKeyPreferences(AddonPreferences):
     )
     # calculator: PointerProperty(type=CalculatorPreferences)
     overlay: PointerProperty(type=ChannelSelectionOverlaySettings)
-    pose_visualizer: PointerProperty(type=PoseRotationVisualizerSettings)
+    pose_visualizer: PointerProperty(type=PoseTransformVisualizerSettings)
     logger_prefs: PointerProperty(type=MONKEY_LoggerPreferences)
 
     def draw(self, context):
