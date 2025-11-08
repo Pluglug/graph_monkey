@@ -16,10 +16,10 @@ from gpu_extras.batch import batch_for_shader
 from mathutils import Matrix, Vector
 
 from ..addon import get_prefs
+from ..keymap_manager import KeymapDefinition, keymap_registry
 from ..utils.bone_transform_utils import (
     get_bone_axes_world,
     get_bone_transform_difference,
-    magnitude_to_color,
     should_display_bone,
 )
 from ..utils.logging import get_logger
@@ -348,6 +348,14 @@ class PoseRotationVisualizerHandler:
         if not context.active_object or context.active_object.type != "ARMATURE":
             return
 
+        # オーバーレイ設定をチェック
+        space_data = context.space_data
+        if space_data and hasattr(space_data, "overlay"):
+            overlay = space_data.overlay
+            # show_overlays または show_extras がオフの場合は表示しない
+            if not overlay.show_overlays or not overlay.show_extras:
+                return
+
         try:
             pr = get_prefs(context)
             settings = pr.pose_visualizer
@@ -559,6 +567,20 @@ class MONKEY_OT_toggle_pose_rotation_visualizer(Operator):
                 area.tag_redraw()
 
         return {"FINISHED"}
+
+
+keymaps = [
+    KeymapDefinition(
+        operator_id="pose.toggle_rotation_visualizer",
+        key="V",
+        value="PRESS",
+        name="Pose",
+        space_type="EMPTY",
+        region_type="WINDOW",
+        description="Toggle pose rotation visualizer",
+    ),
+]
+keymap_registry.register_keymap_group("Pose Rotation Visualizer", keymaps)
 
 
 def register():
