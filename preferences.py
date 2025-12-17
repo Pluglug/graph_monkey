@@ -7,6 +7,7 @@ from .keymap_manager import keymap_registry
 from .operators.channel_selection_overlay import ChannelSelectionOverlaySettings
 # TODO: Rename to pose_transform_visualizer
 from .operators.pose_rotation_visualizer import PoseTransformVisualizerSettings
+from .ui.playback_preview import PlaybackPreviewSettings
 
 # from .ui.calculator.preferences import CalculatorPreferences
 from .utils.logger_prefs import MONKEY_LoggerPreferences
@@ -29,6 +30,7 @@ class MonKeyPreferences(AddonPreferences):
             ("KEYMAP", "Keymap", ""),
             ("OVERLAY", "Overlay", ""),
             ("POSE_VISUALIZER", "Pose Visualizer", ""),
+            ("PLAYBACK", "Playback", ""),
         ],
         default="HowToUse",
         options={"HIDDEN", "SKIP_SAVE"},
@@ -37,6 +39,7 @@ class MonKeyPreferences(AddonPreferences):
     overlay: PointerProperty(type=ChannelSelectionOverlaySettings)
     pose_visualizer: PointerProperty(type=PoseTransformVisualizerSettings)
     logger_prefs: PointerProperty(type=MONKEY_LoggerPreferences)
+    playback_preview: PointerProperty(type=PlaybackPreviewSettings)
 
     def draw(self, context):
         layout = self.layout
@@ -55,6 +58,8 @@ class MonKeyPreferences(AddonPreferences):
             self.pose_visualizer.draw(context, box)
         elif self.tab == "KEYMAP":
             keymap_registry.draw_keymap_settings(context, box)
+        elif self.tab == "PLAYBACK":
+            self.playback_preview.draw(context, box)
 
     def draw_description(self, context, layout):
         layout.label(text="TODO: Add description")
