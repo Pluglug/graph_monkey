@@ -650,10 +650,11 @@ class PoseTransformVisualizerHandler:
         current_pos = armature.matrix_world @ pose_bone.head
 
         # レストポーズの位置を計算
-        # pose_bone.locationはレストポーズからのオフセット（ローカル空間）
-        # これをワールド空間に変換してから引く
-        rest_matrix = armature.matrix_world @ pose_bone.bone.matrix_local
-        location_offset_world = rest_matrix.to_3x3() @ transform_diff.location_offset
+        # ローカルオフセット（transform_diff.location_offset）を、
+        # 親の現在の変形を考慮してワールド空間に変換
+        # parent_matrix = 親の変形を含むマトリックス（自身のmatrix_basisを除く）
+        parent_matrix = pose_bone.matrix @ pose_bone.matrix_basis.inverted()
+        location_offset_world = parent_matrix.to_3x3() @ transform_diff.location_offset
         rest_pos = current_pos - location_offset_world
 
         # 色の計算
