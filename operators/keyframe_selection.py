@@ -1,5 +1,6 @@
 import bpy
 
+from ..addon import get_prefs
 from ..utils.logging import get_logger
 from .dopesheet_helper import (
     get_selected_keyframes,
@@ -81,6 +82,12 @@ class GRAPH_OT_monkey_vertically(bpy.types.Operator):
             log.debug("Move Channel Selection Vertically: EXECUTE")
             move_channel_selection_vertically(self.direction, self.extend)
             log.debug("Move Channel Selection Vertically: FINISHED")
+
+            # オプションが有効なら選択カーブにフォーカス
+            prefs = get_prefs(context)
+            if prefs.auto_focus_on_channel_change:
+                bpy.ops.graph.view_selected_curves_range()
+
             return {"FINISHED"}
         self.report({"ERROR"}, "No visible fcurves found")
         return {"FINISHED"}

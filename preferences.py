@@ -1,5 +1,5 @@
 # pyright: reportInvalidTypeForm=false
-from bpy.props import EnumProperty, PointerProperty
+from bpy.props import BoolProperty, EnumProperty, PointerProperty
 from bpy.types import AddonPreferences
 
 from .addon import ADDON_ID, get_prefs
@@ -28,12 +28,20 @@ class MonKeyPreferences(AddonPreferences):
             ("HowToUse", "How to use", ""),
             # ("CALCULATOR", "Calculator", ""),
             ("KEYMAP", "Keymap", ""),
+            ("GRAPH_EDITOR", "Graph Editor", ""),
             ("OVERLAY", "Overlay", ""),
             ("POSE_VISUALIZER", "Pose Visualizer", ""),
             ("PLAYBACK", "Playback", ""),
         ],
         default="HowToUse",
         options={"HIDDEN", "SKIP_SAVE"},
+    )
+
+    # Graph Editor Options
+    auto_focus_on_channel_change: BoolProperty(
+        name="Auto Focus on Channel Change",
+        description="チャンネル移動（Monkey Vertically）実行後、選択カーブにフォーカスする",
+        default=True,
     )
     # calculator: PointerProperty(type=CalculatorPreferences)
     overlay: PointerProperty(type=ChannelSelectionOverlaySettings)
@@ -52,6 +60,8 @@ class MonKeyPreferences(AddonPreferences):
             self.draw_description(context, box)
         # elif self.tab == "CALCULATOR":
         #     self.calculator.draw(context, box)
+        elif self.tab == "GRAPH_EDITOR":
+            self.draw_graph_editor_settings(context, box)
         elif self.tab == "OVERLAY":
             self.overlay.draw(context, box)
         elif self.tab == "POSE_VISUALIZER":
@@ -66,6 +76,11 @@ class MonKeyPreferences(AddonPreferences):
         # draw_multiline_text_examples(layout)
 
         MONKEY_LoggerPreferences.draw(self.logger_prefs, layout)
+
+    def draw_graph_editor_settings(self, context, layout):
+        col = layout.column()
+        col.label(text="Monkey Vertically (チャンネル移動)")
+        col.prop(self, "auto_focus_on_channel_change")
 
 
 def register():
