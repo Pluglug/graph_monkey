@@ -19,6 +19,7 @@ Blender animation addon for Graph Editor workflow enhancement. Version 0.9.0, Bl
 | Keymap registration | `.claude/rules/05-keymap-system.md` |
 | Utility modules | `.claude/rules/06-utilities.md` |
 | Coding conventions | `.claude/rules/07-conventions.md` |
+| New feature guidelines | `.claude/rules/08-new-feature-guidelines.md` |
 
 ## Essential Points
 
