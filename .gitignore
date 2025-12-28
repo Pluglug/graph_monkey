@@ -81,5 +81,8 @@ doc/_build/
 .DS_Store
 Thumbs.db
 
+# Claude Code (local settings only)
+.claude/settings.local.json
+
 # その他
 *.bak
