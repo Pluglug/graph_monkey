@@ -1,3 +1,4 @@
+# pyright: reportInvalidTypeForm=false
 # bl_info = {
 #     "name": "Flat Tangents for Blender",
 #     "author": "Pluglug",

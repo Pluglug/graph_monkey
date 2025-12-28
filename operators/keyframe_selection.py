@@ -1,3 +1,4 @@
+# pyright: reportInvalidTypeForm=false
 import bpy
 
 from ..addon import get_prefs

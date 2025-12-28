@@ -1,3 +1,4 @@
+# pyright: reportInvalidTypeForm=false
 import bpy
 from bpy.app.handlers import persistent
 from bpy.props import BoolProperty

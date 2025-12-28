@@ -1,3 +1,4 @@
+# pyright: reportInvalidTypeForm=false
 """Pose transform visualizer for displaying bone transform differences in 3D viewport."""
 
 import math

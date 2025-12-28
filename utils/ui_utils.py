@@ -1,3 +1,4 @@
+# pyright: reportInvalidTypeForm=false
 import textwrap
 
 import bpy

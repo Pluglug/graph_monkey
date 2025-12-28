@@ -1,3 +1,4 @@
+# pyright: reportInvalidTypeForm=false
 import bpy
 
 from ..keymap_manager import KeymapDefinition, keymap_registry
