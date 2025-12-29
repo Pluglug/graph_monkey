@@ -1,0 +1,216 @@
+{
+  "$schema": "./roulette_schema.json",
+  "version": "1.0",
+  "description": "日常動作アニメーション練習用ルーレットのデッキ定義",
+
+  "categories": {
+    "transition": "姿勢の遷移",
+    "manipulate": "物を扱う動作",
+    "weight": "重心・バランス",
+    "idle": "待機・聞く",
+    "semi_sport": "軽い運動系"
+  },
+
+  "moods": {
+    "neutral": {"label": "ニュートラル", "weight": 3},
+    "tired": {"label": "疲れている", "weight": 2},
+    "rushed": {"label": "少し急いでいる", "weight": 2},
+    "annoyed": {"label": "イラつきを抑えている", "weight": 1},
+    "relieved": {"label": "ほっとしている", "weight": 1},
+    "bored": {"label": "退屈している", "weight": 1},
+    "curious": {"label": "少し興味を持っている", "weight": 1}
+  },
+
+  "contexts": {
+    "office_desk": {"label": "オフィスのデスク周り", "weight": 3},
+    "home_living": {"label": "自宅リビング", "weight": 2},
+    "corridor": {"label": "廊下・通路", "weight": 2},
+    "train": {"label": "電車内", "weight": 1},
+    "street": {"label": "屋外・歩道", "weight": 2},
+    "entrance": {"label": "玄関・出入り口", "weight": 1}
+  },
+
+  "tech_focuses": {
+    "weight_shift": {"label": "重心移動", "weight": 3},
+    "timing_spacing": {"label": "タイミングと間", "weight": 3},
+    "overlap_follow": {"label": "オーバーラップとフォロー", "weight": 2},
+    "hands_fingers": {"label": "手・指の説得力", "weight": 2},
+    "spine_line": {"label": "背骨のライン", "weight": 2},
+    "head_gaze": {"label": "頭と視線ターゲット", "weight": 2}
+  },
+
+  "tag_to_tech": {
+    "weight_shift": ["weight_shift"],
+    "leg": ["timing_spacing", "weight_shift"],
+    "spine": ["spine_line", "weight_shift"],
+    "head_gaze": ["head_gaze", "timing_spacing"],
+    "arm": ["hands_fingers", "timing_spacing"],
+    "balance": ["weight_shift"],
+    "anticipation": ["timing_spacing", "overlap_follow"],
+    "timing": ["timing_spacing"]
+  },
+
+  "motions": {
+    "sit_to_stand": {
+      "label": "椅子から立ち上がる",
+      "category": "transition",
+      "tags": ["leg", "spine", "weight_shift"],
+      "allowed_moods": ["neutral", "tired", "rushed"],
+      "allowed_contexts": ["office_desk", "home_living"],
+      "complexity_weights": {"1": 1, "2": 3, "3": 1}
+    },
+    "stand_to_sit": {
+      "label": "立ち→椅子に座る",
+      "category": "transition",
+      "tags": ["leg", "spine"],
+      "allowed_moods": ["neutral", "tired", "bored"],
+      "allowed_contexts": ["office_desk", "home_living"],
+      "complexity_weights": {"1": 1, "2": 2, "3": 1}
+    },
+    "lean_to_wall": {
+      "label": "立ち→壁にもたれる→離れる",
+      "category": "transition",
+      "tags": ["spine", "weight_shift"],
+      "allowed_moods": ["neutral", "tired", "annoyed"],
+      "allowed_contexts": ["corridor", "street"],
+      "complexity_weights": {"1": 1, "2": 2, "3": 1}
+    },
+    "turn_180_listen": {
+      "label": "呼ばれて180°振り向く",
+      "category": "transition",
+      "tags": ["head_gaze", "spine"],
+      "allowed_moods": ["neutral", "rushed", "annoyed"],
+      "allowed_contexts": ["office_desk", "corridor", "street"],
+      "complexity_weights": {"1": 2, "2": 2, "3": 1}
+    },
+    "open_door_enter": {
+      "label": "ドアを開けて中に一歩入る",
+      "category": "manipulate",
+      "tags": ["arm", "weight_shift", "timing"],
+      "allowed_moods": ["neutral", "rushed", "tired"],
+      "allowed_contexts": ["entrance", "office_desk"],
+      "complexity_weights": {"1": 1, "2": 3, "3": 1}
+    },
+    "open_drawer_peek": {
+      "label": "引き出しを開けて中を見る",
+      "category": "manipulate",
+      "tags": ["arm", "head_gaze"],
+      "allowed_moods": ["neutral", "curious", "bored"],
+      "allowed_contexts": ["office_desk", "home_living"],
+      "complexity_weights": {"1": 2, "2": 2, "3": 1}
+    },
+    "take_phone_pocket": {
+      "label": "ポケットからスマホを取り出して覗く",
+      "category": "manipulate",
+      "tags": ["arm", "head_gaze"],
+      "allowed_moods": ["neutral", "rushed", "tired", "annoyed"],
+      "allowed_contexts": ["street", "train", "corridor"],
+      "complexity_weights": {"1": 2, "2": 2, "3": 1}
+    },
+    "type_keyboard_lean": {
+      "label": "椅子に座って画面に乗り出しタイピング",
+      "category": "manipulate",
+      "tags": ["spine", "arm", "head_gaze"],
+      "allowed_moods": ["neutral", "rushed", "tired"],
+      "allowed_contexts": ["office_desk"],
+      "complexity_weights": {"1": 1, "2": 3, "3": 1}
+    },
+    "pick_up_box": {
+      "label": "床の箱を持ち上げて数歩動く",
+      "category": "weight",
+      "tags": ["weight_shift", "leg", "spine"],
+      "allowed_moods": ["neutral", "tired", "annoyed"],
+      "allowed_contexts": ["office_desk", "home_living", "corridor"],
+      "complexity_weights": {"1": 1, "2": 2, "3": 2}
+    },
+    "shoulder_bag_put_on": {
+      "label": "肩掛けカバンをかける",
+      "category": "weight",
+      "tags": ["arm", "weight_shift"],
+      "allowed_moods": ["neutral", "rushed"],
+      "allowed_contexts": ["entrance", "street"],
+      "complexity_weights": {"1": 2, "2": 2, "3": 1}
+    },
+    "backpack_put_on": {
+      "label": "リュックを持ち上げて背負う",
+      "category": "weight",
+      "tags": ["arm", "weight_shift", "spine"],
+      "allowed_moods": ["neutral", "tired"],
+      "allowed_contexts": ["entrance", "street"],
+      "complexity_weights": {"1": 1, "2": 3, "3": 1}
+    },
+    "train_sway_recover": {
+      "label": "電車の揺れでよろめいて持ち直す",
+      "category": "weight",
+      "tags": ["balance", "leg"],
+      "allowed_moods": ["neutral", "tired", "bored"],
+      "allowed_contexts": ["train"],
+      "complexity_weights": {"1": 1, "2": 2, "3": 2}
+    },
+    "wait_standing_shift": {
+      "label": "立って待ちながら体重移動",
+      "category": "idle",
+      "tags": ["weight_shift", "spine"],
+      "allowed_moods": ["neutral", "bored", "tired"],
+      "allowed_contexts": ["train", "corridor", "street"],
+      "complexity_weights": {"1": 2, "2": 2, "3": 1}
+    },
+    "wait_sitting_adjust": {
+      "label": "椅子で待ちながら姿勢・脚を組み替える",
+      "category": "idle",
+      "tags": ["spine", "leg"],
+      "allowed_moods": ["neutral", "bored", "tired"],
+      "allowed_contexts": ["home_living", "office_desk"],
+      "complexity_weights": {"1": 2, "2": 2, "3": 1}
+    },
+    "listen_nod": {
+      "label": "話を聞いて頷き・否定のジェスチャ",
+      "category": "idle",
+      "tags": ["head_gaze", "spine"],
+      "allowed_moods": ["neutral", "annoyed", "relieved"],
+      "allowed_contexts": ["office_desk", "home_living"],
+      "complexity_weights": {"1": 2, "2": 2, "3": 1}
+    },
+    "think_decide_turn": {
+      "label": "考えてから方向転換して歩き出す",
+      "category": "idle",
+      "tags": ["head_gaze", "spine", "leg"],
+      "allowed_moods": ["neutral", "bored", "annoyed"],
+      "allowed_contexts": ["corridor", "street"],
+      "complexity_weights": {"1": 1, "2": 2, "3": 2}
+    },
+    "step_small_stair": {
+      "label": "1〜2段の段差を上り下り",
+      "category": "semi_sport",
+      "tags": ["leg", "balance"],
+      "allowed_moods": ["neutral", "rushed"],
+      "allowed_contexts": ["corridor", "street"],
+      "complexity_weights": {"1": 1, "2": 3, "3": 1}
+    },
+    "hop_over_puddle": {
+      "label": "小さな水たまりを飛び越える",
+      "category": "semi_sport",
+      "tags": ["leg", "anticipation"],
+      "allowed_moods": ["neutral", "rushed"],
+      "allowed_contexts": ["street"],
+      "complexity_weights": {"1": 1, "2": 2, "3": 2}
+    },
+    "drink_bottle": {
+      "label": "立ってボトルを飲んで少し脱力",
+      "category": "semi_sport",
+      "tags": ["arm", "spine"],
+      "allowed_moods": ["neutral", "tired", "relieved"],
+      "allowed_contexts": ["street", "train", "office_desk"],
+      "complexity_weights": {"1": 2, "2": 2, "3": 1}
+    },
+    "roll_up_sleeves": {
+      "label": "袖をまくって構えが変わる",
+      "category": "semi_sport",
+      "tags": ["arm", "spine"],
+      "allowed_moods": ["neutral", "rushed", "annoyed"],
+      "allowed_contexts": ["office_desk", "street"],
+      "complexity_weights": {"1": 2, "2": 2, "3": 1}
+    }
+  }
+}
+

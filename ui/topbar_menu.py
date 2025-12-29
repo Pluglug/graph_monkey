@@ -112,14 +112,33 @@ class TOPBAR_MT_pluglug(Menu):
     def draw(self, context):
         layout = self.layout
 
+        # モーションルーレット
+        layout.operator(
+            "monkey.roulette_spin",
+            text="Motion Roulette",
+            icon='MOD_DYNAMICPAINT',
+        )
+
+        # オーバーレイ表示トグル / リセット
+        result = context.window_manager.roulette_result
+        if result.is_confirmed:
+            icon = 'HIDE_OFF' if result.show_overlay else 'HIDE_ON'
+            text = "テーマを非表示" if result.show_overlay else "テーマを表示"
+            layout.operator(
+                "monkey.roulette_toggle_overlay",
+                text=text,
+                icon=icon,
+            )
+            layout.operator(
+                "monkey.roulette_reset",
+                text="リセット",
+                icon='LOOP_BACK',
+            )
+
+        layout.separator()
+
         # スクリプト実行サブメニュー
         layout.menu(TOPBAR_MT_pluglug_run_scripts.bl_idname, icon='PLAY')
-
-        # layout.separator()
-
-        # 将来の拡張用プレースホルダー
-        # ここに他の個人用機能を追加できます
-        # layout.operator("...", text="...", icon='...')
 
 
 # =============================================================================

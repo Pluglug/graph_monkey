@@ -1,0 +1,168 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "roulette_decks_schema",
+  "title": "Motion Roulette Decks",
+  "description": "日常動作アニメーション練習用ルーレットのデッキ定義スキーマ。AIがお題を追加する際はこのスキーマに従うこと。",
+  "type": "object",
+  "required": ["version", "categories", "moods", "contexts", "tech_focuses", "tag_to_tech", "motions"],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "スキーマバージョン (例: 1.0)"
+    },
+    "description": {
+      "type": "string"
+    },
+    "categories": {
+      "type": "object",
+      "description": "モーションのカテゴリ定義。キーはcategory_id、値は日本語ラベル",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "propertyNames": {
+        "pattern": "^[a-z_]+$"
+      }
+    },
+    "moods": {
+      "type": "object",
+      "description": "感情/心理状態の定義",
+      "additionalProperties": {
+        "$ref": "#/$defs/weighted_item"
+      },
+      "propertyNames": {
+        "pattern": "^[a-z_]+$"
+      }
+    },
+    "contexts": {
+      "type": "object",
+      "description": "シチュエーション/場所の定義",
+      "additionalProperties": {
+        "$ref": "#/$defs/weighted_item"
+      },
+      "propertyNames": {
+        "pattern": "^[a-z_]+$"
+      }
+    },
+    "tech_focuses": {
+      "type": "object",
+      "description": "技術フォーカスの定義。アニメーション練習で意識すべき技術要素",
+      "additionalProperties": {
+        "$ref": "#/$defs/weighted_item"
+      },
+      "propertyNames": {
+        "pattern": "^[a-z_]+$"
+      }
+    },
+    "tag_to_tech": {
+      "type": "object",
+      "description": "タグから技術フォーカスへのマッピング",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^[a-z_]+$"
+        },
+        "minItems": 1
+      },
+      "propertyNames": {
+        "pattern": "^[a-z_]+$"
+      }
+    },
+    "motions": {
+      "type": "object",
+      "description": "モーション（お題）の定義",
+      "additionalProperties": {
+        "$ref": "#/$defs/motion"
+      },
+      "propertyNames": {
+        "pattern": "^[a-z_]+$"
+      }
+    }
+  },
+  "$defs": {
+    "weighted_item": {
+      "type": "object",
+      "required": ["label", "weight"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "日本語ラベル",
+          "minLength": 1
+        },
+        "weight": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "description": "選択重み (1-10、高いほど選ばれやすい)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "motion": {
+      "type": "object",
+      "required": ["label", "category", "tags", "allowed_moods", "allowed_contexts", "complexity_weights"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "動作の日本語ラベル。簡潔かつ具体的に。",
+          "minLength": 3,
+          "maxLength": 30
+        },
+        "category": {
+          "type": "string",
+          "pattern": "^[a-z_]+$",
+          "description": "カテゴリID (categories に定義されているもの)"
+        },
+        "tags": {
+          "type": "array",
+          "description": "この動作に関連するタグ。技術フォーカスの選択に使用される",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z_]+$"
+          },
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true
+        },
+        "allowed_moods": {
+          "type": "array",
+          "description": "この動作で許可される感情ID",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z_]+$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "allowed_contexts": {
+          "type": "array",
+          "description": "この動作で許可されるシチュエーションID",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z_]+$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "complexity_weights": {
+          "type": "object",
+          "description": "複雑さレベルごとの重み。1=単発、2=2ステップ、3=ミニ演技",
+          "properties": {
+            "1": {"type": "integer", "minimum": 0, "maximum": 10},
+            "2": {"type": "integer", "minimum": 0, "maximum": 10},
+            "3": {"type": "integer", "minimum": 0, "maximum": 10}
+          },
+          "required": ["1", "2", "3"],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
+
