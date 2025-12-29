@@ -58,6 +58,34 @@ def get_icon(img_name):
     return img
 
 
+def get_action_fcurves(action):
+    """
+    ActionからFCurveを取得（Blender 4.x/5.x両対応）
+    Blender 5.0+ では Layered Actions システムに変更された
+    """
+    # Blender 4.x style: action.fcurves
+    if hasattr(action, 'fcurves') and action.fcurves is not None:
+        try:
+            # fcurvesが存在してもイテレート可能か確認
+            return list(action.fcurves)
+        except (TypeError, AttributeError):
+            pass
+    
+    # Blender 5.0+ style: action.layers[].strips[].channelbag.fcurves
+    if hasattr(action, 'layers'):
+        fcurves = []
+        for layer in action.layers:
+            if hasattr(layer, 'strips'):
+                for strip in layer.strips:
+                    if hasattr(strip, 'channelbag') and strip.channelbag:
+                        if hasattr(strip.channelbag, 'fcurves'):
+                            fcurves.extend(strip.channelbag.fcurves)
+        if fcurves:
+            return fcurves
+    
+    return []
+
+
 def get_fcurves_for_navigator(context):
     """
     visible_fcurves + hide=TrueのFカーブを取得
@@ -69,7 +97,9 @@ def get_fcurves_for_navigator(context):
     # 現在のオブジェクトのアクションからhide=TrueのFカーブを追加
     obj = context.object
     if obj and obj.animation_data and obj.animation_data.action:
-        for fc in obj.animation_data.action.fcurves:
+        action = obj.animation_data.action
+        all_fcurves = get_action_fcurves(action)
+        for fc in all_fcurves:
             if fc.hide and fc not in visible_set:
                 visible.append(fc)
     
