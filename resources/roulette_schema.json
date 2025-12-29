@@ -112,6 +112,11 @@
           "minLength": 3,
           "maxLength": 30
         },
+        "description": {
+          "type": "string",
+          "description": "動作の詳細説明（任意）。どういう一連の動きか、ポイントは何か等。AIやドキュメント生成用。",
+          "maxLength": 200
+        },
         "category": {
           "type": "string",
           "pattern": "^[a-z_]+$",

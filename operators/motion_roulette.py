@@ -14,7 +14,7 @@ Motion Practice Roulette
 import json
 import os
 import random
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Set
 
 import blf
 import bpy
@@ -35,7 +35,6 @@ log = get_logger(__name__)
 # デッキ管理
 # ==============================
 
-# グローバルデッキキャッシュ
 _decks_cache: Optional[Dict[str, Any]] = None
 
 COMPLEXITY_LABELS = {1: "単発", 2: "2ステップ", 3: "ミニ演技"}
@@ -47,8 +46,76 @@ def get_decks_path() -> str:
     return os.path.join(addon_dir, "resources", "roulette_decks.json")
 
 
+def validate_decks(data: Dict[str, Any]) -> List[str]:
+    """
+    デッキデータの整合性をチェック
+
+    Returns:
+        エラーメッセージのリスト（空なら問題なし）
+    """
+    errors: List[str] = []
+
+    # 1. 必須キー確認
+    required_keys = ["version", "categories", "moods", "contexts", "tech_focuses", "tag_to_tech", "motions"]
+    for key in required_keys:
+        if key not in data:
+            errors.append(f"必須キー '{key}' がありません")
+
+    if errors:
+        return errors  # 必須キーがないと以降のチェックができない
+
+    moods = data.get("moods", {})
+    contexts = data.get("contexts", {})
+    categories = data.get("categories", {})
+    tech_focuses = data.get("tech_focuses", {})
+    tag_to_tech = data.get("tag_to_tech", {})
+    motions = data.get("motions", {})
+
+    # 2. tag_to_tech の tech_id が tech_focuses に存在するか
+    for tag, tech_ids in tag_to_tech.items():
+        for tech_id in tech_ids:
+            if tech_id not in tech_focuses:
+                errors.append(f"tag_to_tech[{tag}] の '{tech_id}' が tech_focuses に存在しません")
+
+    # 3. 各 motion の参照整合性チェック
+    for motion_id, motion in motions.items():
+        # category チェック
+        cat = motion.get("category")
+        if cat and cat not in categories:
+            errors.append(f"motion '{motion_id}' の category '{cat}' が categories に存在しません")
+
+        # allowed_moods チェック
+        for mood_id in motion.get("allowed_moods", []):
+            if mood_id not in moods:
+                errors.append(f"motion '{motion_id}' の allowed_moods '{mood_id}' が moods に存在しません")
+
+        # allowed_contexts チェック
+        for ctx_id in motion.get("allowed_contexts", []):
+            if ctx_id not in contexts:
+                errors.append(f"motion '{motion_id}' の allowed_contexts '{ctx_id}' が contexts に存在しません")
+
+        # tags チェック（tag_to_tech に存在するか）
+        for tag in motion.get("tags", []):
+            if tag not in tag_to_tech:
+                errors.append(f"motion '{motion_id}' の tag '{tag}' が tag_to_tech に存在しません")
+
+        # complexity_weights が全部 0 でないか
+        cw = motion.get("complexity_weights", {})
+        if cw and all(int(v) == 0 for v in cw.values()):
+            errors.append(f"motion '{motion_id}' の complexity_weights がすべて 0 です")
+
+    return errors
+
+
 def load_decks(force_reload: bool = False) -> Dict[str, Any]:
-    """デッキをJSONから読み込む（キャッシュ機能付き）"""
+    """
+    デッキをJSONから読み込む（キャッシュ＆バリデーション機能付き）
+
+    Raises:
+        FileNotFoundError: JSONファイルが見つからない
+        json.JSONDecodeError: JSONの構文エラー
+        ValueError: 整合性チェックエラー
+    """
     global _decks_cache
 
     if _decks_cache is not None and not force_reload:
@@ -56,42 +123,43 @@ def load_decks(force_reload: bool = False) -> Dict[str, Any]:
 
     decks_path = get_decks_path()
 
-    try:
-        with open(decks_path, "r", encoding="utf-8") as f:
-            _decks_cache = json.load(f)
-            log.debug(f"Loaded roulette decks from {decks_path}")
-            return _decks_cache
-    except FileNotFoundError:
-        log.error(f"Decks file not found: {decks_path}")
-        raise
-    except json.JSONDecodeError as e:
-        log.error(f"Invalid JSON in decks file: {e}")
-        raise
+    with open(decks_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    # 整合性チェック
+    errors = validate_decks(data)
+    if errors:
+        for err in errors:
+            log.error(f"Deck validation error: {err}")
+        raise ValueError(f"roulette_decks.json に {len(errors)} 件のエラーがあります: {errors[0]}")
+
+    _decks_cache = data
+    log.debug(f"Loaded roulette decks from {decks_path}")
+    return _decks_cache
 
 
 def get_motions() -> Dict[str, Any]:
-    """モーションデッキを取得"""
     return load_decks().get("motions", {})
 
 
 def get_moods() -> Dict[str, Any]:
-    """ムードデッキを取得"""
     return load_decks().get("moods", {})
 
 
 def get_contexts() -> Dict[str, Any]:
-    """コンテキストデッキを取得"""
     return load_decks().get("contexts", {})
 
 
 def get_tech_focuses() -> Dict[str, Any]:
-    """技術フォーカスデッキを取得"""
     return load_decks().get("tech_focuses", {})
 
 
 def get_tag_to_tech() -> Dict[str, List[str]]:
-    """タグから技術フォーカスへのマッピングを取得"""
     return load_decks().get("tag_to_tech", {})
+
+
+def get_categories() -> Dict[str, str]:
+    return load_decks().get("categories", {})
 
 
 # ==============================
@@ -101,6 +169,8 @@ def get_tag_to_tech() -> Dict[str, List[str]]:
 def weighted_choice(items: List[str], weights: List[int]) -> str:
     """重み付きランダム選択"""
     total = sum(weights)
+    if total == 0:
+        return items[0] if items else ""
     r = random.uniform(0, total)
     upto = 0.0
     for item, w in zip(items, weights):
@@ -110,12 +180,34 @@ def weighted_choice(items: List[str], weights: List[int]) -> str:
     return items[-1]
 
 
-def choose_motion() -> str:
-    """モーションをランダム選択"""
+def choose_motion(
+    category_filter: Optional[List[str]] = None,
+    exclude_ids: Optional[Set[str]] = None
+) -> str:
+    """
+    モーションをランダム選択
+
+    Args:
+        category_filter: 許可するカテゴリのリスト（Noneなら全て）
+        exclude_ids: 除外するmotion_idのセット
+    """
     motions = get_motions()
-    keys = list(motions.keys())
-    weights = [1] * len(keys)
-    return weighted_choice(keys, weights)
+    items = []
+
+    for motion_id, motion in motions.items():
+        # カテゴリフィルタ
+        if category_filter and motion.get("category") not in category_filter:
+            continue
+        # 除外リスト
+        if exclude_ids and motion_id in exclude_ids:
+            continue
+        items.append(motion_id)
+
+    if not items:
+        raise RuntimeError("指定条件に対応するモーションがありません")
+
+    weights = [1] * len(items)
+    return weighted_choice(items, weights)
 
 
 def choose_mood(motion_id: str) -> str:
@@ -164,23 +256,33 @@ def choose_complexity(motion_id: str) -> int:
     motions = get_motions()
     wmap = motions[motion_id].get("complexity_weights", {"1": 1, "2": 1, "3": 1})
     levels = sorted(wmap.keys())
-    weights = [wmap[lvl] for lvl in levels]
+    weights = [int(wmap[lvl]) for lvl in levels]
     return int(weighted_choice(levels, weights))
 
 
-def spin_roulette(result: "RouletteResult") -> None:
+def spin_roulette(
+    result: "RouletteResult",
+    category_filter: Optional[List[str]] = None
+) -> None:
     """ルーレットをスピンして結果をPropertyGroupに格納"""
     motions = get_motions()
     moods = get_moods()
     contexts = get_contexts()
     tech_focuses = get_tech_focuses()
 
-    motion_id = choose_motion()
+    motion_id = choose_motion(category_filter=category_filter)
     mood_id = choose_mood(motion_id)
     context_id = choose_context(motion_id)
     tech_id = choose_tech_focus(motion_id)
     complexity = choose_complexity(motion_id)
 
+    # ID を保存（将来の履歴/再利用/除外用）
+    result.motion_id = motion_id
+    result.mood_id = mood_id
+    result.context_id = context_id
+    result.tech_id = tech_id
+
+    # ラベルを保存（UI表示用）
     result.motion = motions[motion_id]["label"]
     result.mood = moods[mood_id]["label"]
     result.context = contexts[context_id]["label"]
@@ -196,23 +298,22 @@ def spin_roulette(result: "RouletteResult") -> None:
 class RouletteResult(PropertyGroup):
     """ルーレット結果を格納するPropertyGroup"""
 
+    # ID（内部用：履歴/再利用/除外）
+    motion_id: StringProperty(name="Motion ID", default="")
+    mood_id: StringProperty(name="Mood ID", default="")
+    context_id: StringProperty(name="Context ID", default="")
+    tech_id: StringProperty(name="Tech ID", default="")
+
+    # ラベル（UI表示用）
     motion: StringProperty(name="動作", default="")
     mood: StringProperty(name="感情", default="")
     context: StringProperty(name="状況", default="")
     tech: StringProperty(name="技術", default="")
+
     complexity: IntProperty(name="複雑さ", default=1, min=1, max=3)
     remaining_rerolls: IntProperty(name="残り引き直し回数", default=3, min=0, max=3)
     is_confirmed: BoolProperty(name="確定済み", default=False)
     show_overlay: BoolProperty(name="オーバーレイ表示", default=False)
-
-    def get_summary_text(self) -> str:
-        """オーバーレイ用のサマリーテキストを生成"""
-        complexity_label = COMPLEXITY_LABELS.get(self.complexity, "")
-        return (
-            f"動作: {self.motion}\n"
-            f"感情: {self.mood} / 状況: {self.context}\n"
-            f"技術: {self.tech} / Lv.{self.complexity} ({complexity_label})"
-        )
 
 
 # ==============================
@@ -225,12 +326,11 @@ _draw_handler = None
 def draw_roulette_overlay():
     """3Dビューにルーレット結果をオーバーレイ表示"""
     wm = bpy.context.window_manager
-    result = wm.roulette_result
+    result = getattr(wm, "roulette_result", None)
 
-    if not result.show_overlay or not result.is_confirmed:
+    if not result or not result.show_overlay or not result.is_confirmed:
         return
 
-    # 現在のリージョンを取得
     region = bpy.context.region
     if not region:
         return
@@ -242,7 +342,6 @@ def draw_roulette_overlay():
     text_color = (1.0, 1.0, 1.0, 0.9)
     shadow_color = (0.0, 0.0, 0.0, 0.8)
 
-    # テキスト行を準備
     complexity_label = COMPLEXITY_LABELS.get(result.complexity, "")
     lines = [
         "【今日の練習テーマ】",
@@ -253,14 +352,10 @@ def draw_roulette_overlay():
         f"複雑さ: Lv.{result.complexity} ({complexity_label})",
     ]
 
-    # テキストサイズ設定
     blf.size(font_id, font_size)
-
-    # 最大幅を計算
     max_width = max(blf.dimensions(font_id, line)[0] for line in lines)
     total_height = line_height * len(lines)
 
-    # 右下に配置
     x, y = calculate_aligned_position(
         alignment="BOTTOM_RIGHT",
         space_width=region.width,
@@ -271,16 +366,13 @@ def draw_roulette_overlay():
         offset_y=padding,
     )
 
-    # 各行を描画（上から下へ）
     for i, line in enumerate(lines):
         line_y = y + total_height - (i + 1) * line_height
 
-        # 影
         blf.enable(font_id, blf.SHADOW)
         blf.shadow(font_id, 3, *shadow_color)
         blf.shadow_offset(font_id, 2, -2)
 
-        # テキスト
         blf.color(font_id, *text_color)
         blf.position(font_id, x, line_y, 0)
         blf.draw(font_id, line)
@@ -319,12 +411,27 @@ class MONKEY_OT_roulette_spin(Operator):
 
     @classmethod
     def poll(cls, context):
-        # 一度確定したら再実行不可
-        result = context.window_manager.roulette_result
+        # register前やアンロード時の AttributeError を防ぐ
+        result = getattr(context.window_manager, "roulette_result", None)
+        if result is None:
+            return True  # 初回は実行可能
         return not result.is_confirmed
 
     def execute(self, context):
         result = context.window_manager.roulette_result
+
+        # JSON 読み込み＆バリデーション（エラーはここで握る）
+        try:
+            load_decks(force_reload=True)
+        except FileNotFoundError:
+            self.report({'ERROR'}, "roulette_decks.json が見つかりません")
+            return {'CANCELLED'}
+        except json.JSONDecodeError as e:
+            self.report({'ERROR'}, f"JSON構文エラー: {e}")
+            return {'CANCELLED'}
+        except ValueError as e:
+            self.report({'ERROR'}, str(e))
+            return {'CANCELLED'}
 
         # 初期化
         result.remaining_rerolls = 3
@@ -344,15 +451,13 @@ class MONKEY_OT_roulette_dialog(Operator):
     bl_options = {'REGISTER', 'INTERNAL'}
 
     def execute(self, context):
-        # 確定処理
+        # OK ボタン = 確定
         result = context.window_manager.roulette_result
         result.is_confirmed = True
         result.show_overlay = True
 
-        # 描画ハンドラを登録
         register_draw_handler()
 
-        # 3Dビューを更新
         for area in context.screen.areas:
             if area.type == 'VIEW_3D':
                 area.tag_redraw()
@@ -361,15 +466,9 @@ class MONKEY_OT_roulette_dialog(Operator):
         return {'FINISHED'}
 
     def cancel(self, context):
-        # キャンセル時も確定扱い（閉じたら引き直し不可）
-        result = context.window_manager.roulette_result
-        result.is_confirmed = True
-        result.show_overlay = True
-        register_draw_handler()
-
-        for area in context.screen.areas:
-            if area.type == 'VIEW_3D':
-                area.tag_redraw()
+        # キャンセル = 確定しない（再度 spin 可能）
+        # 注意: この挙動は意図的。ダイアログを閉じただけでは確定しない。
+        pass
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self, width=350)
@@ -378,11 +477,9 @@ class MONKEY_OT_roulette_dialog(Operator):
         layout = self.layout
         result = context.window_manager.roulette_result
 
-        # メインコンテンツ（左寄せ）
         box = layout.box()
         col = box.column(align=True)
 
-        # 各項目を左寄せで表示
         col.label(text=f"動作: {result.motion}", icon='ARMATURE_DATA')
         col.label(text=f"感情: {result.mood}", icon='HEART')
         col.label(text=f"状況: {result.context}", icon='WORLD')
@@ -394,7 +491,6 @@ class MONKEY_OT_roulette_dialog(Operator):
             icon='LINENUMBERS_ON'
         )
 
-        # 推奨方針
         layout.separator()
         box2 = layout.box()
         box2.label(text="推奨方針", icon='INFO')
@@ -411,7 +507,6 @@ class MONKEY_OT_roulette_dialog(Operator):
 
         col2.label(text="・1時間で「気持ち悪さを3つ減らす」を目標に")
 
-        # 引き直しボタン
         layout.separator()
         row = layout.row()
 
@@ -450,9 +545,9 @@ class MONKEY_OT_roulette_toggle_overlay(Operator):
     bl_options = {'REGISTER'}
 
     def execute(self, context):
-        result = context.window_manager.roulette_result
+        result = getattr(context.window_manager, "roulette_result", None)
 
-        if not result.is_confirmed:
+        if not result or not result.is_confirmed:
             self.report({'WARNING'}, "まだ練習テーマが確定されていません")
             return {'CANCELLED'}
 
@@ -463,7 +558,6 @@ class MONKEY_OT_roulette_toggle_overlay(Operator):
         else:
             unregister_draw_handler()
 
-        # 3Dビューを更新
         for area in context.screen.areas:
             if area.type == 'VIEW_3D':
                 area.tag_redraw()
@@ -481,11 +575,17 @@ class MONKEY_OT_roulette_reset(Operator):
     bl_options = {'REGISTER'}
 
     def execute(self, context):
-        result = context.window_manager.roulette_result
+        result = getattr(context.window_manager, "roulette_result", None)
+        if not result:
+            return {'CANCELLED'}
 
         # リセット
         result.is_confirmed = False
         result.show_overlay = False
+        result.motion_id = ""
+        result.mood_id = ""
+        result.context_id = ""
+        result.tech_id = ""
         result.motion = ""
         result.mood = ""
         result.context = ""
@@ -493,10 +593,8 @@ class MONKEY_OT_roulette_reset(Operator):
         result.complexity = 1
         result.remaining_rerolls = 3
 
-        # オーバーレイを解除
         unregister_draw_handler()
 
-        # 3Dビューを更新
         for area in context.screen.areas:
             if area.type == 'VIEW_3D':
                 area.tag_redraw()
@@ -511,11 +609,9 @@ class MONKEY_OT_roulette_reset(Operator):
 
 
 def register():
-    """プロパティを登録"""
     bpy.types.WindowManager.roulette_result = PointerProperty(type=RouletteResult)
 
 
 def unregister():
-    """プロパティを解除"""
     unregister_draw_handler()
     del bpy.types.WindowManager.roulette_result
