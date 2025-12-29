@@ -45,6 +45,11 @@ class MonKeyPreferences(AddonPreferences):
         description="チャンネル移動（Monkey Vertically）実行後、選択カーブにフォーカスする",
         default=True,
     )
+    auto_follow_current_frame: BoolProperty(
+        name="Auto Follow Current Frame",
+        description="キーフレーム移動（Monkey Horizontally）で選択キーが1つだけのとき、現在のフレームを追従させる",
+        default=False,
+    )
     # calculator: PointerProperty(type=CalculatorPreferences)
     channel_navigator: PointerProperty(type=ChannelNavigatorSettings)
     overlay: PointerProperty(type=ChannelSelectionOverlaySettings)
@@ -86,6 +91,10 @@ class MonKeyPreferences(AddonPreferences):
         col = layout.column()
         col.label(text="Monkey Vertically (チャンネル移動)")
         col.prop(self, "auto_focus_on_channel_change")
+        
+        col.separator()
+        col.label(text="Monkey Horizontally (キーフレーム移動)")
+        col.prop(self, "auto_follow_current_frame")
 
 
 def register():
