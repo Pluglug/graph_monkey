@@ -19,8 +19,8 @@ from bpy.types import PropertyGroup
 from bpy.props import BoolProperty, IntProperty
 
 class MyOperatorSettings(PropertyGroup):
-    enabled: BoolProperty(default=True)  # type: ignore
-    count: IntProperty(default=5, min=1, max=100)  # type: ignore
+    enabled: BoolProperty(default=True)
+    count: IntProperty(default=5, min=1, max=100)
 
     def draw(self, context, layout):
         layout.prop(self, "enabled")

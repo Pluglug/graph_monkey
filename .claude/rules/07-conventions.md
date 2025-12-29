@@ -11,17 +11,13 @@
 
 ## Properties
 
-Files defining PropertyGroup or Preferences must add at top:
+Files defining PropertyGroup, Preferences, or Operators with `bpy.props` must add at top:
 
 ```python
 # pyright: reportInvalidTypeForm=false
 ```
 
-Individual properties need type ignore:
-
-```python
-enabled: bpy.props.BoolProperty(default=True)  # type: ignore
-```
+This suppresses type errors for all `bpy.props` declarations in the file, so individual `# type: ignore` comments are NOT needed.
 
 ## Logging
 

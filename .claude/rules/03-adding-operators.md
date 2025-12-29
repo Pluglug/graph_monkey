@@ -4,6 +4,7 @@
 2. Follow this structure:
 
 ```python
+# pyright: reportInvalidTypeForm=false
 import bpy
 from ..utils.logging import get_logger
 from ..keymap_manager import KeymapDefinition, keymap_registry
@@ -15,8 +16,7 @@ class GRAPH_OT_my_operator(bpy.types.Operator):
     bl_label = "My Operation"
     bl_options = {"UNDO"}
 
-    # Properties with type: ignore for bpy.props
-    direction: bpy.props.EnumProperty(  # type: ignore
+    direction: bpy.props.EnumProperty(
         name="Direction",
         items=[("forward", "Forward", ""), ("backward", "Backward", "")],
         default="forward",
@@ -54,4 +54,4 @@ keymap_registry.register_keymap_group("My Operator", [
 
 - Always implement `poll()` classmethod
 - Check `context.area.type` before accessing space-specific data
-- Add `# type: ignore` to bpy.props declarations
+- Add `# pyright: reportInvalidTypeForm=false` at file top when using `bpy.props`
