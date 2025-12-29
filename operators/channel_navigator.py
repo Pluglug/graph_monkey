@@ -337,14 +337,16 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
             Vector((self.px_w, 0)),
         ]
 
-        # Calculate click zones for icons (right side)
-        # Layout: [color_bar][text...][mute][lock][hide]
-        self.hide_zone_x = self.right - self.icon_margin
-        self.lock_zone_x = self.right - self.icon_margin * 2
-        self.mute_zone_x = self.right - self.icon_margin * 3
+        # Calculate click zones for icons
+        # Layout: [color_bar][hide][text...][mute][lock]
+        # Left side: hide icon after color bar
+        self.hide_zone_x = self.left + self.color_bar_width + int(4 * ui_scale)
+        # Right side: mute, lock
+        self.lock_zone_x = self.right - self.icon_margin
+        self.mute_zone_x = self.right - self.icon_margin * 2
 
-        # Text position
-        self.text_x = self.left + self.color_bar_width + int(8 * ui_scale)
+        # Text position (after hide icon)
+        self.text_x = self.hide_zone_x + self.icon_size + int(6 * ui_scale)
 
         # Build static line batch
         lines = []
@@ -416,13 +418,13 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
                 self._apply_drag_toggle(fc)
 
         # Mouse-over selection (like layer_navigator)
-        # Only change selection if mouse is in the list area (not on icons)
+        # Only change selection if mouse is in the text area (not on icons)
         if hovered_display_idx is not None and not self.dragging:
-            # Check if mouse is in text area (not icon area)
-            if self.mouse.x < self.mute_zone_x:
+            # Text area is between hide icon and mute icon
+            if self.text_x <= self.mouse.x < self.mute_zone_x:
                 new_idx = self._display_idx_to_fcurve_idx(hovered_display_idx)
                 if new_idx is not None and new_idx != self.current_idx:
-                    self._change_channel(new_idx)
+                    self._change_channel(new_idx, context)
 
         return {"RUNNING_MODAL"}
 
@@ -456,7 +458,7 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
             return actual_idx
         return None
 
-    def _change_channel(self, new_idx):
+    def _change_channel(self, new_idx, context=None):
         """Change to a new channel with keyframe selection transfer"""
         if new_idx == self.current_idx:
             return
@@ -478,6 +480,10 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         self.current_idx = new_idx
         log.debug(f"Changed to channel {new_idx}: {to_fc.data_path}")
 
+        # Live focus on channel change
+        if context:
+            self._apply_focus(context)
+
     def _handle_click(self, context, event, hovered_display_idx):
         """Handle mouse click for icons and solo"""
         if hovered_display_idx is None:
@@ -488,29 +494,33 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
             return
 
         # Check if clicking on icon zones
-        if self.mouse.x >= self.hide_zone_x:
-            # Hide toggle
+        # Layout: [color_bar][hide][text...][mute][lock]
+        
+        # Left side: Hide icon
+        if self.hide_zone_x <= self.mouse.x < self.text_x:
             fc.hide = not fc.hide
             self.dragging = True
             self.drag_mode = "hide"
             self._drag_value = fc.hide
             return
-        elif self.mouse.x >= self.lock_zone_x:
-            # Lock toggle
+        
+        # Right side: Lock (rightmost)
+        if self.mouse.x >= self.lock_zone_x:
             fc.lock = not fc.lock
             self.dragging = True
             self.drag_mode = "lock"
             self._drag_value = fc.lock
             return
-        elif self.mouse.x >= self.mute_zone_x:
-            # Mute toggle
+        
+        # Right side: Mute (left of lock)
+        if self.mouse.x >= self.mute_zone_x:
             fc.mute = not fc.mute
             self.dragging = True
             self.drag_mode = "mute"
             self._drag_value = fc.mute
             return
 
-        # Solo handling (Ctrl+click)
+        # Solo handling (Ctrl+click on text area)
         if event.ctrl:
             self._solo_channel(fc)
 
