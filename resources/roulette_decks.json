@@ -1,14 +1,15 @@
 {
   "$schema": "./roulette_schema.json",
-  "version": "1.0",
-  "description": "日常動作アニメーション練習用ルーレットのデッキ定義",
+  "version": "1.1",
+  "description": "日常動作アニメーション練習用ルーレットのデッキ定義（ビート・レイアウト対応）",
 
   "categories": {
     "transition": "姿勢の遷移",
     "manipulate": "物を扱う動作",
     "weight": "重心・バランス",
     "idle": "待機・聞く",
-    "semi_sport": "軽い運動系"
+    "semi_sport": "軽い運動系",
+    "sequence": "シーケンス・複合"
   },
 
   "moods": {
@@ -36,7 +37,10 @@
     "overlap_follow": {"label": "オーバーラップとフォロー", "weight": 2},
     "hands_fingers": {"label": "手・指の説得力", "weight": 2},
     "spine_line": {"label": "背骨のライン", "weight": 2},
-    "head_gaze": {"label": "頭と視線ターゲット", "weight": 2}
+    "head_gaze": {"label": "頭と視線ターゲット", "weight": 2},
+    "shot_design": {"label": "ショット・構図設計", "weight": 2},
+    "camera_move": {"label": "カメラワーク", "weight": 2},
+    "sequence_planning": {"label": "シーケンス設計", "weight": 1}
   },
 
   "tag_to_tech": {
@@ -47,7 +51,50 @@
     "arm": ["hands_fingers", "timing_spacing"],
     "balance": ["weight_shift"],
     "anticipation": ["timing_spacing", "overlap_follow"],
-    "timing": ["timing_spacing"]
+    "timing": ["timing_spacing"],
+    "story_beat": ["timing_spacing", "shot_design"],
+    "camera": ["camera_move", "shot_design"],
+    "sequence": ["sequence_planning", "timing_spacing"],
+    "shot": ["shot_design"]
+  },
+
+  "layouts": {
+    "corridor_basic": {
+      "label": "まっすぐな廊下（ドア1つ）",
+      "context": "corridor",
+      "weight": 3,
+      "notes": "5〜10m程度の直線廊下。片側にドアを1つ配置。"
+    },
+    "corridor_with_stairs": {
+      "label": "廊下＋途中に1段の段差",
+      "context": "corridor",
+      "weight": 2,
+      "notes": "廊下途中に1〜2段の段差や小さな階段。"
+    },
+    "entrance_door": {
+      "label": "玄関・出入り口＋ドア1枚",
+      "context": "entrance",
+      "weight": 3,
+      "notes": "片開きのドアと靴／マット程度のシンプルな構成。"
+    },
+    "street_straight": {
+      "label": "まっすぐな歩道（5〜10m）",
+      "context": "street",
+      "weight": 3,
+      "notes": "シンプルな歩道。電柱や障害物1〜2個。"
+    },
+    "office_desk_simple": {
+      "label": "デスク＋椅子のみ",
+      "context": "office_desk",
+      "weight": 3,
+      "notes": "最小限のオフィスデスク環境。"
+    },
+    "home_sofa_table": {
+      "label": "ソファ＋テーブル",
+      "context": "home_living",
+      "weight": 3,
+      "notes": "リビングの典型的な配置。"
+    }
   },
 
   "motions": {
@@ -89,7 +136,8 @@
       "tags": ["arm", "weight_shift", "timing"],
       "allowed_moods": ["neutral", "rushed", "tired"],
       "allowed_contexts": ["entrance", "office_desk"],
-      "complexity_weights": {"1": 1, "2": 3, "3": 1}
+      "complexity_weights": {"1": 1, "2": 3, "3": 1},
+      "preferred_layouts": ["entrance_door"]
     },
     "open_drawer_peek": {
       "label": "引き出しを開けて中を見る",
@@ -185,7 +233,8 @@
       "tags": ["leg", "balance"],
       "allowed_moods": ["neutral", "rushed"],
       "allowed_contexts": ["corridor", "street"],
-      "complexity_weights": {"1": 1, "2": 3, "3": 1}
+      "complexity_weights": {"1": 1, "2": 3, "3": 1},
+      "preferred_layouts": ["corridor_with_stairs"]
     },
     "hop_over_puddle": {
       "label": "小さな水たまりを飛び越える",
@@ -225,7 +274,8 @@
       "tags": ["leg", "balance", "weight_shift", "spine", "arm"],
       "allowed_moods": ["neutral", "tired", "rushed"],
       "allowed_contexts": ["corridor", "entrance"],
-      "complexity_weights": {"1": 1, "2": 3, "3": 1}
+      "complexity_weights": {"1": 1, "2": 3, "3": 1},
+      "preferred_layouts": ["corridor_with_stairs"]
     },
     "stumble_with_load": {
       "label": "重い荷物でつまずき体勢を立て直す",
@@ -249,7 +299,8 @@
       "tags": ["head_gaze", "anticipation", "weight_shift"],
       "allowed_moods": ["neutral", "rushed", "tired"],
       "allowed_contexts": ["corridor", "entrance"],
-      "complexity_weights": {"1": 1, "2": 2, "3": 2}
+      "complexity_weights": {"1": 1, "2": 2, "3": 2},
+      "preferred_layouts": ["entrance_door", "corridor_basic"]
     },
     "catch_fall_to_knee": {
       "label": "よろめいて片膝をつき体勢を戻す",
@@ -266,7 +317,73 @@
       "allowed_moods": ["neutral", "rushed", "tired"],
       "allowed_contexts": ["corridor", "street"],
       "complexity_weights": {"1": 1, "2": 2, "3": 2}
+    },
+    "give_up_then_push": {
+      "label": "諦めかけてからもう一度動き出す",
+      "category": "idle",
+      "tags": ["head_gaze", "spine", "weight_shift", "anticipation", "story_beat"],
+      "allowed_moods": ["tired", "annoyed", "relieved"],
+      "allowed_contexts": ["corridor", "street", "office_desk"],
+      "complexity_weights": {"1": 1, "2": 2, "3": 2},
+      "description": "立ち止まり、うつむき、力を込めて再び前進する。ビート練習用。"
+    },
+    "door_peek_retreat_commit": {
+      "label": "出口を覗き、一度引き戻されてから踏み出す",
+      "category": "idle",
+      "tags": ["head_gaze", "anticipation", "weight_shift", "story_beat"],
+      "allowed_moods": ["rushed", "tired", "neutral"],
+      "allowed_contexts": ["corridor", "entrance"],
+      "complexity_weights": {"1": 1, "2": 2, "3": 2},
+      "preferred_layouts": ["entrance_door", "corridor_basic"],
+      "requires_layout": true,
+      "description": "ドアを覗く→何かに気づいて引き戻る→決意して踏み出す。3ビート構成。"
+    },
+    "choose_help_over_escape": {
+      "label": "逃げかけてから助けに戻る",
+      "category": "transition",
+      "tags": ["leg", "spine", "head_gaze", "weight_shift", "story_beat"],
+      "allowed_moods": ["rushed", "annoyed", "relieved"],
+      "allowed_contexts": ["corridor", "street", "entrance"],
+      "complexity_weights": {"1": 1, "2": 2, "3": 2},
+      "description": "走り出す→振り返る→戻る決断をして反転。ビート練習用。"
+    },
+    "exhausted_pause_then_run": {
+      "label": "限界で立ち止まり、息を整えて再び走り出す",
+      "category": "semi_sport",
+      "tags": ["spine", "head_gaze", "leg", "anticipation", "story_beat"],
+      "allowed_moods": ["tired", "rushed"],
+      "allowed_contexts": ["corridor", "street"],
+      "complexity_weights": {"1": 1, "2": 2, "3": 2},
+      "description": "疲労で停止→深呼吸→再加速。体力の限界とビートを表現。"
+    },
+    "same_action_two_shots": {
+      "label": "同じ動きをロングとクローズの2ショットで撮る",
+      "category": "sequence",
+      "tags": ["camera", "shot", "sequence"],
+      "allowed_moods": ["neutral"],
+      "allowed_contexts": ["office_desk", "corridor", "street"],
+      "complexity_weights": {"1": 0, "2": 2, "3": 2},
+      "description": "メタタスク：別のモーションカードを1枚引き、それをロングショットとクローズアップの2つで制作する。"
+    },
+    "corridor_escape_layout": {
+      "label": "廊下レイアウトと逃走カメラのプリビズ",
+      "category": "sequence",
+      "tags": ["camera", "shot", "sequence"],
+      "allowed_moods": ["neutral"],
+      "allowed_contexts": ["corridor"],
+      "complexity_weights": {"1": 0, "2": 1, "3": 3},
+      "requires_layout": true,
+      "preferred_layouts": ["corridor_basic", "corridor_with_stairs"],
+      "description": "廊下レイアウトを組み、キャラが走って逃げるカメラワークをプリビズする。レイアウト必須。"
+    },
+    "chain_two_motions": {
+      "label": "モーションカード2枚を繋いで5〜10秒のシーケンスにする",
+      "category": "sequence",
+      "tags": ["sequence", "story_beat"],
+      "allowed_moods": ["neutral"],
+      "allowed_contexts": ["corridor", "street", "entrance", "home_living", "office_desk"],
+      "complexity_weights": {"1": 0, "2": 1, "3": 3},
+      "description": "メタタスク：別の動作カードを2枚引き、自然な前後関係になるよう5〜10秒のシーケンスを組む。"
     }
   }
 }
-

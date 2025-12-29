@@ -5,6 +5,7 @@ Motion Practice Roulette
 
 機能:
 - 動作、感情、状況、技術フォーカス、複雑さをランダムに選択
+- レイアウトプリセット対応（ビート・カメラ練習向け）
 - Blenderのポップアップダイアログで結果を表示
 - 3回まで引き直し可能
 - 確定後はオーバーレイで表示
@@ -70,6 +71,7 @@ def validate_decks(data: Dict[str, Any]) -> List[str]:
     tech_focuses = data.get("tech_focuses", {})
     tag_to_tech = data.get("tag_to_tech", {})
     motions = data.get("motions", {})
+    layouts = data.get("layouts", {})  # オプション
 
     # 2. tag_to_tech の tech_id が tech_focuses に存在するか
     for tag, tech_ids in tag_to_tech.items():
@@ -77,7 +79,18 @@ def validate_decks(data: Dict[str, Any]) -> List[str]:
             if tech_id not in tech_focuses:
                 errors.append(f"tag_to_tech[{tag}] の '{tech_id}' が tech_focuses に存在しません")
 
-    # 3. 各 motion の参照整合性チェック
+    # 3. layouts のチェック（存在する場合）
+    if layouts:
+        for layout_id, layout in layouts.items():
+            ctx = layout.get("context")
+            if ctx and ctx not in contexts:
+                errors.append(f"layout '{layout_id}' の context '{ctx}' が contexts に存在しません")
+
+            weight = layout.get("weight")
+            if weight is not None and (not isinstance(weight, int) or weight < 0):
+                errors.append(f"layout '{layout_id}' の weight が不正です")
+
+    # 4. 各 motion の参照整合性チェック
     for motion_id, motion in motions.items():
         # category チェック
         cat = motion.get("category")
@@ -103,6 +116,12 @@ def validate_decks(data: Dict[str, Any]) -> List[str]:
         cw = motion.get("complexity_weights", {})
         if cw and all(int(v) == 0 for v in cw.values()):
             errors.append(f"motion '{motion_id}' の complexity_weights がすべて 0 です")
+
+        # preferred_layouts チェック（存在する場合）
+        if layouts:
+            for layout_id in motion.get("preferred_layouts", []):
+                if layout_id not in layouts:
+                    errors.append(f"motion '{motion_id}' の preferred_layouts '{layout_id}' が layouts に存在しません")
 
     return errors
 
@@ -160,6 +179,11 @@ def get_tag_to_tech() -> Dict[str, List[str]]:
 
 def get_categories() -> Dict[str, str]:
     return load_decks().get("categories", {})
+
+
+def get_layouts() -> Dict[str, Any]:
+    """レイアウトデッキを取得（存在しない場合は空dict）"""
+    return load_decks().get("layouts", {})
 
 
 # ==============================
@@ -260,6 +284,50 @@ def choose_complexity(motion_id: str) -> int:
     return int(weighted_choice(levels, weights))
 
 
+def choose_layout(motion_id: str, context_id: str) -> str:
+    """
+    モーションとコンテキストに対応するレイアウトをランダム選択
+
+    Args:
+        motion_id: モーションID
+        context_id: コンテキストID
+
+    Returns:
+        layout_id (空文字列の場合はレイアウト無し)
+    """
+    layouts = get_layouts()
+    if not layouts:
+        return ""
+
+    motions = get_motions()
+    motion = motions.get(motion_id, {})
+    preferred_layouts = motion.get("preferred_layouts", [])
+
+    # 候補レイアウトを決定
+    candidates = []
+
+    # 1. preferred_layouts が指定されている場合、それを優先
+    if preferred_layouts:
+        for layout_id in preferred_layouts:
+            layout = layouts.get(layout_id)
+            if layout and layout.get("context") == context_id:
+                candidates.append((layout_id, layout.get("weight", 1)))
+
+    # 2. preferred がない or context が一致しない場合、全レイアウトから選択
+    if not candidates:
+        for layout_id, layout in layouts.items():
+            if layout.get("context") == context_id:
+                candidates.append((layout_id, layout.get("weight", 1)))
+
+    if not candidates:
+        return ""  # 該当レイアウトなし
+
+    # 重み付き選択
+    layout_ids = [c[0] for c in candidates]
+    weights = [c[1] for c in candidates]
+    return weighted_choice(layout_ids, weights)
+
+
 def spin_roulette(
     result: "RouletteResult",
     category_filter: Optional[List[str]] = None
@@ -269,6 +337,7 @@ def spin_roulette(
     moods = get_moods()
     contexts = get_contexts()
     tech_focuses = get_tech_focuses()
+    layouts = get_layouts()
 
     motion_id = choose_motion(category_filter=category_filter)
     mood_id = choose_mood(motion_id)
@@ -276,11 +345,20 @@ def spin_roulette(
     tech_id = choose_tech_focus(motion_id)
     complexity = choose_complexity(motion_id)
 
+    # レイアウトを選択
+    layout_id = ""
+    layout_label = ""
+    if layouts:
+        layout_id = choose_layout(motion_id, context_id)
+        if layout_id and layout_id in layouts:
+            layout_label = layouts[layout_id].get("label", layout_id)
+
     # ID を保存（将来の履歴/再利用/除外用）
     result.motion_id = motion_id
     result.mood_id = mood_id
     result.context_id = context_id
     result.tech_id = tech_id
+    result.layout_id = layout_id
 
     # ラベルを保存（UI表示用）
     result.motion = motions[motion_id]["label"]
@@ -288,6 +366,7 @@ def spin_roulette(
     result.context = contexts[context_id]["label"]
     result.tech = tech_focuses[tech_id]["label"]
     result.complexity = complexity
+    result.layout = layout_label
 
 
 # ==============================
@@ -303,12 +382,14 @@ class RouletteResult(PropertyGroup):
     mood_id: StringProperty(name="Mood ID", default="")
     context_id: StringProperty(name="Context ID", default="")
     tech_id: StringProperty(name="Tech ID", default="")
+    layout_id: StringProperty(name="Layout ID", default="")
 
     # ラベル（UI表示用）
     motion: StringProperty(name="動作", default="")
     mood: StringProperty(name="感情", default="")
     context: StringProperty(name="状況", default="")
     tech: StringProperty(name="技術", default="")
+    layout: StringProperty(name="レイアウト", default="")
 
     complexity: IntProperty(name="複雑さ", default=1, min=1, max=3)
     remaining_rerolls: IntProperty(name="残り引き直し回数", default=3, min=0, max=3)
@@ -351,6 +432,10 @@ def draw_roulette_overlay():
         f"技術: {result.tech}",
         f"複雑さ: Lv.{result.complexity} ({complexity_label})",
     ]
+
+    # レイアウトがあれば表示
+    if result.layout:
+        lines.append(f"レイアウト: {result.layout}")
 
     blf.size(font_id, font_size)
     max_width = max(blf.dimensions(font_id, line)[0] for line in lines)
@@ -471,12 +556,13 @@ class MONKEY_OT_roulette_dialog(Operator):
         pass
 
     def invoke(self, context, event):
-        return context.window_manager.invoke_props_dialog(self, width=350)
+        return context.window_manager.invoke_props_dialog(self, width=380)
 
     def draw(self, context):
         layout = self.layout
         result = context.window_manager.roulette_result
 
+        # メインコンテンツ
         box = layout.box()
         col = box.column(align=True)
 
@@ -491,6 +577,13 @@ class MONKEY_OT_roulette_dialog(Operator):
             icon='LINENUMBERS_ON'
         )
 
+        # レイアウト表示
+        if result.layout:
+            col.label(text=f"レイアウト: {result.layout}", icon='MESH_CUBE')
+        else:
+            col.label(text="レイアウト: （任意）", icon='MESH_CUBE')
+
+        # 推奨方針
         layout.separator()
         box2 = layout.box()
         box2.label(text="推奨方針", icon='INFO')
@@ -507,6 +600,40 @@ class MONKEY_OT_roulette_dialog(Operator):
 
         col2.label(text="・1時間で「気持ち悪さを3つ減らす」を目標に")
 
+        # tech_focus / tags に応じた追加アドバイス
+        try:
+            motions = get_motions()
+            motion = motions.get(result.motion_id, {})
+            tags = motion.get("tags", [])
+
+            # tech_focus 別
+            if result.tech_id == "shot_design":
+                col2.label(text="・カメラアングルと画面内情報の整理を優先")
+            elif result.tech_id == "camera_move":
+                col2.label(text="・キャラのリズムとカメラのリズムを揃える")
+            elif result.tech_id == "sequence_planning":
+                col2.label(text="・全体の流れと各ショットの役割を明確に")
+
+            # tags 別
+            if "story_beat" in tags:
+                col2.label(text="・前後1ビート（入る／出る動き）を必ず入れる")
+
+            # メタタスク用の追加説明
+            if result.motion_id == "same_action_two_shots":
+                col2.separator()
+                col2.label(text="【メタタスク】", icon='EXPERIMENTAL')
+                col2.label(text="別のモーションを1枚引き、それをロングと")
+                col2.label(text="クローズアップの2ショットで制作する")
+            elif result.motion_id == "chain_two_motions":
+                col2.separator()
+                col2.label(text="【メタタスク】", icon='EXPERIMENTAL')
+                col2.label(text="別の動作カードを2枚引き、自然な前後関係")
+                col2.label(text="になるよう5〜10秒のシーケンスを組む")
+
+        except Exception as e:
+            log.error(f"Failed to load additional advice: {e}")
+
+        # 引き直しボタン
         layout.separator()
         row = layout.row()
 
@@ -586,10 +713,12 @@ class MONKEY_OT_roulette_reset(Operator):
         result.mood_id = ""
         result.context_id = ""
         result.tech_id = ""
+        result.layout_id = ""
         result.motion = ""
         result.mood = ""
         result.context = ""
         result.tech = ""
+        result.layout = ""
         result.complexity = 1
         result.remaining_rerolls = 3
 
