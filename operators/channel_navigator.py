@@ -791,15 +791,15 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
             hide_coord = Vector((self.hide_zone_x, icon_y))
             icons_to_draw[hide_key].append([v + hide_coord for v in self.icon_tex_coord])
 
-        # Draw all icons
+        # Draw all icons (shader created once outside loop for performance)
         gpu.state.blend_set("ALPHA")
+        shader_tex = gpu.shader.from_builtin('IMAGE')
         for icon_name, coord_list in icons_to_draw.items():
             img = self.icon_tex.get(icon_name)
             if not img:
                 continue
             texture = gpu.texture.from_image(img)
             for coords in coord_list:
-                shader_tex = gpu.shader.from_builtin('IMAGE')
                 batch_icons = batch_for_shader(
                     shader_tex, 'TRI_FAN',
                     {
