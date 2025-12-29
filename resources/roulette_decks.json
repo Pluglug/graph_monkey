@@ -210,6 +210,62 @@
       "allowed_moods": ["neutral", "rushed", "annoyed"],
       "allowed_contexts": ["office_desk", "street"],
       "complexity_weights": {"1": 2, "2": 2, "3": 1}
+    },
+    "shoulder_support_step": {
+      "label": "相手の肩を支えて一歩踏み出す",
+      "category": "weight",
+      "tags": ["weight_shift", "leg", "spine", "arm", "balance"],
+      "allowed_moods": ["neutral", "tired", "rushed"],
+      "allowed_contexts": ["corridor", "street", "entrance"],
+      "complexity_weights": {"1": 1, "2": 2, "3": 2}
+    },
+    "support_step_down_stair": {
+      "label": "誰かを支えながら段差を一段降りる",
+      "category": "weight",
+      "tags": ["leg", "balance", "weight_shift", "spine", "arm"],
+      "allowed_moods": ["neutral", "tired", "rushed"],
+      "allowed_contexts": ["corridor", "entrance"],
+      "complexity_weights": {"1": 1, "2": 3, "3": 1}
+    },
+    "stumble_with_load": {
+      "label": "重い荷物でつまずき体勢を立て直す",
+      "category": "weight",
+      "tags": ["balance", "leg", "weight_shift", "anticipation"],
+      "allowed_moods": ["neutral", "rushed", "annoyed"],
+      "allowed_contexts": ["corridor", "street", "entrance"],
+      "complexity_weights": {"1": 1, "2": 2, "3": 2}
+    },
+    "assist_sit_other": {
+      "label": "相手を支えて椅子に座らせる",
+      "category": "transition",
+      "tags": ["weight_shift", "leg", "spine", "arm"],
+      "allowed_moods": ["neutral", "tired", "relieved"],
+      "allowed_contexts": ["office_desk", "home_living"],
+      "complexity_weights": {"1": 1, "2": 2, "3": 2}
+    },
+    "door_peek_then_go": {
+      "label": "出口を覗いて一瞬ためらい踏み出す",
+      "category": "idle",
+      "tags": ["head_gaze", "anticipation", "weight_shift"],
+      "allowed_moods": ["neutral", "rushed", "tired"],
+      "allowed_contexts": ["corridor", "entrance"],
+      "complexity_weights": {"1": 1, "2": 2, "3": 2}
+    },
+    "catch_fall_to_knee": {
+      "label": "よろめいて片膝をつき体勢を戻す",
+      "category": "weight",
+      "tags": ["balance", "leg", "spine", "weight_shift"],
+      "allowed_moods": ["neutral", "tired", "rushed"],
+      "allowed_contexts": ["corridor", "street", "train"],
+      "complexity_weights": {"1": 1, "2": 2, "3": 2}
+    },
+    "breathe_then_run": {
+      "label": "立ち止まり大きく息を吸って走り出す",
+      "category": "semi_sport",
+      "tags": ["spine", "head_gaze", "leg", "anticipation"],
+      "allowed_moods": ["neutral", "rushed", "tired"],
+      "allowed_contexts": ["corridor", "street"],
+      "complexity_weights": {"1": 1, "2": 2, "3": 2}
     }
   }
 }
