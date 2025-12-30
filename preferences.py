@@ -9,14 +9,12 @@ from .operators.channel_selection_overlay import ChannelSelectionOverlaySettings
 # TODO: Rename to pose_transform_visualizer
 from .operators.pose_rotation_visualizer import PoseTransformVisualizerSettings
 from .ui.playback_preview import PlaybackPreviewSettings
+from .utils.i18n import _
+from .utils.ui_utils import ui_multiline_text
 
-# from .ui.calculator.preferences import CalculatorPreferences
-from .utils.logger_prefs import MONKEY_LoggerPreferences
-from .utils.logging import LoggerRegistry, get_logger
-
-# from .utils.ui_utils import draw_multiline_text_examples
-
-# log = get_logger(__name__)
+# ロガー設定（開発用・通常は非表示）
+# from .utils.logger_prefs import MONKEY_LoggerPreferences
+# from .utils.logging import LoggerRegistry, get_logger
 
 
 class MonKeyPreferences(AddonPreferences):
@@ -27,7 +25,6 @@ class MonKeyPreferences(AddonPreferences):
         description="Tab to open",
         items=[
             ("HowToUse", "How to use", ""),
-            # ("CALCULATOR", "Calculator", ""),
             ("KEYMAP", "Keymap", ""),
             ("GRAPH_EDITOR", "Graph Editor", ""),
             ("CHANNEL_NAV", "Channel Navigator", ""),
@@ -42,20 +39,20 @@ class MonKeyPreferences(AddonPreferences):
     # Graph Editor Options
     auto_focus_on_channel_change: BoolProperty(
         name="Auto Focus on Channel Change",
-        description="チャンネル移動（Monkey Vertically）実行後、選択カーブにフォーカスする",
+        description="Automatically focus on selected curve when changing channels",
         default=True,
     )
     auto_follow_current_frame: BoolProperty(
         name="Auto Follow Current Frame",
-        description="キーフレーム移動（Monkey Horizontally）で選択キーが1つだけのとき、現在のフレームを追従させる",
+        description="Move current frame when selecting a single keyframe",
         default=False,
     )
-    # calculator: PointerProperty(type=CalculatorPreferences)
+
     channel_navigator: PointerProperty(type=ChannelNavigatorSettings)
     overlay: PointerProperty(type=ChannelSelectionOverlaySettings)
     pose_visualizer: PointerProperty(type=PoseTransformVisualizerSettings)
-    logger_prefs: PointerProperty(type=MONKEY_LoggerPreferences)
     playback_preview: PointerProperty(type=PlaybackPreviewSettings)
+    # logger_prefs: PointerProperty(type=MONKEY_LoggerPreferences)
 
     def draw(self, context):
         layout = self.layout
@@ -66,8 +63,6 @@ class MonKeyPreferences(AddonPreferences):
         box = layout.box()
         if self.tab == "HowToUse":
             self.draw_description(context, box)
-        # elif self.tab == "CALCULATOR":
-        #     self.calculator.draw(context, box)
         elif self.tab == "GRAPH_EDITOR":
             self.draw_graph_editor_settings(context, box)
         elif self.tab == "CHANNEL_NAV":
@@ -82,50 +77,72 @@ class MonKeyPreferences(AddonPreferences):
             self.playback_preview.draw(context, box)
 
     def draw_description(self, context, layout):
-        layout.label(text="TODO: Add description")
-        # draw_multiline_text_examples(layout)
+        # Addon description
+        ui_multiline_text(layout, _("ADDON_DESC"), icon="INFO")
+        layout.separator()
 
-        MONKEY_LoggerPreferences.draw(self.logger_prefs, layout)
+        # Quick Start
+        col = layout.column()
+        col.label(text=_("QUICK_START"), icon="PLAY")
+        box = col.box()
+        box.label(text=_("WASD_QUICK"), icon="EVENT_W")
+        box.label(text=_("NUM_QUICK"), icon="EVENT_1")
+        box.label(text=_("NAV_QUICK"), icon="EVENT_Y")
+        box.label(text=_("PIE_QUICK"), icon="EVENT_T")
+
+        layout.separator()
+
+        # Features
+        col = layout.column()
+        col.label(text=_("FEATURES"), icon="COLLAPSEMENU")
+        box = col.box()
+        box.label(text=_("FEATURE_WASD"))
+        box.label(text=_("FEATURE_NAVIGATOR"))
+        box.label(text=_("FEATURE_PEEK"))
+        box.label(text=_("FEATURE_PIE"))
+        box.label(text=_("FEATURE_PLAYBACK"))
+        box.label(text=_("FEATURE_VISUALIZER"))
+
+        layout.separator()
+
+        # GitHub link
+        row = layout.row()
+        row.operator(
+            "wm.url_open",
+            text=_("DOC_LINK"),
+            icon="URL",
+        ).url = _("GITHUB_URL")
 
     def draw_graph_editor_settings(self, context, layout):
         col = layout.column()
-        col.label(text="Monkey Vertically (チャンネル移動)")
+        col.label(text=_("CHANNEL_MOVE"))
         col.prop(self, "auto_focus_on_channel_change")
-        
+
         col.separator()
-        col.label(text="Monkey Horizontally (キーフレーム移動)")
+        col.label(text=_("KEYFRAME_MOVE"))
         col.prop(self, "auto_follow_current_frame")
 
 
 def register():
-    import bpy
-
-    def sync_logger_modules():
-        """ロガーモジュールのインクリメンタル同期"""
-
-        context = bpy.context
-        try:
-            pr = get_prefs(context)
-            if not hasattr(pr, "logger_prefs"):
-                return
-
-            # 現在のロガーと設定済みモジュールを取得
-            active_loggers = LoggerRegistry.get_all_loggers()
-            existing_modules = {m.name for m in pr.logger_prefs.modules}
-
-            # 新しいモジュールのみ追加（既存設定は保持）
-            for module_name in active_loggers.keys():
-                short_name = module_name
-                if module_name.startswith(ADDON_ID + "."):
-                    short_name = module_name[len(ADDON_ID) + 1 :]
-
-                if short_name not in existing_modules:
-                    pr.logger_prefs.register_module(short_name, "INFO")
-
-            # 設定を適用
-            pr.logger_prefs.update_logger_settings(context)
-
-        except Exception as e:
-            print(f"Logger sync error: {e}")
-
-    bpy.app.timers.register(sync_logger_modules, first_interval=0.1)
+    pass
+    # ロガー設定の同期（開発用・通常はコメントアウト）
+    # import bpy
+    # def sync_logger_modules():
+    #     """ロガーモジュールのインクリメンタル同期"""
+    #     context = bpy.context
+    #     try:
+    #         pr = get_prefs(context)
+    #         if not hasattr(pr, "logger_prefs"):
+    #             return
+    #         active_loggers = LoggerRegistry.get_all_loggers()
+    #         existing_modules = {m.name for m in pr.logger_prefs.modules}
+    #         for module_name in active_loggers.keys():
+    #             short_name = module_name
+    #             if module_name.startswith(ADDON_ID + "."):
+    #                 short_name = module_name[len(ADDON_ID) + 1 :]
+    #             if short_name not in existing_modules:
+    #                 pr.logger_prefs.register_module(short_name, "INFO")
+    #         pr.logger_prefs.update_logger_settings(context)
+    #     except Exception as e:
+    #         print(f"Logger sync error: {e}")
+    # bpy.app.timers.register(sync_logger_modules, first_interval=0.1)
