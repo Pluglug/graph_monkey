@@ -26,7 +26,7 @@ MonKey（Graph Monkey）は、Blenderのアニメーション作業を効率化�
 
 ### MonKeyの動作デモ
 
-![MonKeyの基本操作](images/keyframe_horizontal_move.gif)
+![MonKeyの基本操作](images/wasd_navigation.gif)
 
 **Alt + WASD** で、キーフレーム間・チャンネル間を自由自在に移動できます。マウスを使わず、キーボードだけで完結する直感的なワークフローを実現します。
 
@@ -35,11 +35,11 @@ MonKey（Graph Monkey）は、Blenderのアニメーション作業を効率化�
 <img src="images/keyboard_layout.png" width="50%">
 
 **カラーコード**:
-- 🔴 **赤**: Alt + WASD + QE（Graph Editor - キーフレーム/チャンネル/ハンドル選択）
-- 🟠 **オレンジ**: Y長押し（Channel Navigator）
-- 🟢 **緑**: 1234（フレーム移動 - 全エディタ共通）
-- 🔵 **青**: F（Focus - 選択カーブにフォーカス）
-- 🟡 **黄色**: Shift+T/C（Pieメニュー）
+- 🔴 **赤**: Alt + WASD + QE - [WASD基本操作](#1-1-wasd基本操作) / [ハンドル選択](#1-2-ハンドル選択) / [Auto Focus機能](#1-3-auto-focus機能)
+- 🟠 **オレンジ**: Y長押し - [Channel Navigator](#2-1-channel-navigatorチャンネルナビゲーター)
+- 🟢 **緑**: 1234 - [フレーム範囲内ジャンプ](#3-1-フレーム範囲内ジャンプ) / [キーフレーム先読み](#3-2-キーフレーム先読みpeek)
+- 🔵 **青**: F - [選択カーブのフォーカス](#1-4-選択カーブのフォーカス)
+- 🟡 **黄色**: Shift+T/C - [キーフレーム整列Pie](#1-5-キーフレーム整列pie-menu) / [エディタ設定Pie](#5-1-graph-editor-config-pie設定pieメニュー)
 
 赤色の操作に **Shift** を追加すると拡張選択になります。
 
@@ -62,9 +62,9 @@ MonKey（Graph Monkey）は、Blenderのアニメーション作業を効率化�
 
 Graph Editorでのキーフレーム編集を高速化する機能群です。
 
-#### 1-1. キーフレーム間移動（水平方向）
+#### 1-1. WASD基本操作
 
-選択中のキーフレームから、同じF-Curve上の隣接キーフレームへ移動します。
+**Alt + WASD** でキーフレーム間・チャンネル間を自由に移動します。
 
 | 操作 | キー | 説明 |
 |------|------|------|
@@ -72,8 +72,12 @@ Graph Editorでのキーフレーム編集を高速化する機能群です。
 | 右へ拡張 | `Alt + Shift + D` | 次のキーを選択に追加 |
 | 左へ移動 | `Alt + A` | 前のキーフレームを選択 |
 | 左へ拡張 | `Alt + Shift + A` | 前のキーを選択に追加 |
+| 上へ移動 | `Alt + W` | 上のチャンネルを選択 |
+| 上へ拡張 | `Alt + Shift + W` | 上のチャンネルを選択に追加 |
+| 下へ移動 | `Alt + S` | 下のチャンネルを選択 |
+| 下へ拡張 | `Alt + Shift + S` | 下のチャンネルを選択に追加 |
 
-![キーフレーム水平移動](images/keyframe_horizontal_move.gif)
+![WASD基本操作](images/wasd_navigation.gif)
 
 **設定オプション**: 「Auto Follow Current Frame」を有効にすると、単一キーフレーム選択時に現在フレームが自動追従します。
 
@@ -90,57 +94,37 @@ Graph Editorでのキーフレーム編集を高速化する機能群です。
 
 ![ハンドル選択](images/handle_selection.gif)
 
-#### 1-3. チャンネル間移動（垂直方向）
+#### 1-3. Auto Focus機能
 
-表示中のF-Curve（チャンネル）間を移動します。
+「Auto Focus on Channel Change」設定を有効にすると、チャンネル移動時に選択カーブへ自動的にフォーカスします。
 
-| 操作 | キー | 説明 |
-|------|------|------|
-| 上へ移動 | `Alt + W` | 上のチャンネルを選択 |
-| 上へ拡張 | `Alt + Shift + W` | 上のチャンネルを選択に追加 |
-| 下へ移動 | `Alt + S` | 下のチャンネルを選択 |
-| 下へ拡張 | `Alt + Shift + S` | 下のチャンネルを選択に追加 |
+![Auto Focus機能](images/wasd_autofocus.gif)
 
-![チャンネル間移動](images/channel_vertical_move.gif)
+この機能により、**Alt + W/S** でチャンネルを切り替えながら、各カーブ全体を素早く確認できます。複数のチャンネルを比較する際に特に便利です。
 
-**設定オプション**: 「Auto Focus on Channel Change」が有効だと、チャンネル移動後に選択カーブが自動フォーカスされます。
-
-#### 1-4. キーフレーム整列（Pie Menu）
-
-`Shift + T` でキーフレーム整列用のPieメニューを表示します。
-
-```mermaid
-flowchart TB
-    subgraph "Shift+T Pie Menu"
-        TOP["Top<br/>値を最大に揃える"]
-        LEFT["Left<br/>フレームを左端に揃える"]
-        RIGHT["Right<br/>フレームを右端に揃える"]
-        BOTTOM["Bottom<br/>値を最小に揃える"]
-        FLAT["Flat<br/>ハンドルを水平化"]
-    end
-
-    LEFT --- CENTER((+))
-    CENTER --- RIGHT
-    TOP --- CENTER
-    CENTER --- BOTTOM
-    CENTER -.-> FLAT
-```
-
-![キー整列Pieメニュー](images/key_align_pie.gif)
-
-#### 1-5. フラット接線（Flat Tangents）
-
-選択したハンドルを水平に平坦化します。**ウェイト付きタンジェントにも対応**し、元の長さを保持したまま角度のみを変更します。
-
-- **Pieメニューから**: `Shift + T` → Flat (Free Handle)
-- **直接実行**: オペレーター `anim.flat_tangents`
-
-#### 1-6. 選択カーブのフォーカス
+#### 1-4. 選択カーブのフォーカス
 
 | 操作 | キー | 説明 |
 |------|------|------|
 | 範囲内フォーカス | `F` | 再生範囲内で選択カーブにフォーカス |
 | 全体表示 | `Alt + F` | 選択カーブ全体を表示 |
+
+#### 1-5. キーフレーム整列（Pie Menu）
+
+`Shift + T` でキーフレーム整列用のPieメニューを表示します。
+
+![キー整列Pieメニュー](images/key_align_pie.gif)
+
+- **Left/Right**: キーフレームをフレーム軸で整列（左端/右端）
+- **Top/Bottom**: キーフレームを値軸で整列（最大値/最小値）
+- **Flat**: ハンドルを水平化
+
+#### 1-6. フラット接線（Flat Tangents）
+
+選択したハンドルを水平に平坦化します。**ウェイト付きタンジェントにも対応**し、元の長さを保持したまま角度のみを変更します。
+
+- **Pieメニューから**: `Shift + T` → Flat (Free Handle)
+- **直接実行**: オペレーター `anim.flat_tangents`
 
 ---
 
@@ -151,20 +135,6 @@ flowchart TB
 #### 2-1. Channel Navigator（チャンネルナビゲーター）
 
 `Y`キーを**長押し**すると、インタラクティブなチャンネル管理ポップアップが表示されます。
-
-```mermaid
-flowchart LR
-    subgraph ChannelNavigator["Channel Navigator"]
-        direction TB
-        C1["■ location.x &nbsp;&nbsp;&nbsp;&nbsp; H L M"]
-        C2["&nbsp; location.y &nbsp;&nbsp;&nbsp;&nbsp; H L M"]
-        C3["&nbsp; location.z &nbsp;&nbsp;&nbsp;&nbsp; H L M"]
-        C4["&nbsp; rotation_euler.x H L M"]
-        C5["..."]
-    end
-
-    Y[Y キー長押し] --> ChannelNavigator
-```
 
 ![Channel Navigator - 基本操作](images/channel_navigator.gif)
 
@@ -241,7 +211,7 @@ Timeline/Dopesheetヘッダーに表示されるフィルターで、**特定の
 
 #### 3-2. キーフレーム先読み（Peek）
 
-キーを押している間だけ、隣のキーフレームを**プレビュー**します。キーを離すと元のフレームに戻ります。
+キーを押している間だけ、隣のキーフレームを**プレビュー**します。キーを離すと元のフレームに戻ります。**指パラと似たような感覚**で、前後のキーフレームを素早く確認できます。
 
 | 操作 | キー | 説明 |
 |------|------|------|
@@ -256,37 +226,26 @@ sequenceDiagram
     User->>Blender: Shift+4 押下
     Blender->>Blender: 次のキーフレームへ移動
     Note over Blender: プレビュー中...
-    User->>Blender: キーを離す
+    User->>Blender: 両方のキーを離す
     Blender->>Blender: 元のフレームに戻る
 
-    User->>Blender: Shift+4 押下 + Shift保持
+    User->>Blender: Shift+4 押下
     Blender->>Blender: 次のキーフレームへ移動
-    Note over Blender: Shiftで確定
-    User->>Blender: キーを離す
+    Note over Blender: プレビュー中...
+    User->>Blender: Shiftを先に離す
+    Note over Blender: 移動確定
+    User->>Blender: 4を離す
     Note over Blender: 移動先に留まる
 ```
 
 **Peek中の追加操作**:
-- `Shift`キーを押し続ける → 移動先に留まる（元に戻らない）
+- `Shift`キーを**先に離す** → 移動先に留まる（元に戻らない）
 - `1` / `2` キー → 追加フレームオフセット
 - `Q` キー → リセット
 
 #### 3-3. Playback Speed Controller（再生速度コントローラー）
 
 Dopesheet/Timelineのヘッダーに**再生速度コントロール**が追加されます。
-
-```mermaid
-flowchart LR
-    subgraph Header["Dopesheet Header"]
-        direction LR
-        Slider["⏱ 1.00<br/>スライダー"]
-        Presets["¼x ½x 1x 2x<br/>プリセット"]
-        Store["●<br/>Store"]
-        Reset["▶<br/>Reset"]
-    end
-
-    Slider --> Presets --> Store --> Reset
-```
 
 ![Playback Speed Controller](images/playback_speed_controller.png)
 
@@ -317,20 +276,6 @@ Graph EditorからAction操作を直接行える機能です。
 
 Graph Editorのヘッダーに**Action管理ボタン群**が追加されます。
 
-```mermaid
-flowchart LR
-    subgraph ActionToolbar["Graph Editor Header（右側）"]
-        direction LR
-        Menu["Action<br/>Menu"]
-        Dup["📋<br/>複製"]
-        Push["⬇<br/>Push"]
-        Stash["❄<br/>Stash"]
-        Selector["Action▼<br/>セレクター"]
-    end
-
-    Menu --> Dup --> Push --> Stash --> Selector
-```
-
 **ボタン機能**:
 | ボタン | 説明 |
 |--------|------|
@@ -353,23 +298,6 @@ Graph Editorの設定を素早く変更するための機能です。
 #### 5-1. Graph Editor Config Pie（設定Pieメニュー）
 
 `Shift + C` で設定用Pieメニューを表示します。
-
-```mermaid
-flowchart TB
-    subgraph "Shift+C Config Pie"
-        TOP["Center Pivot<br/>中心ピボット"]
-        LEFT["Individual Origins<br/>個別原点"]
-        RIGHT["Cursor Pivot<br/>カーソルピボット"]
-        BOTTOM["Proportional F-Curve<br/>プロポーショナル編集"]
-        EXTRA["Falloff + Size<br/>追加設定"]
-    end
-
-    LEFT --- CENTER((+))
-    CENTER --- RIGHT
-    TOP --- CENTER
-    CENTER --- BOTTOM
-    CENTER -.-> EXTRA
-```
 
 ![Config Pieメニュー](images/config_pie.png)
 
@@ -407,18 +335,10 @@ flowchart TB
 
 ボーンの回転量・移動量を3Dビュー上に視覚的に表示します。
 
-```mermaid
-flowchart LR
-    subgraph Visualizer["変形可視化"]
-        direction TB
-        Rotation["円弧 = 回転量"]
-        Location["矢印 = 移動量"]
-    end
-
-    Bone[ボーン] --> Visualizer
-```
-
 ![Pose Transform Visualizer](images/pose_visualizer.gif)
+
+- **円弧**: ボーンの回転量を視覚化
+- **矢印**: ボーンの移動量を視覚化
 
 **カラースキーム**:
 | スキーム | 説明 |
