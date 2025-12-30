@@ -59,3 +59,20 @@ def execute(self, context):
     self.report({"INFO"}, "Operation completed")
     return {"FINISHED"}
 ```
+
+## Icons
+
+Always use `ic()` wrapper for icon names to ensure version compatibility:
+
+```python
+from ..utils.ui_utils import ic
+
+# Correct - uses version-aware wrapper
+layout.label(text="Label", icon=ic("INFO"))
+row.prop(self, "setting", icon=ic("PLAY"))
+
+# Wrong - may cause errors on different Blender versions
+layout.label(text="Label", icon="INFO")
+```
+
+The `ic()` function handles icon name changes between Blender versions automatically.

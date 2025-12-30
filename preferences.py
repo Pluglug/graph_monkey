@@ -10,7 +10,7 @@ from .operators.channel_selection_overlay import ChannelSelectionOverlaySettings
 from .operators.pose_rotation_visualizer import PoseTransformVisualizerSettings
 from .ui.playback_preview import PlaybackPreviewSettings
 from .utils.i18n import _
-from .utils.ui_utils import ui_multiline_text
+from .utils.ui_utils import ic, ui_multiline_text
 
 # ロガー設定（開発用・通常は非表示）
 # from .utils.logger_prefs import MONKEY_LoggerPreferences
@@ -78,23 +78,23 @@ class MonKeyPreferences(AddonPreferences):
 
     def draw_description(self, context, layout):
         # Addon description
-        ui_multiline_text(layout, _("ADDON_DESC"), icon="INFO")
+        ui_multiline_text(layout, _("ADDON_DESC"), icon=ic("INFO"))
         layout.separator()
 
         # Quick Start
         col = layout.column()
-        col.label(text=_("QUICK_START"), icon="PLAY")
+        col.label(text=_("QUICK_START"), icon=ic("PLAY"))
         box = col.box()
-        box.label(text=_("WASD_QUICK"), icon="EVENT_W")
-        box.label(text=_("NUM_QUICK"), icon="EVENT_1")
-        box.label(text=_("NAV_QUICK"), icon="EVENT_Y")
-        box.label(text=_("PIE_QUICK"), icon="EVENT_T")
+        box.label(text=_("WASD_QUICK"), icon=ic("EVENT_W"))
+        box.label(text=_("NUM_QUICK"), icon=ic("EVENT_1"))
+        box.label(text=_("NAV_QUICK"), icon=ic("EVENT_Y"))
+        box.label(text=_("PIE_QUICK"), icon=ic("EVENT_T"))
 
         layout.separator()
 
         # Features
         col = layout.column()
-        col.label(text=_("FEATURES"), icon="COLLAPSEMENU")
+        col.label(text=_("FEATURES"), icon=ic("COLLAPSEMENU"))
         box = col.box()
         box.label(text=_("FEATURE_WASD"))
         box.label(text=_("FEATURE_NAVIGATOR"))
@@ -110,7 +110,7 @@ class MonKeyPreferences(AddonPreferences):
         row.operator(
             "wm.url_open",
             text=_("DOC_LINK"),
-            icon="URL",
+            icon=ic("URL"),
         ).url = _("GITHUB_URL")
 
     def draw_graph_editor_settings(self, context, layout):
