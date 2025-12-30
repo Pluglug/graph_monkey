@@ -14,6 +14,7 @@ Graph Monkeyは、BlenderのGraph Editorでのアニメーション作業を効�
 - [フレーム移動と Peek](#フレーム移動と-peek)
 - [Pieメニュー](#pieメニュー)
 - [UI拡張機能](#ui拡張機能)
+- [便利機能](#便利機能)
 - [ポーズモード支援](#ポーズモード支援)
 - [設定リファレンス](#設定リファレンス)
 
@@ -27,21 +28,13 @@ Graph Monkeyは、BlenderのGraph Editorでのアニメーション作業を効�
 
 | 色 | キー | 用途 |
 |----|------|------|
-| 🔴 赤 | `Alt + WASD/QE` | キーフレーム・チャンネル・ハンドル選択 |
-| 🟠 橙 | `Y` 長押し | Channel Navigator |
-| 🟢 緑 | `1234` | フレーム移動（どのエディタからでも使用可） |
-| 🔵 青 | `F` | 選択カーブにフォーカス |
-| 🟡 黄 | `Shift + T/C` | Pieメニュー |
+| 🔴 赤 | `Alt + WASD/QE` | [キーフレーム・チャンネル・ハンドル選択](#wasd-ナビゲーション) |
+| 🟠 橙 | `Y` 長押し | [Channel Navigator](#channel-navigator) |
+| 🟢 緑 | `1234` | [フレーム移動](#フレーム移動と-peek)（どのエディタからでも使用可） |
+| 🔵 青 | `F` | [選択カーブにフォーカス](#フォーカス操作) |
+| 🟡 黄 | `Shift + T/C` | [Pieメニュー](#pieメニュー) |
 
 **Shift を追加すると拡張選択**になります（選択に追加）。
-
-### 最初に覚える3つの操作
-
-1. **Alt + A/D** で左右のキーフレームへ移動
-2. **Alt + W/S** で上下のチャンネルへ移動
-3. **3/4** で前後のキーフレームへジャンプ（View3Dでも使える）
-
-これだけでGraph Editorでの基本的なナビゲーションが完結します。
 
 ---
 
@@ -194,6 +187,8 @@ Graph Editorの設定を素早く変更するPieメニューです。
 
 Graph Editorのヘッダーに追加されるAction管理ボタン群です。通常Dopesheet Action Editorでしか見れない情報を、Graph Editorでも操作できるようにします。
 
+![Action ツールバー](images/graph_topbar.png)
+
 | ボタン | 動作 |
 |--------|------|
 | Action Menu | Actionメニュー（4.4+） |
@@ -229,6 +224,26 @@ Dopesheet/Timelineヘッダーに追加される再生速度コントロール�
 |------|------|
 | `Shift + A` | 全チャンネル展開 |
 | `Ctrl + Shift + A` | 全チャンネル折りたたみ |
+
+---
+
+## 便利機能
+
+### Run Scripts
+
+**File → Run Scripts** メニューから、blendファイル内に保存されたテキストを直接実行できます。
+
+![Run Scripts](images/run_scripts.png)
+
+Text Editorを開かなくても、blendファイル内のPythonスクリプトを実行可能。リグUIの実行などに便利です。
+
+### Clean Animation Preview
+
+再生速度コントローラーの隣にある**Clean Animation Preview**ボタンで、不要な表示要素を一時的に非表示にしてアニメーションをプレビューできます。
+
+![Clean Animation Preview](images/clean_animation_preview.gif)
+
+ボーン名、軸表示、メッシュなどを一括非表示にして、クリーンな状態でアニメーションを確認できます。
 
 ---
 
@@ -304,7 +319,3 @@ Dopesheet/Timelineヘッダーに追加される再生速度コントロール�
 
 **再生速度変更後にフレーム範囲がおかしい**
 - Storeボタンでオリジナル範囲を保存してから速度を変更してください
-
----
-
-*Graph Monkey - Graph Editorをもっと快適に*
