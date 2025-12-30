@@ -5,6 +5,7 @@ bl_info = {
     "blender": (2, 80, 0),
     "location": "Graph Editor",
     "description": "Animation workflow toolkit for Graph Editor. Keyboard-driven keyframe editing.",
+    "warning": "Bananas required",
     "doc_url": "https://github.com/Pluglug/graph_monkey",
     "category": "Animation",
     "license": "GPL",

@@ -1,301 +1,267 @@
 # Graph Monkey
 
-WASDナビゲーションから始まった個人用ツールキット。アニメーション作業で欲しくなった機能を随時追加しています。
+Animation workflow toolkit for Blender's Graph Editor. Keyboard-driven keyframe editing and channel management.
 
-![MonKeyの基本操作](docs/images/wasd_navigation.gif)
+![WASD Navigation](docs/images/wasd_navigation.gif)
 
----
-
-## 目次
-
-- [クイックスタート](#クイックスタート)
-- [WASD ナビゲーション](#wasd-ナビゲーション)
-- [Channel Navigator](#channel-navigator)
-- [フレーム移動と Peek](#フレーム移動と-peek)
-- [Pieメニュー](#pieメニュー)
-- [UI拡張機能](#ui拡張機能)
-- [便利機能](#便利機能)
-- [ポーズモード支援](#ポーズモード支援)
-- [設定リファレンス](#設定リファレンス)
+[日本語ドキュメント](docs/USER_GUIDE_JA.md)
 
 ---
 
-## クイックスタート
+## Quick Start
 
-### キーボードレイアウト
+### Keyboard Layout
 
 <img src="docs/images/keyboard_layout.png" width="50%">
 
-| 色 | キー | 用途 |
-|----|------|------|
-| 🔴 | `Alt + WASD/QE` | [キーフレーム・チャンネル・ハンドル選択](#wasd-ナビゲーション) |
-| 🟠 | `Y` 長押し | [Channel Navigator](#channel-navigator) |
-| 🟢 | `1234` | [フレーム移動](#フレーム移動と-peek)（3D Viewでも利用可能） |
-| 🔵 | `F` | [選択カーブにフォーカス](#フォーカス操作) |
-| 🟡 | `Shift + T/C` | [Pieメニュー](#pieメニュー) |
+| Color | Key | Function |
+|-------|-----|----------|
+| 🔴 | `Alt + WASD/QE` | [Keyframe/Channel/Handle selection](#wasd-navigation) |
+| 🟠 | `Y` (hold) | [Channel Navigator](#channel-navigator) |
+| 🟢 | `1234` | [Frame jump](#frame-navigation--peek) (works in 3D View too) |
+| 🔵 | `F` | [Focus on selected curve](#focus) |
+| 🟡 | `Shift + T/C` | [Pie menus](#pie-menus) |
 
 ---
 
-## WASD ナビゲーション
+## WASD Navigation
 
-Graph Editorでのキーフレーム編集を高速化する中核機能です。**キーボード操作だけで素早くキーフレームを編集**できるワークフローを提供します。
+Core feature for fast keyframe editing in Graph Editor. **Edit keyframes entirely from keyboard** without touching the mouse.
 
-**Alt + WASD** でキーフレーム間・チャンネル間を自由に移動。マウスを使わず、キーボードだけで完結する直感的な操作を実現します。
-
-| キー | 動作 |
-|------|------|
-| `Alt + A` / `Alt + D` | 左右のキーフレームへ移動 |
-| `Alt + W` / `Alt + S` | 上下のチャンネルへ移動 |
-| `+ Shift` | 拡張選択 |
+| Key | Action |
+|-----|--------|
+| `Alt + A` / `Alt + D` | Move to left/right keyframe |
+| `Alt + W` / `Alt + S` | Move to upper/lower channel |
+| `+ Shift` | Extend selection |
 
 <img src="docs/images/wasd_navigation.gif" width="70%">
 
-### ハンドル選択
+### Handle Selection
 
-キーフレームのベジェハンドルを素早く選択します。
-
-| キー | 動作 |
-|------|------|
-| `Alt + Q` / `Alt + E` | 左右のハンドルを選択 |
-| `+ Shift` | 拡張選択 |
+| Key | Action |
+|-----|--------|
+| `Alt + Q` / `Alt + E` | Select left/right handle |
+| `+ Shift` | Extend selection |
 
 <img src="docs/images/handle_selection.gif" width="70%">
 
-### フォーカス操作
+### Focus
 
-| キー | 動作 |
-|------|------|
-| `F` | 再生範囲内で選択カーブにフォーカス |
-| `Alt + F` | 選択カーブ全体を表示 |
+| Key | Action |
+|-----|--------|
+| `F` | Focus on selected curve within playback range |
+| `Alt + F` | Show entire selected curve |
 
 ### Auto Focus
 
 <img src="docs/images/wasd_autofocus.gif" width="70%">
 
-**Auto Focus on Channel Change** を有効にすると、W/Sでチャンネルを切り替えた時に選択カーブへ自動的にフォーカスします。複数のチャンネルを比較する際に便利です。
+**Auto Focus on Channel Change**: Automatically focuses on the curve when switching channels with W/S.
 
-**Auto Follow Current Frame** を有効にすると、A/Dでキーフレームを移動した時に現在フレームが自動追従します（選択キーが1つの場合のみ）。
+**Auto Follow Current Frame**: Current frame follows when moving to a keyframe with A/D (single selection only).
 
 ---
 
 ## Channel Navigator
 
-`Y`キーを**長押し**すると、インタラクティブなチャンネル管理ポップアップが表示されます。
+**Hold** the `Y` key to show an interactive channel management popup.
 
 <img src="docs/images/channel_navigator.gif" width="70%">
 
-### 操作方法
-
-| 操作 | 動作 |
-|------|------|
-| マウスオーバー | チャンネル選択を切り替え |
-| `Ctrl + クリック` | ソロ表示 |
-| `H` / `L` / `M` | Hide / Lock / Mute トグル |
-| マウスホイール | スクロール（8チャンネル以上で必要） |
-
-Auto Focus on Channel Changeが有効なら、チャンネルを切り替えると自動的にそのカーブにフォーカスします。
+| Action | Function |
+|--------|----------|
+| Mouse hover | Switch channel selection |
+| `Ctrl + Click` | Solo display |
+| `H` / `L` / `M` | Toggle Hide / Lock / Mute |
+| Mouse wheel | Scroll (when 8+ channels) |
 
 <img src="docs/images/channel_navigator_autofocus.gif" width="70%">
 
 ---
 
-## フレーム移動と Peek
+## Frame Navigation & Peek
 
-Timeline、Dopesheet、Graph Editor、**View3Dなどどのエディタからでも**使えるフレーム移動機能です。
+Frame navigation that works from **any editor** - Timeline, Dopesheet, Graph Editor, or 3D View.
 
-### フレームジャンプ
+### Frame Jump
 
-| キー | 動作 |
-|------|------|
-| `1` / `2` | 1フレーム戻る / 進む |
-| `3` / `4` | 前 / 次のキーフレームへジャンプ |
+| Key | Action |
+|-----|--------|
+| `1` / `2` | Step back / forward 1 frame |
+| `3` / `4` | Jump to previous / next keyframe |
 
 <img src="docs/images/keyframe_jump_peek.gif" width="70%">
 
-### キーフレームタイプフィルター
+### Keyframe Type Filter
 
-Timeline/Dopesheetヘッダーのフィルターで、**特定のキーフレームタイプのみをジャンプ対象**にできます。
+Filter by keyframe type (KEYFRAME, BREAKDOWN, EXTREME, etc.) in Timeline/Dopesheet header.
 
 <img src="docs/images/keyframe_filter.gif" width="70%">
 
-KEYFRAME、BREAKDOWN、EXTREME等から選択可能。例えばKEYFRAMEとBREAKDOWNのみ選択すれば、他のタイプは`3`/`4`でスキップされます。
+### Peek
 
-### Peek (パラ)
-
-`Shift + 3/4` で隣のキーフレームを**一時的にプレビュー**します。指パラと似た感覚で前後のポーズを素早く確認できます。
+`Shift + 3/4` **temporarily previews** adjacent keyframes. Quick pose comparison like flipping pages.
 
 ```mermaid
 flowchart LR
-    A["Shift+3/4 押下"] --> B["プレビュー中"]
-    B --> C{"離す順序"}
-    C -->|"両方同時"| D["元に戻る"]
-    C -->|"Shift先"| E["移動先に留まる"]
+    A["Shift+3/4 press"] --> B["Previewing"]
+    B --> C{"Release order"}
+    C -->|"Both together"| D["Return to original"]
+    C -->|"Shift first"| E["Stay at destination"]
 ```
 
-**Peek中の操作**: `1`/`2`で追加オフセット、`Q`でリセット
+**During Peek**: `1`/`2` for additional offset, `Q` to reset
 
 ---
 
-## Pieメニュー
+## Pie Menus
 
-### キー整列 Pie（Shift + T）
+### Key Align Pie (Shift + T)
 
-Graph Editorでキーフレームを整列するPieメニューです。
+Align keyframes in Graph Editor.
 
 <img src="docs/images/key_align_pie.gif" width="70%">
 
-| 項目 | 動作 |
-|------|------|
-| Left / Right | フレーム軸で整列（左端/右端） |
-| Top / Bottom | 値軸で整列（最大値/最小値） |
-| Flat | ハンドルを水平化（ウェイト付きにも対応） |
+| Item | Action |
+|------|--------|
+| Left / Right | Align on frame axis |
+| Top / Bottom | Align on value axis |
+| Flat | Flatten handles (weighted handles supported) |
 
-### Transform Pie（Shift + C）
+### Transform Pie (Shift + C)
 
-Graph Editorの変形設定を素早く変更するPieメニューです。
+Quick access to Graph Editor transform settings.
 
 <img src="docs/images/config_pie.png" width="50%">
 
-Pivot Point（Center / Individual / Cursor）とプロポーショナル編集の切り替えができます。
+Toggle Pivot Point (Center / Individual / Cursor) and Proportional editing.
 
 ---
 
-## UI拡張機能
+## UI Extensions
 
-### Action ツールバー
-
-Graph Editorのヘッダーに追加されるAction管理ボタン群です。通常Dopesheet Action Editorでしか見れない情報を、Graph Editorでも操作できるようにします。
+### Action Toolbar
 
 <img src="docs/images/graph_topbar.png" width="100%">
 
-### 補間タイプ切り替え
+Action management buttons in Graph Editor header. Access Dopesheet Action Editor features directly.
 
-Graph Editorヘッダーに補間タイプ（CONSTANT / LINEAR / BEZIER）のアイコンボタンを追加。新規キーフレームの補間タイプを素早く切り替えられます。
+### Interpolation Toggle
 
-### F-Curves設定パネル
+Icon buttons (CONSTANT / LINEAR / BEZIER) in Graph Editor header for quick interpolation type switching.
 
-Graph EditorのNパネル（View）にF-Curves設定を追加。Preferencesを開かずに補間設定を変更できます。
+### F-Curves Panel
 
-### 再生速度コントローラー
+F-Curves settings in Graph Editor's N-panel (View tab). Change interpolation without opening Preferences.
 
-Dopesheet/Timelineヘッダーに追加される再生速度コントロールです。
+### Playback Speed Controller
 
 <img src="docs/images/playback_speed_controller.png" width="70%">
 
-スライダーで0.01x〜9.0xの速度調整、プリセットボタン（¼x/½x/1x/2x）でワンクリック設定。Storeボタンでオリジナル範囲を保存してから速度を変更してください。
+Speed control (0.01x - 9.0x) with preset buttons (¼x/½x/1x/2x). Click Store to save original range before adjusting.
 
 ### Channel Selection Overlay
 
-選択中のF-Curve名をGraph Editor上に常時表示します。
-
 <img src="docs/images/channel_overlay.png" width="50%">
+
+Shows selected F-Curve name on Graph Editor.
 
 ### Sync Visible Range
 
-複数のタイムベースエディタ間で表示範囲をロックします。
-
 <img src="docs/images/sync_visible_range.png" width="50%">
 
-ヘッダー左端の🔒アイコンをクリック。ロック中は、あるエディタでスクロール/ズームすると他のエディタ（Dopesheet、Graph Editor、NLA等）も連動します。
+Lock visible range across time-based editors. Click the 🔒 icon in header. Scroll/zoom in one editor syncs others.
 
-### チャンネル展開/折りたたみ
+### Channel Expand/Collapse
 
-| キー | 動作 |
-|------|------|
-| `Shift + A` | 全チャンネル展開 |
-| `Ctrl + Shift + A` | 全チャンネル折りたたみ |
+| Key | Action |
+|-----|--------|
+| `Shift + A` | Expand all channels |
+| `Ctrl + Shift + A` | Collapse all channels |
 
 ---
 
-## 便利機能
+## Utilities
 
 ### Run Scripts
 
-**File → Run Scripts** メニューから、blendファイル内に保存されたテキストを直接実行できます。
+**File → Run Scripts** menu to execute Python scripts stored in blend files without opening Text Editor.
 
 <img src="docs/images/run_scripts.png" width="100%">
 
-Text Editorを開かなくても、blendファイル内のPythonスクリプトを実行可能。リグUIの実行などに便利です。
-
 ### Clean Animation Preview
-
-再生速度コントローラーの隣にある**Clean Animation Preview**ボタンで、不要な表示要素を一時的に非表示にしてアニメーションをプレビューできます。
 
 <img src="docs/images/clean_animation_preview.gif" width="70%">
 
-ボーン名、軸表示、メッシュなどを一括非表示にして、クリーンな状態でアニメーションを確認できます。
+Hide bone names, axes, meshes etc. for clean animation preview.
 
 ---
 
-## ポーズモード支援
-
-3D Viewのポーズ編集を支援する機能です。
+## Pose Mode Tools
 
 ### Pose Transform Visualizer
 
-ボーンの回転量・移動量を3Dビュー上に視覚的に表示します。`V`キーで切り替え可能。
+Visualize bone rotation/translation in 3D View. Toggle with `V` key.
 
 <img src="docs/images/pose_visualizer.gif" width="90%">
 
-円弧で回転量、矢印で移動量を可視化。カラースキームはHeat（変化が大きいほど赤）、Cool（青）、Grayscaleから選択可能。
+Arcs show rotation, arrows show translation. Color schemes: Heat / Cool / Grayscale.
 
 ### Bone Collection Solo
 
-選択中のボーンが属するBone Collectionをソロ表示します（Blender 4.0+）。
+Solo the bone collection of selected bones (Blender 4.0+).
 
-| キー | 動作 |
-|------|------|
-| `/` | 選択ボーンのコレクションをソロ |
-| `Alt + /` | ソロ解除 |
+| Key | Action |
+|-----|--------|
+| `/` | Solo selected bone's collection |
+| `Alt + /` | Unsolo |
 
 <img src="docs/images/bone_collection_solo.gif" width="70%">
 
 ---
 
-## 設定リファレンス
+## Settings
 
-**Edit → Preferences → Add-ons → MonKey** で設定を変更できます。
+**Edit → Preferences → Add-ons → Graph Monkey**
 
 ### Graph Editor
 
-| 項目 | デフォルト | 説明 |
-|------|-----------|------|
-| Auto Focus on Channel Change | ON | チャンネル移動後に自動フォーカス |
-| Auto Follow Current Frame | OFF | キーフレーム選択時に現在フレーム追従 |
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Auto Focus on Channel Change | ON | Auto focus after channel move |
+| Auto Follow Current Frame | OFF | Current frame follows keyframe selection |
 
 ### Channel Navigator
 
-| 項目 | デフォルト | 説明 |
-|------|-----------|------|
-| Box Height / Width | 28 / 280 | ポップアップサイズ |
-| Text Size | 12 | テキストサイズ |
-| Max Display Count | 8 | 最大表示チャンネル数 |
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Box Height / Width | 28 / 280 | Popup size |
+| Text Size | 12 | Text size |
+| Max Display Count | 8 | Max visible channels |
 
 ### Channel Overlay
 
-| 項目 | デフォルト | 説明 |
-|------|-----------|------|
-| Font Size | 24 | フォントサイズ |
-| Alignment | TOP_RIGHT | 表示位置（9箇所から選択） |
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Font Size | 24 | Font size |
+| Alignment | TOP_RIGHT | Display position |
 
 ### Pose Visualizer
 
-| 項目 | デフォルト | 説明 |
-|------|-----------|------|
-| Show Rotation / Location | ON / ON | 回転/移動可視化 |
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Show Rotation / Location | ON / ON | Visualize rotation/translation |
 | Color Scheme | Heat | Heat / Cool / Grayscale |
 
 ---
 
-## トラブルシューティング
+## Installation
 
-**キーバインドが動作しない**
-- Preferences → Keymapで該当キーマップが有効か確認
-- 他アドオンとの競合を確認
-- 正しいエディタで操作しているか確認
+1. Download the latest release zip
+2. In Blender: Edit → Preferences → Add-ons → Install
+3. Select the downloaded zip file
+4. Enable "Graph Monkey"
 
-**Channel Navigatorが表示されない**
-- `Y`キーは**長押し**で動作します（タップではない）
+## License
 
-**再生速度変更後にフレーム範囲がおかしい**
-- Storeボタンでオリジナル範囲を保存してから速度を変更してください
+GPL-3.0 - See [LICENSE](LICENSE) for details.
