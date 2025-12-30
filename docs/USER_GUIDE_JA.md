@@ -168,6 +168,14 @@ Graph Editorのヘッダーに追加されるAction管理ボタン群です。�
 
 <img src="images/graph_topbar.png" width="100%">
 
+### 補間タイプ切り替え
+
+Graph Editorヘッダーに補間タイプ（CONSTANT / LINEAR / BEZIER）のアイコンボタンを追加。新規キーフレームの補間タイプを素早く切り替えられます。
+
+### F-Curves設定パネル
+
+Graph EditorのNパネル（View）にF-Curves設定を追加。Preferencesを開かずに補間設定を変更できます。
+
 ### 再生速度コントローラー
 
 Dopesheet/Timelineヘッダーに追加される再生速度コントロールです。
