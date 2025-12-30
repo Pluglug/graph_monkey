@@ -70,13 +70,11 @@ Graph Editorでのキーフレーム編集を高速化する中核機能です�
 
 ### Auto Focus
 
-設定で「Auto Focus on Channel Change」を有効にすると、チャンネル移動時に選択カーブへ自動的にフォーカスします。
-
 <img src="docs/images/wasd_autofocus.gif" width="70%">
 
-複数のチャンネルを比較する際に便利です。W/Sでチャンネルを切り替えながら、各カーブ全体を素早く確認できます。
+**Auto Focus on Channel Change** を有効にすると、W/Sでチャンネルを切り替えた時に選択カーブへ自動的にフォーカスします。複数のチャンネルを比較する際に便利です。
 
-**Auto Follow Current Frame** を有効にすると、A/Dでのキーフレーム移動時にも現在フレームが自動追従します（選択キーが1つの場合のみ）。
+**Auto Follow Current Frame** を有効にすると、A/Dでキーフレームを移動した時に現在フレームが自動追従します（選択キーが1つの場合のみ）。
 
 ---
 
@@ -95,7 +93,7 @@ Graph Editorでのキーフレーム編集を高速化する中核機能です�
 | `H` / `L` / `M` | Hide / Lock / Mute トグル |
 | マウスホイール | スクロール（8チャンネル以上で必要） |
 
-Auto Focusが有効なら、チャンネルを切り替えると自動的にそのカーブにフォーカスします。
+Auto Focus on Channel Changeが有効なら、チャンネルを切り替えると自動的にそのカーブにフォーカスします。
 
 <img src="docs/images/channel_navigator_autofocus.gif" width="70%">
 
