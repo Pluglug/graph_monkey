@@ -1,4 +1,4 @@
-# Graph Monkey ユーザーガイド
+# Graph Monkey
 
 WASDナビゲーションから始まった個人用ツールキット。アニメーション作業で欲しくなった機能を随時追加しています。
 
@@ -28,13 +28,11 @@ WASDナビゲーションから始まった個人用ツールキット。アニ�
 
 | 色 | キー | 用途 |
 |----|------|------|
-| 🔴 赤 | `Alt + WASD/QE` | [キーフレーム・チャンネル・ハンドル選択](#wasd-ナビゲーション) |
-| 🟠 橙 | `Y` 長押し | [Channel Navigator](#channel-navigator) |
-| 🟢 緑 | `1234` | [フレーム移動](#フレーム移動と-peek)（どのエディタからでも使用可） |
-| 🔵 青 | `F` | [選択カーブにフォーカス](#フォーカス操作) |
-| 🟡 黄 | `Shift + T/C` | [Pieメニュー](#pieメニュー) |
-
-**Shift を追加すると拡張選択**になります（選択に追加）。
+| 🔴 | `Alt + WASD/QE` | [キーフレーム・チャンネル・ハンドル選択](#wasd-ナビゲーション) |
+| 🟠 | `Y` 長押し | [Channel Navigator](#channel-navigator) |
+| 🟢 | `1234` | [フレーム移動](#フレーム移動と-peek)（3D Viewでも利用可能） |
+| 🔵 | `F` | [選択カーブにフォーカス](#フォーカス操作) |
+| 🟡 | `Shift + T/C` | [Pieメニュー](#pieメニュー) |
 
 ---
 
@@ -48,20 +46,27 @@ Graph Editorでのキーフレーム編集を高速化する中核機能です�
 |------|------|
 | `Alt + A` / `Alt + D` | 左右のキーフレームへ移動 |
 | `Alt + W` / `Alt + S` | 上下のチャンネルへ移動 |
-| `+ Shift` | 選択に追加（拡張選択） |
+| `+ Shift` | 拡張選択 |
 
 <img src="images/wasd_navigation.gif" width="70%">
 
 ### ハンドル選択
 
-キーフレームのベジェハンドル（制御点）を素早く選択します。
+キーフレームのベジェハンドルを素早く選択します。
 
 | キー | 動作 |
 |------|------|
 | `Alt + Q` / `Alt + E` | 左右のハンドルを選択 |
-| `+ Shift` | 選択に追加 |
+| `+ Shift` | 拡張選択 |
 
 <img src="images/handle_selection.gif" width="70%">
+
+### フォーカス操作
+
+| キー | 動作 |
+|------|------|
+| `F` | 再生範囲内で選択カーブにフォーカス |
+| `Alt + F` | 選択カーブ全体を表示 |
 
 ### Auto Focus
 
@@ -72,13 +77,6 @@ Graph Editorでのキーフレーム編集を高速化する中核機能です�
 複数のチャンネルを比較する際に便利です。W/Sでチャンネルを切り替えながら、各カーブ全体を素早く確認できます。
 
 **Auto Follow Current Frame** を有効にすると、A/Dでのキーフレーム移動時にも現在フレームが自動追従します（選択キーが1つの場合のみ）。
-
-### フォーカス操作
-
-| キー | 動作 |
-|------|------|
-| `F` | 再生範囲内で選択カーブにフォーカス |
-| `Alt + F` | 選択カーブ全体を表示 |
 
 ---
 
@@ -124,9 +122,9 @@ Timeline/Dopesheetヘッダーのフィルターで、**特定のキーフレー
 
 KEYFRAME、BREAKDOWN、EXTREME等から選択可能。例えばKEYFRAMEとBREAKDOWNのみ選択すれば、他のタイプは`3`/`4`でスキップされます。
 
-### Peek（先読み）
+### Peek (パラ)
 
-`Shift + 3/4` で隣のキーフレームを**一時的にプレビュー**します。**指パラと似た感覚**で前後のポーズを素早く確認できます。
+`Shift + 3/4` で隣のキーフレームを**一時的にプレビュー**します。指パラと似た感覚で前後のポーズを素早く確認できます。
 
 ```mermaid
 flowchart LR
@@ -154,16 +152,13 @@ Graph Editorでキーフレームを整列するPieメニューです。
 | Top / Bottom | 値軸で整列（最大値/最小値） |
 | Flat | ハンドルを水平化（ウェイト付きにも対応） |
 
-### Config Pie（Shift + C）
+### Transform Pie（Shift + C）
 
-Graph Editorの設定を素早く変更するPieメニューです。
+Graph Editorの変形設定を素早く変更するPieメニューです。
 
 <img src="images/config_pie.png" width="50%">
 
-| 項目 | 動作 |
-|------|------|
-| Center / Individual / Cursor | Pivot Point切り替え |
-| Proportional | プロポーショナル編集 + Falloff設定 |
+Pivot Point（Center / Individual / Cursor）とプロポーショナル編集の切り替えができます。
 
 ---
 
@@ -173,14 +168,7 @@ Graph Editorの設定を素早く変更するPieメニューです。
 
 Graph Editorのヘッダーに追加されるAction管理ボタン群です。通常Dopesheet Action Editorでしか見れない情報を、Graph Editorでも操作できるようにします。
 
-<img src="images/graph_topbar.png" width="70%">
-
-| ボタン | 動作 |
-|--------|------|
-| Action Menu | Actionメニュー（4.4+） |
-| 📋 Duplicate | 選択チャンネルを新Actionに移動（4.4+） |
-| ⬇ Push Down | NLA Stackにプッシュダウン |
-| ❄ Stash | NLA Stackにスタッシュ |
+<img src="images/graph_topbar.png" width="100%">
 
 ### 再生速度コントローラー
 
@@ -219,7 +207,7 @@ Dopesheet/Timelineヘッダーに追加される再生速度コントロール�
 
 **File → Run Scripts** メニューから、blendファイル内に保存されたテキストを直接実行できます。
 
-<img src="images/run_scripts.png" width="50%">
+<img src="images/run_scripts.png" width="100%">
 
 Text Editorを開かなくても、blendファイル内のPythonスクリプトを実行可能。リグUIの実行などに便利です。
 
@@ -239,9 +227,9 @@ Text Editorを開かなくても、blendファイル内のPythonスクリプト�
 
 ### Pose Transform Visualizer
 
-ボーンの回転量・移動量を3Dビュー上に視覚的に表示します。
+ボーンの回転量・移動量を3Dビュー上に視覚的に表示します。`V`キーで切り替え可能。
 
-<img src="images/pose_visualizer.gif" width="70%">
+<img src="images/pose_visualizer.gif" width="90%">
 
 円弧で回転量、矢印で移動量を可視化。カラースキームはHeat（変化が大きいほど赤）、Cool（青）、Grayscaleから選択可能。
 
