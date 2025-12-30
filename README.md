@@ -2,9 +2,13 @@
 
 Animation workflow toolkit for Blender's Graph Editor. Keyboard-driven keyframe editing and channel management.
 
+[日本語ドキュメント](docs/USER_GUIDE_JA.md)
+
 ![WASD Navigation](docs/images/wasd_navigation.gif)
 
-[日本語ドキュメント](docs/USER_GUIDE_JA.md)
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Pluglug)
+
+[![Download Latest Release](https://img.shields.io/badge/Download-Latest%20Release-2ea44f?style=for-the-badge\&logo=github)](../../releases)
 
 ---
 
@@ -257,7 +261,7 @@ Solo the bone collection of selected bones (Blender 4.0+).
 
 ## Installation
 
-1. Download the latest release zip
+1. Download the [latest release](../../releases) zip
 2. In Blender: Edit → Preferences → Add-ons → Install
 3. Select the downloaded zip file
 4. Enable "Graph Monkey"
