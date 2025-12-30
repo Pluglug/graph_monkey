@@ -32,7 +32,7 @@ MonKey（Graph Monkey）は、Blenderのアニメーション作業を効率化�
 
 ### コンセプト：キーボード中心のワークフロー
 
-![キーボード配列](images/keyboard_layout.png)
+<img src="images/keyboard_layout.png" width="50%">
 
 **カラーコード**:
 - 🔴 **赤**: Alt + WASD + QE（Graph Editor - キーフレーム/チャンネル/ハンドル選択）
@@ -594,3 +594,4 @@ flowchart LR
 ---
 
 *MonKey - Graph Editorをもっと快適に*
+
