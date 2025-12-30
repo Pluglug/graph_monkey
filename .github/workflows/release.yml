@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: version
+        run: |
+          # Extract version from tag (v0.10.0 -> 0.10.0)
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Generate random string (20 chars)
+          RANDOM_STR=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
+          echo "random=$RANDOM_STR" >> $GITHUB_OUTPUT
+
+          # Create filename
+          FILENAME="gm${VERSION}_${RANDOM_STR}.zip"
+          echo "filename=$FILENAME" >> $GITHUB_OUTPUT
+
+      - name: Create addon zip
+        run: |
+          # Create temp directory with correct addon name
+          mkdir -p build/graph_monkey
+
+          # Copy addon files (exclude dev files)
+          rsync -av --exclude='.git' \
+                    --exclude='.github' \
+                    --exclude='.claude' \
+                    --exclude='__pycache__' \
+                    --exclude='*.pyc' \
+                    --exclude='*.pyo' \
+                    --exclude='.personal' \
+                    --exclude='docs' \
+                    --exclude='CLAUDE.md' \
+                    --exclude='.gitignore' \
+                    --exclude='.DS_Store' \
+                    --exclude='Thumbs.db' \
+                    ./ build/graph_monkey/
+
+          # Create zip
+          cd build
+          zip -r "../${{ steps.version.outputs.filename }}" graph_monkey
+          cd ..
+
+          # Show contents for verification
+          echo "=== Zip contents ==="
+          unzip -l "${{ steps.version.outputs.filename }}"
+
+      - name: Create Release Draft
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          name: "Graph Monkey v${{ steps.version.outputs.version }}"
+          files: ${{ steps.version.outputs.filename }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
