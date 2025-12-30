@@ -67,7 +67,7 @@ class MonKeyPreferences(AddonPreferences):
     def draw_description(self, context, layout):
         # Addon description
         ui_multiline_text(layout, _("ADDON_DESC"), icon=ic("INFO"))
-        layout.separator()
+        # layout.separator()
 
         # Quick Start
         col = layout.column()
@@ -78,7 +78,7 @@ class MonKeyPreferences(AddonPreferences):
         box.label(text=_("NAV_QUICK"), icon=ic("EVENT_Y"))
         box.label(text=_("PIE_QUICK"), icon=ic("EVENT_T"))
 
-        layout.separator()
+        # layout.separator()
 
         # Features
         col = layout.column()
@@ -91,7 +91,7 @@ class MonKeyPreferences(AddonPreferences):
         box.label(text=_("FEATURE_PLAYBACK"))
         box.label(text=_("FEATURE_VISUALIZER"))
 
-        layout.separator()
+        # layout.separator()
 
         # GitHub link
         row = layout.row()
@@ -112,28 +112,20 @@ class MonKeyPreferences(AddonPreferences):
         col.label(text=_("KEYFRAME_MOVE"))
         col.prop(self, "auto_follow_current_frame")
 
-        layout.separator()
-
         # Channel Navigator
         box = layout.box()
         box.label(text=_("CHANNEL_NAV_SETTINGS"), icon=ic("OUTLINER"))
         self.channel_navigator.draw(context, box)
-
-        layout.separator()
 
         # Channel Overlay
         box = layout.box()
         box.label(text=_("OVERLAY_SETTINGS"), icon=ic("OVERLAY"))
         self.overlay.draw(context, box)
 
-        layout.separator()
-
         # Pose Visualizer
         box = layout.box()
         box.label(text=_("POSE_VISUALIZER_SETTINGS"), icon=ic("POSE_HLT"))
         self.pose_visualizer.draw(context, box)
-
-        layout.separator()
 
         # Playback Preview
         box = layout.box()

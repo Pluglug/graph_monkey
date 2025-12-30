@@ -15,14 +15,14 @@ import bpy
 TRANSLATIONS = {
     # === Addon Description ===
     "ADDON_DESC": {
-        "en": "Personal animation toolkit that started from WASD navigation.\nFeatures are added as needed.",
-        "ja": "WASDナビゲーションから始まった個人用ツールキット。\n欲しい機能を随時追加しています。",
+        "en": "Animation workflow toolkit for Graph Editor.\nKeyboard-driven keyframe editing and channel management.",
+        "ja": "Graph Editor用アニメーションワークフローツールキット。\nキーボード操作によるキーフレーム編集とチャンネル管理。",
     },
 
     # === Quick Start ===
     "QUICK_START": {
-        "en": "Quick Start",
-        "ja": "クイックスタート",
+        "en": "Quick Start (Graph Editor)",
+        "ja": "クイックスタート (Graph Editor)",
     },
     "QUICK_START_DESC": {
         "en": "Learn the basics in 1 minute:",
