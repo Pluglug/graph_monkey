@@ -14,16 +14,34 @@ from bpy.types import GRAPH_MT_editor_menus
 def draw_keyframe_interpolation_toggle(self, context):
     """GRAPH_MT_editor_menusに補間タイプの切り替えボタンを追加"""
     layout = self.layout
-    
+
     prefs = context.preferences
 
     layout.separator()
 
     # CONSTANT, LINEAR, BEZIERのみをicon onlyで表示
-    layout.prop_enum(prefs.edit, "keyframe_new_interpolation_type", "CONSTANT", text="", icon='IPO_CONSTANT')
-    layout.prop_enum(prefs.edit, "keyframe_new_interpolation_type", "LINEAR", text="", icon='IPO_LINEAR')
-    layout.prop_enum(prefs.edit, "keyframe_new_interpolation_type", "BEZIER", text="", icon='IPO_BEZIER')
-    
+    layout.prop_enum(
+        prefs.edit,
+        "keyframe_new_interpolation_type",
+        "CONSTANT",
+        text="",
+        icon="IPO_CONSTANT",
+    )
+    layout.prop_enum(
+        prefs.edit,
+        "keyframe_new_interpolation_type",
+        "LINEAR",
+        text="",
+        icon="IPO_LINEAR",
+    )
+    layout.prop_enum(
+        prefs.edit,
+        "keyframe_new_interpolation_type",
+        "BEZIER",
+        text="",
+        icon="IPO_BEZIER",
+    )
+
     layout.separator()
 
 
@@ -33,4 +51,3 @@ def register():
 
 def unregister():
     GRAPH_MT_editor_menus.remove(draw_keyframe_interpolation_toggle)
-

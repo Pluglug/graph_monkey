@@ -385,7 +385,7 @@ class PoseTransformVisualizerSettings(bpy.types.PropertyGroup):
             sub.prop(self, "location_line_thickness")
             sub.prop(self, "location_line_color")
             sub.prop(self, "location_line_opacity")
-            
+
             sub.separator()
             sub.prop(self, "use_dashed_line")
             if self.use_dashed_line:
@@ -678,10 +678,7 @@ class PoseTransformVisualizerHandler:
         # 点線または実線で描画
         if settings.use_dashed_line:
             coords = self._create_dashed_line(
-                rest_pos, 
-                current_pos, 
-                settings.dash_length, 
-                settings.gap_length
+                rest_pos, current_pos, settings.dash_length, settings.gap_length
             )
         else:
             coords = [rest_pos, current_pos]
@@ -699,42 +696,44 @@ class PoseTransformVisualizerHandler:
         self.shader_3d_uniform_color.uniform_float("color", color)
         batch.draw(self.shader_3d_uniform_color)
 
-    def _create_dashed_line(self, start: Vector, end: Vector, dash_length: float, gap_length: float) -> list:
+    def _create_dashed_line(
+        self, start: Vector, end: Vector, dash_length: float, gap_length: float
+    ) -> list:
         """
         Create a dashed line by generating alternating dash segments.
-        
+
         Args:
             start: Start position
             end: End position
             dash_length: Length of each dash
             gap_length: Length of gap between dashes
-            
+
         Returns:
             list: Line segment coordinates [(p1, p2), (p3, p4), ...]
         """
         direction = end - start
         total_length = direction.length
-        
+
         if total_length < 0.001:
             return []
-        
+
         direction.normalize()
-        
+
         coords = []
         current_length = 0.0
         pattern_length = dash_length + gap_length
-        
+
         while current_length < total_length:
             # ダッシュの開始
             dash_start = start + direction * current_length
             dash_end_length = min(current_length + dash_length, total_length)
             dash_end = start + direction * dash_end_length
-            
+
             coords.extend([dash_start, dash_end])
-            
+
             # 次のダッシュへ移動（ギャップを含む）
             current_length += pattern_length
-        
+
         return coords
 
 

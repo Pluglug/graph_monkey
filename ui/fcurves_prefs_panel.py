@@ -14,14 +14,14 @@ from bpy.types import Panel
 
 class GRAPH_PT_fcurves_prefs(Panel):
     """Graph Editor/DriversのNパネルにF-Curves設定を表示"""
+
     bl_label = "F-Curves"
     bl_idname = "GRAPH_PT_fcurves_prefs"
-    bl_space_type = 'GRAPH_EDITOR'
-    bl_region_type = 'UI'
+    bl_space_type = "GRAPH_EDITOR"
+    bl_region_type = "UI"
     bl_category = "View"
-    
+
     def draw(self, context):
         # BlenderのUSERPREF_PT_animation_fcurvesパネルのdraw_centeredメソッドを呼び出す
         prefs_panel = bpy.types.USERPREF_PT_animation_fcurves
         prefs_panel.draw_centered(None, context, self.layout)
-

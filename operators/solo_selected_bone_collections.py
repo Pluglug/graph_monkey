@@ -44,7 +44,9 @@ def _supports_is_solo(arm_data):
 class POSE_OT_solo_selected_bone_collections(Operator):
     bl_idname = "pose.solo_selected_bone_collections"
     bl_label = "Solo Selected Bone Collections"
-    bl_description = "Solo (star) the Bone Collection(s) that contain the selected bone(s)"
+    bl_description = (
+        "Solo (star) the Bone Collection(s) that contain the selected bone(s)"
+    )
     bl_options = {"REGISTER", "UNDO"}
 
     add_to_existing: BoolProperty(
@@ -76,7 +78,9 @@ class POSE_OT_solo_selected_bone_collections(Operator):
 
         pbs = _get_selected_pose_bones(context)
         if not pbs:
-            self.report({"WARNING"}, "No pose bones selected (and no active pose bone).")
+            self.report(
+                {"WARNING"}, "No pose bones selected (and no active pose bone)."
+            )
             return {"CANCELLED"}
 
         bones = [pb.bone for pb in pbs if getattr(pb, "bone", None)]
@@ -86,11 +90,16 @@ class POSE_OT_solo_selected_bone_collections(Operator):
 
         targets = _collections_for_bones(arm, bones)
         if not targets:
-            self.report({"WARNING"}, "Selected bones are not assigned to any Bone Collection.")
+            self.report(
+                {"WARNING"}, "Selected bones are not assigned to any Bone Collection."
+            )
             return {"CANCELLED"}
 
         if not _supports_is_solo(arm):
-            self.report({"ERROR"}, "This Blender build does not expose BoneCollection.is_solo in Python.")
+            self.report(
+                {"ERROR"},
+                "This Blender build does not expose BoneCollection.is_solo in Python.",
+            )
             return {"CANCELLED"}
 
         current_solo = {bc for bc in arm.collections if getattr(bc, "is_solo", False)}
@@ -121,13 +130,20 @@ class POSE_OT_clear_bone_collection_solo(Operator):
     @classmethod
     def poll(cls, context):
         ob = context.active_object
-        return ob and ob.type == "ARMATURE" and context.mode in {"POSE", "OBJECT", "EDIT_ARMATURE"}
+        return (
+            ob
+            and ob.type == "ARMATURE"
+            and context.mode in {"POSE", "OBJECT", "EDIT_ARMATURE"}
+        )
 
     def execute(self, context):
         ob = context.active_object
         arm = ob.data
         if not _supports_is_solo(arm):
-            self.report({"ERROR"}, "This Blender build does not expose BoneCollection.is_solo in Python.")
+            self.report(
+                {"ERROR"},
+                "This Blender build does not expose BoneCollection.is_solo in Python.",
+            )
             return {"CANCELLED"}
         for bc in arm.collections:
             bc.is_solo = False

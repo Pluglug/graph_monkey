@@ -18,7 +18,6 @@ TRANSLATIONS = {
         "en": "Animation workflow toolkit for Graph Editor.\nKeyboard-driven keyframe editing and channel management.",
         "ja": "Graph Editor用アニメーションワークフローツールキット。\nキーボード操作によるキーフレーム編集とチャンネル管理。",
     },
-
     # === Quick Start ===
     "QUICK_START": {
         "en": "Quick Start (Graph Editor)",
@@ -44,7 +43,6 @@ TRANSLATIONS = {
         "en": "Shift+T/C: Pie menus",
         "ja": "Shift+T/C: Pieメニュー",
     },
-
     # === Features ===
     "FEATURES": {
         "en": "Features",
@@ -74,7 +72,6 @@ TRANSLATIONS = {
         "en": "Pose Visualizer - Visualize bone rotation/location changes (V key)",
         "ja": "Pose Visualizer - ボーンの回転/移動量を可視化 (Vキー)",
     },
-
     # === Tab Names ===
     "TAB_HOW_TO_USE": {
         "en": "How to use",
@@ -88,7 +85,6 @@ TRANSLATIONS = {
         "en": "Keymap",
         "ja": "キーマップ",
     },
-
     # === Settings Labels ===
     "GRAPH_EDITOR_SETTINGS": {
         "en": "Graph Editor",
@@ -118,7 +114,6 @@ TRANSLATIONS = {
         "en": "Keyframe Movement (Alt+A/D)",
         "ja": "キーフレーム移動 (Alt+A/D)",
     },
-
     # === Documentation Link ===
     "DOC_LINK": {
         "en": "See README for full documentation",

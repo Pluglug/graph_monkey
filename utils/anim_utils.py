@@ -20,7 +20,10 @@ def find_timeline_area(context: Context) -> Area | None:
             return area
     # 2) Fallback: legacy Timeline (pre-5.0)
     for area in context.window.screen.areas:
-        if getattr(area, "ui_type", None) == "TIMELINE" or getattr(area, "type", None) == "TIMELINE":
+        if (
+            getattr(area, "ui_type", None) == "TIMELINE"
+            or getattr(area, "type", None) == "TIMELINE"
+        ):
             return area
     return None
 

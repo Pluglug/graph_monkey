@@ -6,6 +6,7 @@ from .addon import ADDON_ID, get_prefs
 from .keymap_manager import keymap_registry
 from .operators.channel_navigator import ChannelNavigatorSettings
 from .operators.channel_selection_overlay import ChannelSelectionOverlaySettings
+
 # TODO: Rename to pose_transform_visualizer
 from .operators.pose_rotation_visualizer import PoseTransformVisualizerSettings
 from .ui.playback_preview import PlaybackPreviewSettings
@@ -131,6 +132,7 @@ class MonKeyPreferences(AddonPreferences):
         box = layout.box()
         box.label(text=_("PLAYBACK_SETTINGS"), icon=ic("PLAY"))
         self.playback_preview.draw(context, box)
+
 
 def register():
     pass

@@ -17,19 +17,19 @@ from ..operators.run_text_script import TOPBAR_MT_pluglug_run_scripts
 def draw_file_menu(self, context):
     """TOPBAR_MT_fileメニューに項目を追加"""
     layout = self.layout
-    
+
     # スクリプト実行サブメニュー
-    layout.menu(TOPBAR_MT_pluglug_run_scripts.bl_idname, icon='PLAY')
-    
+    layout.menu(TOPBAR_MT_pluglug_run_scripts.bl_idname, icon="PLAY")
+
     layout.separator()
-    
+
     # # モーションルーレット（非公開）
     # layout.operator(
     #     "monkey.roulette_spin",
     #     text="Motion Roulette",
     #     icon='MOD_DYNAMICPAINT',
     # )
-    # 
+    #
     # # オーバーレイ表示トグル / リセット
     # result = getattr(context.scene, "roulette_result", None)
     # if result and result.is_confirmed:

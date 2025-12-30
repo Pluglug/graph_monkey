@@ -86,3 +86,11 @@ Thumbs.db
 
 # その他
 *.bak
+
+# Development files (not for release)
+old/
+docs/debug/
+docs/design notes/
+docs/bone_transform_*.md
+docs/calculator_implementation.md
+docs/my_pie_menus.json

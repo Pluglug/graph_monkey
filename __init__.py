@@ -1,13 +1,13 @@
 bl_info = {
-    "name": "Graph Monkey",  # Monkey Keyframe, Graph Monkey
+    "name": "Graph Monkey",
     "author": "Pluglug",
-    "version": (0, 9, 0),
+    "version": (0, 10, 0),
     "blender": (2, 80, 0),
     "location": "Graph Editor",
-    "description": "Move keyframe selection in the Graph Editor. and more",
-    "warning": "Bananas required",
-    "wiki_url": "https://github.com/Pluglug/MonKey/blob/main/README.md",
+    "description": "Animation workflow toolkit for Graph Editor. Keyboard-driven keyframe editing.",
+    "doc_url": "https://github.com/Pluglug/graph_monkey",
     "category": "Animation",
+    "license": "GPL",
 }
 
 use_reload = "addon" in locals()

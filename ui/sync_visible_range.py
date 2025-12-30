@@ -47,7 +47,7 @@ def register():
             #     ds_ctrl.append(draw_sync_visible_range)
             pass
         else:
-            time_menu = getattr(__import__('bpy').types, "TIME_MT_editor_menus", None)
+            time_menu = getattr(__import__("bpy").types, "TIME_MT_editor_menus", None)
             if time_menu is not None:
                 time_menu.append(draw_sync_visible_range)
         log.debug("Sync visible range menus registered successfully")
@@ -60,14 +60,16 @@ def unregister():
         for menu in TIME_BASED_EDITOR_MENUS:
             menu.remove(draw_sync_visible_range)
         if BL_VERSION >= (5, 0, 0):
-            ds_ctrl = getattr(__import__('bpy').types, "DOPESHEET_HT_playback_controls", None)
+            ds_ctrl = getattr(
+                __import__("bpy").types, "DOPESHEET_HT_playback_controls", None
+            )
             if ds_ctrl is not None:
                 try:
                     ds_ctrl.remove(draw_sync_visible_range)
                 except Exception:
                     pass
         else:
-            time_menu = getattr(__import__('bpy').types, "TIME_MT_editor_menus", None)
+            time_menu = getattr(__import__("bpy").types, "TIME_MT_editor_menus", None)
             if time_menu is not None:
                 try:
                     time_menu.remove(draw_sync_visible_range)

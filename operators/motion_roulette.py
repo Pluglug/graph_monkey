@@ -57,7 +57,15 @@ def validate_decks(data: Dict[str, Any]) -> List[str]:
     errors: List[str] = []
 
     # 1. 必須キー確認
-    required_keys = ["version", "categories", "moods", "contexts", "tech_focuses", "tag_to_tech", "motions"]
+    required_keys = [
+        "version",
+        "categories",
+        "moods",
+        "contexts",
+        "tech_focuses",
+        "tag_to_tech",
+        "motions",
+    ]
     for key in required_keys:
         if key not in data:
             errors.append(f"必須キー '{key}' がありません")
@@ -77,14 +85,18 @@ def validate_decks(data: Dict[str, Any]) -> List[str]:
     for tag, tech_ids in tag_to_tech.items():
         for tech_id in tech_ids:
             if tech_id not in tech_focuses:
-                errors.append(f"tag_to_tech[{tag}] の '{tech_id}' が tech_focuses に存在しません")
+                errors.append(
+                    f"tag_to_tech[{tag}] の '{tech_id}' が tech_focuses に存在しません"
+                )
 
     # 3. layouts のチェック（存在する場合）
     if layouts:
         for layout_id, layout in layouts.items():
             ctx = layout.get("context")
             if ctx and ctx not in contexts:
-                errors.append(f"layout '{layout_id}' の context '{ctx}' が contexts に存在しません")
+                errors.append(
+                    f"layout '{layout_id}' の context '{ctx}' が contexts に存在しません"
+                )
 
             weight = layout.get("weight")
             if weight is not None and (not isinstance(weight, int) or weight < 0):
@@ -95,22 +107,30 @@ def validate_decks(data: Dict[str, Any]) -> List[str]:
         # category チェック
         cat = motion.get("category")
         if cat and cat not in categories:
-            errors.append(f"motion '{motion_id}' の category '{cat}' が categories に存在しません")
+            errors.append(
+                f"motion '{motion_id}' の category '{cat}' が categories に存在しません"
+            )
 
         # allowed_moods チェック
         for mood_id in motion.get("allowed_moods", []):
             if mood_id not in moods:
-                errors.append(f"motion '{motion_id}' の allowed_moods '{mood_id}' が moods に存在しません")
+                errors.append(
+                    f"motion '{motion_id}' の allowed_moods '{mood_id}' が moods に存在しません"
+                )
 
         # allowed_contexts チェック
         for ctx_id in motion.get("allowed_contexts", []):
             if ctx_id not in contexts:
-                errors.append(f"motion '{motion_id}' の allowed_contexts '{ctx_id}' が contexts に存在しません")
+                errors.append(
+                    f"motion '{motion_id}' の allowed_contexts '{ctx_id}' が contexts に存在しません"
+                )
 
         # tags チェック（tag_to_tech に存在するか）
         for tag in motion.get("tags", []):
             if tag not in tag_to_tech:
-                errors.append(f"motion '{motion_id}' の tag '{tag}' が tag_to_tech に存在しません")
+                errors.append(
+                    f"motion '{motion_id}' の tag '{tag}' が tag_to_tech に存在しません"
+                )
 
         # complexity_weights が全部 0 でないか
         cw = motion.get("complexity_weights", {})
@@ -121,7 +141,9 @@ def validate_decks(data: Dict[str, Any]) -> List[str]:
         if layouts:
             for layout_id in motion.get("preferred_layouts", []):
                 if layout_id not in layouts:
-                    errors.append(f"motion '{motion_id}' の preferred_layouts '{layout_id}' が layouts に存在しません")
+                    errors.append(
+                        f"motion '{motion_id}' の preferred_layouts '{layout_id}' が layouts に存在しません"
+                    )
 
     return errors
 
@@ -150,7 +172,9 @@ def load_decks(force_reload: bool = False) -> Dict[str, Any]:
     if errors:
         for err in errors:
             log.error(f"Deck validation error: {err}")
-        raise ValueError(f"roulette_decks.json に {len(errors)} 件のエラーがあります: {errors[0]}")
+        raise ValueError(
+            f"roulette_decks.json に {len(errors)} 件のエラーがあります: {errors[0]}"
+        )
 
     _decks_cache = data
     log.debug(f"Loaded roulette decks from {decks_path}")
@@ -190,6 +214,7 @@ def get_layouts() -> Dict[str, Any]:
 # ユーティリティ
 # ==============================
 
+
 def weighted_choice(items: List[str], weights: List[int]) -> str:
     """重み付きランダム選択"""
     total = sum(weights)
@@ -205,8 +230,7 @@ def weighted_choice(items: List[str], weights: List[int]) -> str:
 
 
 def choose_motion(
-    category_filter: Optional[List[str]] = None,
-    exclude_ids: Optional[Set[str]] = None
+    category_filter: Optional[List[str]] = None, exclude_ids: Optional[Set[str]] = None
 ) -> str:
     """
     モーションをランダム選択
@@ -329,8 +353,7 @@ def choose_layout(motion_id: str, context_id: str) -> str:
 
 
 def spin_roulette(
-    result: "RouletteResult",
-    category_filter: Optional[List[str]] = None
+    result: "RouletteResult", category_filter: Optional[List[str]] = None
 ) -> None:
     """ルーレットをスピンして結果をPropertyGroupに格納"""
     motions = get_motions()
@@ -470,7 +493,7 @@ def register_draw_handler():
     global _draw_handler
     if _draw_handler is None:
         _draw_handler = bpy.types.SpaceView3D.draw_handler_add(
-            draw_roulette_overlay, (), 'WINDOW', 'POST_PIXEL'
+            draw_roulette_overlay, (), "WINDOW", "POST_PIXEL"
         )
 
 
@@ -478,7 +501,7 @@ def unregister_draw_handler():
     """描画ハンドラを解除"""
     global _draw_handler
     if _draw_handler is not None:
-        bpy.types.SpaceView3D.draw_handler_remove(_draw_handler, 'WINDOW')
+        bpy.types.SpaceView3D.draw_handler_remove(_draw_handler, "WINDOW")
         _draw_handler = None
 
 
@@ -489,10 +512,11 @@ def unregister_draw_handler():
 
 class MONKEY_OT_roulette_spin(Operator):
     """日常動作練習用ルーレットをスピン"""
+
     bl_idname = "monkey.roulette_spin"
     bl_label = "Motion Roulette"
     bl_description = "日常動作アニメーション練習のためのランダムお題を生成"
-    bl_options = {'REGISTER'}
+    bl_options = {"REGISTER"}
 
     @classmethod
     def poll(cls, context):
@@ -509,14 +533,14 @@ class MONKEY_OT_roulette_spin(Operator):
         try:
             load_decks(force_reload=True)
         except FileNotFoundError:
-            self.report({'ERROR'}, "roulette_decks.json が見つかりません")
-            return {'CANCELLED'}
+            self.report({"ERROR"}, "roulette_decks.json が見つかりません")
+            return {"CANCELLED"}
         except json.JSONDecodeError as e:
-            self.report({'ERROR'}, f"JSON構文エラー: {e}")
-            return {'CANCELLED'}
+            self.report({"ERROR"}, f"JSON構文エラー: {e}")
+            return {"CANCELLED"}
         except ValueError as e:
-            self.report({'ERROR'}, str(e))
-            return {'CANCELLED'}
+            self.report({"ERROR"}, str(e))
+            return {"CANCELLED"}
 
         # 初期化
         result.remaining_rerolls = 3
@@ -526,14 +550,15 @@ class MONKEY_OT_roulette_spin(Operator):
         spin_roulette(result)
 
         # ダイアログを表示
-        return bpy.ops.monkey.roulette_dialog('INVOKE_DEFAULT')
+        return bpy.ops.monkey.roulette_dialog("INVOKE_DEFAULT")
 
 
 class MONKEY_OT_roulette_dialog(Operator):
     """ルーレット結果ダイアログ"""
+
     bl_idname = "monkey.roulette_dialog"
     bl_label = "今日の1h練習テーマ"
-    bl_options = {'REGISTER', 'INTERNAL'}
+    bl_options = {"REGISTER", "INTERNAL"}
 
     def execute(self, context):
         # OK ボタン = 確定
@@ -544,11 +569,11 @@ class MONKEY_OT_roulette_dialog(Operator):
         register_draw_handler()
 
         for area in context.screen.areas:
-            if area.type == 'VIEW_3D':
+            if area.type == "VIEW_3D":
                 area.tag_redraw()
 
-        self.report({'INFO'}, "練習テーマを確定しました")
-        return {'FINISHED'}
+        self.report({"INFO"}, "練習テーマを確定しました")
+        return {"FINISHED"}
 
     def cancel(self, context):
         # キャンセル = 確定しない（再度 spin 可能）
@@ -566,27 +591,27 @@ class MONKEY_OT_roulette_dialog(Operator):
         box = layout.box()
         col = box.column(align=True)
 
-        col.label(text=f"動作: {result.motion}", icon='ARMATURE_DATA')
-        col.label(text=f"感情: {result.mood}", icon='HEART')
-        col.label(text=f"状況: {result.context}", icon='WORLD')
-        col.label(text=f"技術: {result.tech}", icon='MODIFIER')
+        col.label(text=f"動作: {result.motion}", icon="ARMATURE_DATA")
+        col.label(text=f"感情: {result.mood}", icon="HEART")
+        col.label(text=f"状況: {result.context}", icon="WORLD")
+        col.label(text=f"技術: {result.tech}", icon="MODIFIER")
 
         complexity_label = COMPLEXITY_LABELS.get(result.complexity, "")
         col.label(
             text=f"複雑さ: Lv.{result.complexity} ({complexity_label})",
-            icon='LINENUMBERS_ON'
+            icon="LINENUMBERS_ON",
         )
 
         # レイアウト表示
         if result.layout:
-            col.label(text=f"レイアウト: {result.layout}", icon='MESH_CUBE')
+            col.label(text=f"レイアウト: {result.layout}", icon="MESH_CUBE")
         else:
-            col.label(text="レイアウト: （任意）", icon='MESH_CUBE')
+            col.label(text="レイアウト: （任意）", icon="MESH_CUBE")
 
         # 推奨方針
         layout.separator()
         box2 = layout.box()
-        box2.label(text="推奨方針", icon='INFO')
+        box2.label(text="推奨方針", icon="INFO")
         col2 = box2.column(align=True)
         col2.scale_y = 0.8
         col2.label(text="・尺: 2〜4秒のクリップを目安に")
@@ -621,12 +646,12 @@ class MONKEY_OT_roulette_dialog(Operator):
             # メタタスク用の追加説明
             if result.motion_id == "same_action_two_shots":
                 col2.separator()
-                col2.label(text="【メタタスク】", icon='EXPERIMENTAL')
+                col2.label(text="【メタタスク】", icon="EXPERIMENTAL")
                 col2.label(text="別のモーションを1枚引き、それをロングと")
                 col2.label(text="クローズアップの2ショットで制作する")
             elif result.motion_id == "chain_two_motions":
                 col2.separator()
-                col2.label(text="【メタタスク】", icon='EXPERIMENTAL')
+                col2.label(text="【メタタスク】", icon="EXPERIMENTAL")
                 col2.label(text="別の動作カードを2枚引き、自然な前後関係")
                 col2.label(text="になるよう5〜10秒のシーケンスを組む")
 
@@ -641,18 +666,19 @@ class MONKEY_OT_roulette_dialog(Operator):
             row.operator(
                 "monkey.roulette_reroll",
                 text=f"引き直す (残り{result.remaining_rerolls}回)",
-                icon='FILE_REFRESH'
+                icon="FILE_REFRESH",
             )
         else:
-            row.label(text="引き直し回数を使い切りました", icon='ERROR')
+            row.label(text="引き直し回数を使い切りました", icon="ERROR")
 
 
 class MONKEY_OT_roulette_reroll(Operator):
     """ルーレットを引き直す"""
+
     bl_idname = "monkey.roulette_reroll"
     bl_label = "Reroll"
     bl_description = "ルーレットを引き直す"
-    bl_options = {'REGISTER', 'INTERNAL'}
+    bl_options = {"REGISTER", "INTERNAL"}
 
     def execute(self, context):
         result = context.scene.roulette_result
@@ -661,22 +687,23 @@ class MONKEY_OT_roulette_reroll(Operator):
             result.remaining_rerolls -= 1
             spin_roulette(result)
 
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class MONKEY_OT_roulette_toggle_overlay(Operator):
     """オーバーレイ表示をトグル"""
+
     bl_idname = "monkey.roulette_toggle_overlay"
     bl_label = "Toggle Roulette Overlay"
     bl_description = "ルーレット結果のオーバーレイ表示を切り替え"
-    bl_options = {'REGISTER'}
+    bl_options = {"REGISTER"}
 
     def execute(self, context):
         result = getattr(context.scene, "roulette_result", None)
 
         if not result or not result.is_confirmed:
-            self.report({'WARNING'}, "まだ練習テーマが確定されていません")
-            return {'CANCELLED'}
+            self.report({"WARNING"}, "まだ練習テーマが確定されていません")
+            return {"CANCELLED"}
 
         result.show_overlay = not result.show_overlay
 
@@ -686,25 +713,26 @@ class MONKEY_OT_roulette_toggle_overlay(Operator):
             unregister_draw_handler()
 
         for area in context.screen.areas:
-            if area.type == 'VIEW_3D':
+            if area.type == "VIEW_3D":
                 area.tag_redraw()
 
         status = "表示" if result.show_overlay else "非表示"
-        self.report({'INFO'}, f"オーバーレイを{status}にしました")
-        return {'FINISHED'}
+        self.report({"INFO"}, f"オーバーレイを{status}にしました")
+        return {"FINISHED"}
 
 
 class MONKEY_OT_roulette_reset(Operator):
     """ルーレットをリセット（新しいテーマを引けるようにする）"""
+
     bl_idname = "monkey.roulette_reset"
     bl_label = "Reset Roulette"
     bl_description = "ルーレットをリセットして新しいテーマを引けるようにする"
-    bl_options = {'REGISTER'}
+    bl_options = {"REGISTER"}
 
     def execute(self, context):
         result = getattr(context.scene, "roulette_result", None)
         if not result:
-            return {'CANCELLED'}
+            return {"CANCELLED"}
 
         # リセット
         result.is_confirmed = False
@@ -725,11 +753,11 @@ class MONKEY_OT_roulette_reset(Operator):
         unregister_draw_handler()
 
         for area in context.screen.areas:
-            if area.type == 'VIEW_3D':
+            if area.type == "VIEW_3D":
                 area.tag_redraw()
 
-        self.report({'INFO'}, "ルーレットをリセットしました")
-        return {'FINISHED'}
+        self.report({"INFO"}, "ルーレットをリセットしました")
+        return {"FINISHED"}
 
 
 # ==============================

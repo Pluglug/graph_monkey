@@ -36,24 +36,24 @@ _icon_cache = {}
 
 def get_icon(img_name):
     """Load and cache icon image"""
-    store_name = '.monkey_nav_' + img_name
-    
+    store_name = ".monkey_nav_" + img_name
+
     if store_name in _icon_cache:
         img = _icon_cache[store_name]
         if img and img.name in bpy.data.images:
             return img
-    
+
     img = bpy.data.images.get(store_name)
     if not img:
-        icon_folder = Path(__file__).parent.parent / 'icons'
-        icon_path = (icon_folder / img_name).with_suffix('.png')
+        icon_folder = Path(__file__).parent.parent / "icons"
+        icon_path = (icon_folder / img_name).with_suffix(".png")
         if icon_path.exists():
             img = bpy.data.images.load(filepath=str(icon_path), check_existing=False)
             img.name = store_name
         else:
             log.warning(f"Icon not found: {icon_path}")
             return None
-    
+
     _icon_cache[store_name] = img
     return img
 
@@ -64,25 +64,25 @@ def get_action_fcurves(action):
     Blender 5.0+ では Layered Actions システムに変更された
     """
     # Blender 4.x style: action.fcurves
-    if hasattr(action, 'fcurves') and action.fcurves is not None:
+    if hasattr(action, "fcurves") and action.fcurves is not None:
         try:
             # fcurvesが存在してもイテレート可能か確認
             return list(action.fcurves)
         except (TypeError, AttributeError):
             pass
-    
+
     # Blender 5.0+ style: action.layers[].strips[].channelbag.fcurves
-    if hasattr(action, 'layers'):
+    if hasattr(action, "layers"):
         fcurves = []
         for layer in action.layers:
-            if hasattr(layer, 'strips'):
+            if hasattr(layer, "strips"):
                 for strip in layer.strips:
-                    if hasattr(strip, 'channelbag') and strip.channelbag:
-                        if hasattr(strip.channelbag, 'fcurves'):
+                    if hasattr(strip, "channelbag") and strip.channelbag:
+                        if hasattr(strip.channelbag, "fcurves"):
                             fcurves.extend(strip.channelbag.fcurves)
         if fcurves:
             return fcurves
-    
+
     return []
 
 
@@ -93,7 +93,7 @@ def get_fcurves_for_navigator(context):
     """
     visible = list(context.visible_fcurves) if context.visible_fcurves else []
     visible_set = set(visible)
-    
+
     # 現在のオブジェクトのアクションからhide=TrueのFカーブを追加
     obj = context.object
     if obj and obj.animation_data and obj.animation_data.action:
@@ -102,7 +102,7 @@ def get_fcurves_for_navigator(context):
         for fc in all_fcurves:
             if fc.hide and fc not in visible_set:
                 visible.append(fc)
-    
+
     return visible
 
 
@@ -143,9 +143,14 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         return (
             context.area is not None
             and context.area.type == "GRAPH_EDITOR"
-            and (context.visible_fcurves or 
-                 (context.object and context.object.animation_data and 
-                  context.object.animation_data.action))
+            and (
+                context.visible_fcurves
+                or (
+                    context.object
+                    and context.object.animation_data
+                    and context.object.animation_data.action
+                )
+            )
         )
 
     # --- Colors (alpha will be overridden by settings) ---
@@ -162,7 +167,9 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
             return {"CANCELLED"}
 
         self.key = event.type
-        self.mouse = self.init_mouse = Vector((event.mouse_region_x, event.mouse_region_y))
+        self.mouse = self.init_mouse = Vector(
+            (event.mouse_region_x, event.mouse_region_y)
+        )
 
         # UI Scaling
         ui_scale = context.preferences.system.ui_scale
@@ -180,12 +187,12 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
 
         # Load icons
         self.icon_tex = {
-            'hide_on': get_icon('hide_on'),
-            'hide_off': get_icon('hide_off'),
-            'lock_on': get_icon('lock_on'),
-            'lock_off': get_icon('lock_off'),
-            'mute_on': get_icon('mute_on'),
-            'mute_off': get_icon('mute_off'),
+            "hide_on": get_icon("hide_on"),
+            "hide_off": get_icon("hide_off"),
+            "lock_on": get_icon("lock_on"),
+            "lock_off": get_icon("lock_off"),
+            "mute_on": get_icon("mute_on"),
+            "mute_off": get_icon("mute_off"),
         }
         self.icon_tex_coord = [
             Vector((0, 0)),
@@ -234,11 +241,13 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         for fc in self.fcurves:
             kf_states = []
             for kf in fc.keyframe_points:
-                kf_states.append({
-                    "control": kf.select_control_point,
-                    "left": kf.select_left_handle,
-                    "right": kf.select_right_handle,
-                })
+                kf_states.append(
+                    {
+                        "control": kf.select_control_point,
+                        "left": kf.select_left_handle,
+                        "right": kf.select_right_handle,
+                    }
+                )
             state[fc] = kf_states
         return state
 
@@ -246,29 +255,28 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         """Transfer keyframe selection from one fcurve to another"""
         if from_fc == to_fc:
             return
-        
+
         selected = get_selected_keyframes(from_fc.keyframe_points)
         if not selected:
             return
-        
+
         # Deselect source fcurve
         from_fc.select = False
         for kf in from_fc.keyframe_points:
             kf.select_control_point = False
             kf.select_left_handle = False
             kf.select_right_handle = False
-        
+
         # Select target fcurve
         to_fc.select = True
-        
+
         # Transfer keyframe selection to nearest keyframes
         for item in selected:
             src_frame = item["keyframe"].co[0]
             # Find nearest keyframe in target
             if to_fc.keyframe_points:
                 target_kf = min(
-                    to_fc.keyframe_points,
-                    key=lambda k: abs(k.co[0] - src_frame)
+                    to_fc.keyframe_points, key=lambda k: abs(k.co[0] - src_frame)
                 )
                 target_kf.select_control_point = item["control_point"]
                 if item["left_handle"]:
@@ -289,7 +297,7 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         # Position popup so that the current channel is at the mouse cursor
         # current_idx is the fcurve list index, we need to calculate its display position
         # Display is bottom-to-top, so display_idx = display_count - 1 - (fcurve_idx - scroll_offset)
-        
+
         # First, determine scroll_offset so current channel is visible
         if self.org_idx is not None:
             # Try to center the current channel in the display
@@ -297,19 +305,21 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
             self.scroll_offset = max(0, self.org_idx - half_display)
             max_scroll = max(0, len(self.fcurves) - self.display_count)
             self.scroll_offset = min(self.scroll_offset, max_scroll)
-            
+
             # Calculate display position of current channel
             display_idx = self.display_count - 1 - (self.org_idx - self.scroll_offset)
             display_idx = max(0, min(display_idx, self.display_count - 1))
-            
+
             # Position so this display_idx is at mouse Y
             # y_of_channel_center = bottom + display_idx * px_h + px_h/2
             # We want: y_of_channel_center = mouse.y
             # So: bottom = mouse.y - display_idx * px_h - px_h/2
-            self.bottom = int(self.init_mouse.y - display_idx * self.px_h - self.px_h / 2)
+            self.bottom = int(
+                self.init_mouse.y - display_idx * self.px_h - self.px_h / 2
+            )
         else:
             self.bottom = int(self.init_mouse.y - total_height / 2)
-        
+
         self.left = int(self.init_mouse.x - self.px_w / 2)
 
         # Clamp to region bounds
@@ -412,7 +422,12 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
                 self.drag_mode = None
 
         # Drag for batch toggle
-        if self.pressed and self.dragging and self.drag_mode and hovered_display_idx is not None:
+        if (
+            self.pressed
+            and self.dragging
+            and self.drag_mode
+            and hovered_display_idx is not None
+        ):
             fc = self._get_fcurve_at_display_idx(hovered_display_idx)
             if fc:
                 self._apply_drag_toggle(fc)
@@ -465,7 +480,9 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         if new_idx < 0 or new_idx >= len(self.fcurves):
             return
 
-        from_fc = self.fcurves[self.current_idx] if self.current_idx is not None else None
+        from_fc = (
+            self.fcurves[self.current_idx] if self.current_idx is not None else None
+        )
         to_fc = self.fcurves[new_idx]
 
         # Transfer keyframe selection
@@ -474,7 +491,7 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         else:
             # Just select the new channel
             for fc in self.fcurves:
-                fc.select = (fc == to_fc)
+                fc.select = fc == to_fc
             to_fc.select = True
 
         self.current_idx = new_idx
@@ -495,7 +512,7 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
 
         # Check if clicking on icon zones
         # Layout: [color_bar][hide][text...][mute][lock]
-        
+
         # Left side: Hide icon
         if self.hide_zone_x <= self.mouse.x < self.text_x:
             fc.hide = not fc.hide
@@ -503,7 +520,7 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
             self.drag_mode = "hide"
             self._drag_value = fc.hide
             return
-        
+
         # Right side: Lock (rightmost)
         if self.mouse.x >= self.lock_zone_x:
             fc.lock = not fc.lock
@@ -511,7 +528,7 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
             self.drag_mode = "lock"
             self._drag_value = fc.lock
             return
-        
+
         # Right side: Mute (left of lock)
         if self.mouse.x >= self.mute_zone_x:
             fc.mute = not fc.mute
@@ -545,8 +562,8 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         """Solo a single channel (hide others), or unsolo if already solo"""
         # Check if target is already solo (only one visible)
         visible_count = sum(1 for fc in self.fcurves if not fc.hide)
-        is_solo = (visible_count == 1 and not target_fc.hide)
-        
+        is_solo = visible_count == 1 and not target_fc.hide
+
         if is_solo:
             # Unsolo: restore all to visible (unhide all)
             for fc in self.fcurves:
@@ -555,12 +572,12 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         else:
             # Solo: hide all except target
             for fc in self.fcurves:
-                fc.hide = (fc != target_fc)
+                fc.hide = fc != target_fc
             log.debug(f"Solo: {target_fc.data_path}")
-        
+
         # Also select the target
         for fc in self.fcurves:
-            fc.select = (fc == target_fc)
+            fc.select = fc == target_fc
         self.current_idx = self.fcurves.index(target_fc)
 
     def _restore_original_state(self):
@@ -570,7 +587,7 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
             fc.select = was_selected
         for fc, was_hidden in self.original_hide.items():
             fc.hide = was_hidden
-        
+
         # Restore keyframe selection
         for fc, kf_states in self.original_keyframe_selection.items():
             for i, state in enumerate(kf_states):
@@ -582,7 +599,7 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
 
     def _apply_focus(self, context):
         """Apply focus to selected curves if enabled
-        
+
         Focus logic:
         - If 2+ keyframes are selected at different frames -> focus on that range
         - If 0-1 keyframes selected or all at same frame -> focus on playback range
@@ -608,7 +625,9 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         unique_frames = set(selected_keyframe_frames)
         use_frame_range = len(unique_frames) < 2
 
-        log.debug(f"Focus: {len(unique_frames)} unique frames, use_frame_range={use_frame_range}")
+        log.debug(
+            f"Focus: {len(unique_frames)} unique frames, use_frame_range={use_frame_range}"
+        )
 
         try:
             bpy.ops.graph.view_selected_curves_range(
@@ -635,7 +654,9 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         color_bars = []
         active_case = []
 
-        active_width = float(round_to_ceil_even(4.0 * context.preferences.system.ui_scale))
+        active_width = float(
+            round_to_ceil_even(4.0 * context.preferences.system.ui_scale)
+        )
 
         # Build rectangles for each displayed fcurve
         for display_idx in range(self.display_count):
@@ -644,7 +665,7 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
                 continue
 
             fcurve_idx = self._display_idx_to_fcurve_idx(display_idx)
-            is_current = (fcurve_idx == self.current_idx)
+            is_current = fcurve_idx == self.current_idx
 
             corner = Vector((self.left, self.bottom + self.px_h * display_idx))
             case_coords = [v + corner for v in self.case]
@@ -683,7 +704,10 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
                 ]
                 active_case = []
                 for i in range(len(border_points)):
-                    active_case += [border_points[i], border_points[(i + 1) % len(border_points)]]
+                    active_case += [
+                        border_points[i],
+                        border_points[(i + 1) % len(border_points)],
+                    ]
 
         # Define colors with user-configured alpha
         bg_color = (0.1, 0.1, 0.1, self.bg_alpha)
@@ -738,8 +762,14 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         icon_y_offset = int(self.icon_size / 2)
 
         # Collect icons to draw
-        icons_to_draw = {'hide_on': [], 'hide_off': [], 'lock_on': [], 'lock_off': [], 
-                         'mute_on': [], 'mute_off': []}
+        icons_to_draw = {
+            "hide_on": [],
+            "hide_off": [],
+            "lock_on": [],
+            "lock_off": [],
+            "mute_on": [],
+            "mute_off": [],
+        }
 
         for display_idx in range(self.display_count):
             fc = self._get_fcurve_at_display_idx(display_idx)
@@ -747,7 +777,7 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
                 continue
 
             fcurve_idx = self._display_idx_to_fcurve_idx(display_idx)
-            is_current = (fcurve_idx == self.current_idx)
+            is_current = fcurve_idx == self.current_idx
 
             y_base = self.bottom + display_idx * self.px_h + mid_height
 
@@ -775,25 +805,31 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
 
             # Collect icon positions
             icon_y = y_base - icon_y_offset
-            
+
             # Mute icon
-            mute_key = 'mute_on' if fc.mute else 'mute_off'
+            mute_key = "mute_on" if fc.mute else "mute_off"
             mute_coord = Vector((self.mute_zone_x, icon_y))
-            icons_to_draw[mute_key].append([v + mute_coord for v in self.icon_tex_coord])
-            
+            icons_to_draw[mute_key].append(
+                [v + mute_coord for v in self.icon_tex_coord]
+            )
+
             # Lock icon
-            lock_key = 'lock_on' if fc.lock else 'lock_off'
+            lock_key = "lock_on" if fc.lock else "lock_off"
             lock_coord = Vector((self.lock_zone_x, icon_y))
-            icons_to_draw[lock_key].append([v + lock_coord for v in self.icon_tex_coord])
-            
+            icons_to_draw[lock_key].append(
+                [v + lock_coord for v in self.icon_tex_coord]
+            )
+
             # Hide icon
-            hide_key = 'hide_on' if fc.hide else 'hide_off'
+            hide_key = "hide_on" if fc.hide else "hide_off"
             hide_coord = Vector((self.hide_zone_x, icon_y))
-            icons_to_draw[hide_key].append([v + hide_coord for v in self.icon_tex_coord])
+            icons_to_draw[hide_key].append(
+                [v + hide_coord for v in self.icon_tex_coord]
+            )
 
         # Draw all icons (shader created once outside loop for performance)
         gpu.state.blend_set("ALPHA")
-        shader_tex = gpu.shader.from_builtin('IMAGE')
+        shader_tex = gpu.shader.from_builtin("IMAGE")
         for icon_name, coord_list in icons_to_draw.items():
             img = self.icon_tex.get(icon_name)
             if not img:
@@ -801,7 +837,8 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
             texture = gpu.texture.from_image(img)
             for coords in coord_list:
                 batch_icons = batch_for_shader(
-                    shader_tex, 'TRI_FAN',
+                    shader_tex,
+                    "TRI_FAN",
                     {
                         "pos": coords,
                         "texCoord": ((0, 0), (1, 0), (1, 1), (0, 1)),
@@ -827,7 +864,12 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
             remaining = max_scroll - self.scroll_offset
             blf.size(font_id, self.text_size)
             blf.color(font_id, 0.7, 0.7, 0.7, 0.8)
-            blf.position(font_id, self.left + self.px_w / 2 - 10, self.bottom - self.text_size - 5, 0)
+            blf.position(
+                font_id,
+                self.left + self.px_w / 2 - 10,
+                self.bottom - self.text_size - 5,
+                0,
+            )
             blf.draw(font_id, f"▼ {remaining}")
 
     def stop_mod(self, context):
@@ -911,4 +953,3 @@ keymap_channel_navigator = [
 ]
 
 keymap_registry.register_keymap_group("Channel Navigator", keymap_channel_navigator)
-

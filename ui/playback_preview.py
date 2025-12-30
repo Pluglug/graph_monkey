@@ -142,7 +142,9 @@ class PlaybackViewportManager:
         try:
             in_preview = False
             if scene.use_preview_range:
-                in_preview = scene.frame_preview_start <= frame <= scene.frame_preview_end
+                in_preview = (
+                    scene.frame_preview_start <= frame <= scene.frame_preview_end
+                )
             else:
                 in_preview = scene.frame_start <= frame <= scene.frame_end
 
@@ -192,7 +194,9 @@ class PlaybackPreviewSettings(PropertyGroup):
         row = layout.row()
         row.prop(self, "enable_viewport_features")
         row = layout.row()
-        row.label(text="Automatically disables viewport overlays and gizmos when you play an animation")
+        row.label(
+            text="Automatically disables viewport overlays and gizmos when you play an animation"
+        )
 
 
 def draw_dopesheet_header(self, context):
@@ -233,4 +237,3 @@ def unregister():
     playback_preview_manager.deactivate()
     if draw_dopesheet_header in DOPESHEET_HT_header:
         DOPESHEET_HT_header.remove(draw_dopesheet_header)
-

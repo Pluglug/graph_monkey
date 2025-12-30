@@ -45,20 +45,20 @@ class GRAPH_OT_monkey_horizontally(bpy.types.Operator):
             return {"CANCELLED"}
 
         log.debug("Move Keyframe Selection Horizontally: EXECUTE")
-        
+
         # 選択キーが1つだけかチェック（移動前）
         prefs = get_prefs(context)
         count_before = count_selected_keyframes(visible_fcurves)
-        
+
         move_keyframe_selection_horizontally(self.direction, self.extend)
-        
+
         # オプションが有効で、選択キーが1つだけの場合、現在のフレームを追従させる
         if prefs.auto_follow_current_frame and count_before == 1:
             # 移動後の選択キーのフレーム位置を取得
             selected_frame = get_single_selected_keyframe_frame(visible_fcurves)
             if selected_frame is not None:
                 context.scene.frame_set(int(selected_frame))
-        
+
         log.debug("Move Keyframe Selection Horizontally: FINISHED")
         return {"FINISHED"}
 
