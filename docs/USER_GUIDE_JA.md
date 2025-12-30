@@ -1,11 +1,4 @@
-# MonKey (Graph Monkey) ユーザーガイド
-
-**バージョン**: 0.9.0
-**対応Blender**: 2.80以降（一部機能は4.4以降）
-
----
-
-## 目次
+# Graph Monkey
 
 1. [はじめに](#はじめに)
 2. [ワークフロー別ガイド](#ワークフロー別ガイド)
@@ -22,9 +15,7 @@
 
 ## はじめに
 
-MonKey（Graph Monkey）は、Blenderのアニメーション作業を効率化するアドオンです。特にGraph Editorでの作業を中心に、**キーボード操作だけで素早くキーフレームを編集**できるワークフローを提供します。
-
-### MonKeyの動作デモ
+Graph Monkeyは、Blenderのアニメーション作業を効率化するアドオンです。特にGraph Editorでの作業を中心に、**キーボード操作だけで素早くキーフレームを編集**できるワークフローを提供します。
 
 ![MonKeyの基本操作](images/wasd_navigation.gif)
 
@@ -96,11 +87,13 @@ Graph Editorでのキーフレーム編集を高速化する機能群です。
 
 #### 1-3. Auto Focus機能
 
-「Auto Focus on Channel Change」設定を有効にすると、チャンネル移動時に選択カーブへ自動的にフォーカスします。
+「Auto Focus on Channel Change」設定を有効にすると、チャンネル移動時（**Alt + W/S**）に選択カーブへ自動的にフォーカスします。
 
 ![Auto Focus機能](images/wasd_autofocus.gif)
 
-この機能により、**Alt + W/S** でチャンネルを切り替えながら、各カーブ全体を素早く確認できます。複数のチャンネルを比較する際に特に便利です。
+この機能により、チャンネルを切り替えながら、各カーブ全体を素早く確認できます。複数のチャンネルを比較する際に特に便利です。
+
+**Auto Follow Current Frame**: 1-1で説明した「Auto Follow Current Frame」設定を有効にすると、**Alt + A/D** でのキーフレーム移動時にも、選択キーが1つの場合のみ現在のフレームが自動追従します。
 
 #### 1-4. 選択カーブのフォーカス
 
@@ -146,7 +139,7 @@ Graph Editorでのキーフレーム編集を高速化する機能群です。
 | H キー | Hide（非表示）トグル |
 | L キー | Lock（ロック）トグル |
 | M キー | Mute（ミュート）トグル |
-| スクロール | 長いリストをスクロール |
+| マウスホイール | 長いリストをスクロール（デフォルト8チャンネル以上で必要） |
 
 **Auto Focus 機能**: Graph Editorの「Auto Focus on Channel Change」設定が有効な場合、チャンネルを切り替えると自動的に選択カーブにフォーカスします。
 
@@ -183,7 +176,7 @@ Timeline、Dopesheet、Graph Editor共通で使えるフレーム移動・再生
 
 #### 3-1. フレーム範囲内ジャンプ
 
-再生範囲内でキーフレーム間をジャンプします。
+再生範囲内でキーフレーム間をジャンプします。**View3D を含む、どのエディタからでも利用可能**です。
 
 | 操作 | キー | 説明 |
 |------|------|------|
@@ -274,7 +267,7 @@ Graph EditorからAction操作を直接行える機能です。
 
 #### 4-1. Graph Editor Action ツールバー
 
-Graph Editorのヘッダーに**Action管理ボタン群**が追加されます。
+Graph Editorのヘッダーに**Action管理ボタン群**が追加されます。通常Dopesheet Action Editorでしか見れない情報を、Graph Editorでも見えるようにしました。
 
 **ボタン機能**:
 | ボタン | 説明 |
@@ -283,11 +276,6 @@ Graph Editorのヘッダーに**Action管理ボタン群**が追加されます�
 | 📋 (Duplicate) | 選択チャンネルを新Actionに移動（4.4+） |
 | ⬇ (Push Down) | ActionをNLA Stackにプッシュダウン |
 | ❄ (Stash) | ActionをNLA Stackにスタッシュ |
-
-**Action セレクター**:
-- 右側にActionドロップダウンが追加
-- New / Unlink ボタン
-- **4.4+**: Action Slot セレクターも表示
 
 ---
 
