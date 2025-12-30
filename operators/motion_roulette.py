@@ -406,8 +406,8 @@ _draw_handler = None
 
 def draw_roulette_overlay():
     """3Dビューにルーレット結果をオーバーレイ表示"""
-    wm = bpy.context.window_manager
-    result = getattr(wm, "roulette_result", None)
+    scene = bpy.context.scene
+    result = getattr(scene, "roulette_result", None)
 
     if not result or not result.show_overlay or not result.is_confirmed:
         return
@@ -497,13 +497,13 @@ class MONKEY_OT_roulette_spin(Operator):
     @classmethod
     def poll(cls, context):
         # register前やアンロード時の AttributeError を防ぐ
-        result = getattr(context.window_manager, "roulette_result", None)
+        result = getattr(context.scene, "roulette_result", None)
         if result is None:
             return True  # 初回は実行可能
         return not result.is_confirmed
 
     def execute(self, context):
-        result = context.window_manager.roulette_result
+        result = context.scene.roulette_result
 
         # JSON 読み込み＆バリデーション（エラーはここで握る）
         try:
@@ -537,7 +537,7 @@ class MONKEY_OT_roulette_dialog(Operator):
 
     def execute(self, context):
         # OK ボタン = 確定
-        result = context.window_manager.roulette_result
+        result = context.scene.roulette_result
         result.is_confirmed = True
         result.show_overlay = True
 
@@ -560,7 +560,7 @@ class MONKEY_OT_roulette_dialog(Operator):
 
     def draw(self, context):
         layout = self.layout
-        result = context.window_manager.roulette_result
+        result = context.scene.roulette_result
 
         # メインコンテンツ
         box = layout.box()
@@ -655,7 +655,7 @@ class MONKEY_OT_roulette_reroll(Operator):
     bl_options = {'REGISTER', 'INTERNAL'}
 
     def execute(self, context):
-        result = context.window_manager.roulette_result
+        result = context.scene.roulette_result
 
         if result.remaining_rerolls > 0:
             result.remaining_rerolls -= 1
@@ -672,7 +672,7 @@ class MONKEY_OT_roulette_toggle_overlay(Operator):
     bl_options = {'REGISTER'}
 
     def execute(self, context):
-        result = getattr(context.window_manager, "roulette_result", None)
+        result = getattr(context.scene, "roulette_result", None)
 
         if not result or not result.is_confirmed:
             self.report({'WARNING'}, "まだ練習テーマが確定されていません")
@@ -702,7 +702,7 @@ class MONKEY_OT_roulette_reset(Operator):
     bl_options = {'REGISTER'}
 
     def execute(self, context):
-        result = getattr(context.window_manager, "roulette_result", None)
+        result = getattr(context.scene, "roulette_result", None)
         if not result:
             return {'CANCELLED'}
 
@@ -738,9 +738,10 @@ class MONKEY_OT_roulette_reset(Operator):
 
 
 def register():
-    bpy.types.WindowManager.roulette_result = PointerProperty(type=RouletteResult)
+    # Scene に登録することで .blend ファイルに保存される
+    bpy.types.Scene.roulette_result = PointerProperty(type=RouletteResult)
 
 
 def unregister():
     unregister_draw_handler()
-    del bpy.types.WindowManager.roulette_result
+    del bpy.types.Scene.roulette_result

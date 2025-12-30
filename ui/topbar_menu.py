@@ -26,8 +26,8 @@ class TOPBAR_MT_pluglug(Menu):
         )
 
         # オーバーレイ表示トグル / リセット
-        result = context.window_manager.roulette_result
-        if result.is_confirmed:
+        result = getattr(context.scene, "roulette_result", None)
+        if result and result.is_confirmed:
             icon = 'HIDE_OFF' if result.show_overlay else 'HIDE_ON'
             text = "テーマを非表示" if result.show_overlay else "テーマを表示"
             layout.operator(
@@ -35,11 +35,11 @@ class TOPBAR_MT_pluglug(Menu):
                 text=text,
                 icon=icon,
             )
-            # layout.operator(
-            #     "monkey.roulette_reset",
-            #     text="リセット",
-            #     icon='LOOP_BACK',
-            # )
+            layout.operator(
+                "monkey.roulette_reset",
+                text="リセット",
+                icon='LOOP_BACK',
+            )
 
         layout.separator()
 
