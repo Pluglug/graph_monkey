@@ -24,15 +24,11 @@ class MonKeyPreferences(AddonPreferences):
         name="Tab",
         description="Tab to open",
         items=[
-            ("HowToUse", "How to use", ""),
+            ("HOW_TO_USE", "How to use", ""),
+            ("SETTINGS", "Settings", ""),
             ("KEYMAP", "Keymap", ""),
-            ("GRAPH_EDITOR", "Graph Editor", ""),
-            ("CHANNEL_NAV", "Channel Navigator", ""),
-            ("OVERLAY", "Overlay", ""),
-            ("POSE_VISUALIZER", "Pose Visualizer", ""),
-            ("PLAYBACK", "Playback", ""),
         ],
-        default="HowToUse",
+        default="HOW_TO_USE",
         options={"HIDDEN", "SKIP_SAVE"},
     )
 
@@ -61,20 +57,12 @@ class MonKeyPreferences(AddonPreferences):
         row.prop(self, "tab", expand=True)
 
         box = layout.box()
-        if self.tab == "HowToUse":
+        if self.tab == "HOW_TO_USE":
             self.draw_description(context, box)
-        elif self.tab == "GRAPH_EDITOR":
-            self.draw_graph_editor_settings(context, box)
-        elif self.tab == "CHANNEL_NAV":
-            self.channel_navigator.draw(context, box)
-        elif self.tab == "OVERLAY":
-            self.overlay.draw(context, box)
-        elif self.tab == "POSE_VISUALIZER":
-            self.pose_visualizer.draw(context, box)
+        elif self.tab == "SETTINGS":
+            self.draw_settings(context, box)
         elif self.tab == "KEYMAP":
             keymap_registry.draw_keymap_settings(context, box)
-        elif self.tab == "PLAYBACK":
-            self.playback_preview.draw(context, box)
 
     def draw_description(self, context, layout):
         # Addon description
@@ -86,7 +74,7 @@ class MonKeyPreferences(AddonPreferences):
         col.label(text=_("QUICK_START"), icon=ic("PLAY"))
         box = col.box()
         box.label(text=_("WASD_QUICK"), icon=ic("EVENT_W"))
-        box.label(text=_("NUM_QUICK"), icon=ic("EVENT_1"))
+        box.label(text=_("NUM_QUICK"), icon=ic("EVENT_ONEKEY"))
         box.label(text=_("NAV_QUICK"), icon=ic("EVENT_Y"))
         box.label(text=_("PIE_QUICK"), icon=ic("EVENT_T"))
 
@@ -113,15 +101,44 @@ class MonKeyPreferences(AddonPreferences):
             icon=ic("URL"),
         ).url = _("GITHUB_URL")
 
-    def draw_graph_editor_settings(self, context, layout):
-        col = layout.column()
+    def draw_settings(self, context, layout):
+        # Graph Editor
+        box = layout.box()
+        box.label(text=_("GRAPH_EDITOR_SETTINGS"), icon=ic("GRAPH"))
+        col = box.column()
         col.label(text=_("CHANNEL_MOVE"))
         col.prop(self, "auto_focus_on_channel_change")
-
         col.separator()
         col.label(text=_("KEYFRAME_MOVE"))
         col.prop(self, "auto_follow_current_frame")
 
+        layout.separator()
+
+        # Channel Navigator
+        box = layout.box()
+        box.label(text=_("CHANNEL_NAV_SETTINGS"), icon=ic("OUTLINER"))
+        self.channel_navigator.draw(context, box)
+
+        layout.separator()
+
+        # Channel Overlay
+        box = layout.box()
+        box.label(text=_("OVERLAY_SETTINGS"), icon=ic("OVERLAY"))
+        self.overlay.draw(context, box)
+
+        layout.separator()
+
+        # Pose Visualizer
+        box = layout.box()
+        box.label(text=_("POSE_VISUALIZER_SETTINGS"), icon=ic("POSE_HLT"))
+        self.pose_visualizer.draw(context, box)
+
+        layout.separator()
+
+        # Playback Preview
+        box = layout.box()
+        box.label(text=_("PLAYBACK_SETTINGS"), icon=ic("PLAY"))
+        self.playback_preview.draw(context, box)
 
 def register():
     pass

@@ -75,10 +75,40 @@ TRANSLATIONS = {
         "ja": "Pose Visualizer - ボーンの回転/移動量を可視化 (Vキー)",
     },
 
+    # === Tab Names ===
+    "TAB_HOW_TO_USE": {
+        "en": "How to use",
+        "ja": "使い方",
+    },
+    "TAB_SETTINGS": {
+        "en": "Settings",
+        "ja": "設定",
+    },
+    "TAB_KEYMAP": {
+        "en": "Keymap",
+        "ja": "キーマップ",
+    },
+
     # === Settings Labels ===
     "GRAPH_EDITOR_SETTINGS": {
-        "en": "Graph Editor Settings",
-        "ja": "Graph Editor 設定",
+        "en": "Graph Editor",
+        "ja": "Graph Editor",
+    },
+    "CHANNEL_NAV_SETTINGS": {
+        "en": "Channel Navigator",
+        "ja": "Channel Navigator",
+    },
+    "OVERLAY_SETTINGS": {
+        "en": "Channel Overlay",
+        "ja": "Channel Overlay",
+    },
+    "POSE_VISUALIZER_SETTINGS": {
+        "en": "Pose Visualizer",
+        "ja": "Pose Visualizer",
+    },
+    "PLAYBACK_SETTINGS": {
+        "en": "Playback Preview",
+        "ja": "再生プレビュー",
     },
     "CHANNEL_MOVE": {
         "en": "Channel Movement (Alt+W/S)",
