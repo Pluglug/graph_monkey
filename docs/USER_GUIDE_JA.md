@@ -1,6 +1,6 @@
 # Graph Monkey ユーザーガイド
 
-Graph Monkeyは、BlenderのGraph Editorでのアニメーション作業を効率化するアドオンです。**キーボード操作だけで素早くキーフレームを編集**できるワークフローを提供します。
+WASDナビゲーションから始まった個人用ツールキット。アニメーション作業で欲しくなった機能を随時追加しています。
 
 ![MonKeyの基本操作](images/wasd_navigation.gif)
 
@@ -40,11 +40,9 @@ Graph Monkeyは、BlenderのGraph Editorでのアニメーション作業を効�
 
 ## WASD ナビゲーション
 
-Graph Editorでのキーフレーム編集を高速化する中核機能です。
+Graph Editorでのキーフレーム編集を高速化する中核機能です。**キーボード操作だけで素早くキーフレームを編集**できるワークフローを提供します。
 
-### 基本操作
-
-**Alt + WASD** でキーフレーム間・チャンネル間を自由に移動します。
+**Alt + WASD** でキーフレーム間・チャンネル間を自由に移動。マウスを使わず、キーボードだけで完結する直感的な操作を実現します。
 
 | キー | 動作 |
 |------|------|
@@ -52,7 +50,7 @@ Graph Editorでのキーフレーム編集を高速化する中核機能です�
 | `Alt + W` / `Alt + S` | 上下のチャンネルへ移動 |
 | `+ Shift` | 選択に追加（拡張選択） |
 
-![WASD基本操作](images/wasd_navigation.gif)
+<img src="images/wasd_navigation.gif" width="70%">
 
 ### ハンドル選択
 
@@ -63,13 +61,13 @@ Graph Editorでのキーフレーム編集を高速化する中核機能です�
 | `Alt + Q` / `Alt + E` | 左右のハンドルを選択 |
 | `+ Shift` | 選択に追加 |
 
-![ハンドル選択](images/handle_selection.gif)
+<img src="images/handle_selection.gif" width="70%">
 
 ### Auto Focus
 
 設定で「Auto Focus on Channel Change」を有効にすると、チャンネル移動時に選択カーブへ自動的にフォーカスします。
 
-![Auto Focus機能](images/wasd_autofocus.gif)
+<img src="images/wasd_autofocus.gif" width="70%">
 
 複数のチャンネルを比較する際に便利です。W/Sでチャンネルを切り替えながら、各カーブ全体を素早く確認できます。
 
@@ -88,7 +86,7 @@ Graph Editorでのキーフレーム編集を高速化する中核機能です�
 
 `Y`キーを**長押し**すると、インタラクティブなチャンネル管理ポップアップが表示されます。
 
-![Channel Navigator](images/channel_navigator.gif)
+<img src="images/channel_navigator.gif" width="70%">
 
 ### 操作方法
 
@@ -101,7 +99,7 @@ Graph Editorでのキーフレーム編集を高速化する中核機能です�
 
 Auto Focusが有効なら、チャンネルを切り替えると自動的にそのカーブにフォーカスします。
 
-![Channel Navigator - Auto Focus](images/channel_navigator_autofocus.gif)
+<img src="images/channel_navigator_autofocus.gif" width="70%">
 
 ---
 
@@ -116,13 +114,13 @@ Timeline、Dopesheet、Graph Editor、**View3Dなどどのエディタからで�
 | `1` / `2` | 1フレーム戻る / 進む |
 | `3` / `4` | 前 / 次のキーフレームへジャンプ |
 
-![フレームジャンプ](images/keyframe_jump_peek.gif)
+<img src="images/keyframe_jump_peek.gif" width="70%">
 
 ### キーフレームタイプフィルター
 
 Timeline/Dopesheetヘッダーのフィルターで、**特定のキーフレームタイプのみをジャンプ対象**にできます。
 
-![キーフレームタイプフィルター](images/keyframe_filter.gif)
+<img src="images/keyframe_filter.gif" width="70%">
 
 KEYFRAME、BREAKDOWN、EXTREME等から選択可能。例えばKEYFRAMEとBREAKDOWNのみ選択すれば、他のタイプは`3`/`4`でスキップされます。
 
@@ -131,23 +129,11 @@ KEYFRAME、BREAKDOWN、EXTREME等から選択可能。例えばKEYFRAMEとBREAKD
 `Shift + 3/4` で隣のキーフレームを**一時的にプレビュー**します。**指パラと似た感覚**で前後のポーズを素早く確認できます。
 
 ```mermaid
-sequenceDiagram
-    participant User
-    participant Blender
-
-    User->>Blender: Shift+4 押下
-    Blender->>Blender: 次のキーフレームへ移動
-    Note over Blender: プレビュー中...
-
-    alt 両方のキーを離す
-        User->>Blender: 両キーを離す
-        Blender->>Blender: 元のフレームに戻る
-    else Shiftを先に離す
-        User->>Blender: Shiftを先に離す
-        Note over Blender: 移動確定
-        User->>Blender: 4を離す
-        Note over Blender: 移動先に留まる
-    end
+flowchart LR
+    A["Shift+3/4 押下"] --> B["プレビュー中"]
+    B --> C{"離す順序"}
+    C -->|"両方同時"| D["元に戻る"]
+    C -->|"Shift先"| E["移動先に留まる"]
 ```
 
 **Peek中の操作**: `1`/`2`で追加オフセット、`Q`でリセット
@@ -160,7 +146,7 @@ sequenceDiagram
 
 Graph Editorでキーフレームを整列するPieメニューです。
 
-![キー整列Pie](images/key_align_pie.gif)
+<img src="images/key_align_pie.gif" width="70%">
 
 | 項目 | 動作 |
 |------|------|
@@ -172,7 +158,7 @@ Graph Editorでキーフレームを整列するPieメニューです。
 
 Graph Editorの設定を素早く変更するPieメニューです。
 
-![Config Pie](images/config_pie.png)
+<img src="images/config_pie.png" width="50%">
 
 | 項目 | 動作 |
 |------|------|
@@ -187,7 +173,7 @@ Graph Editorの設定を素早く変更するPieメニューです。
 
 Graph Editorのヘッダーに追加されるAction管理ボタン群です。通常Dopesheet Action Editorでしか見れない情報を、Graph Editorでも操作できるようにします。
 
-![Action ツールバー](images/graph_topbar.png)
+<img src="images/graph_topbar.png" width="70%">
 
 | ボタン | 動作 |
 |--------|------|
@@ -200,7 +186,7 @@ Graph Editorのヘッダーに追加されるAction管理ボタン群です。�
 
 Dopesheet/Timelineヘッダーに追加される再生速度コントロールです。
 
-![Playback Speed Controller](images/playback_speed_controller.png)
+<img src="images/playback_speed_controller.png" width="70%">
 
 スライダーで0.01x〜9.0xの速度調整、プリセットボタン（¼x/½x/1x/2x）でワンクリック設定。Storeボタンでオリジナル範囲を保存してから速度を変更してください。
 
@@ -208,13 +194,13 @@ Dopesheet/Timelineヘッダーに追加される再生速度コントロール�
 
 選択中のF-Curve名をGraph Editor上に常時表示します。
 
-![Channel Overlay](images/channel_overlay.png)
+<img src="images/channel_overlay.png" width="50%">
 
 ### Sync Visible Range
 
 複数のタイムベースエディタ間で表示範囲をロックします。
 
-![Sync Visible Range](images/sync_visible_range.png)
+<img src="images/sync_visible_range.png" width="50%">
 
 ヘッダー左端の🔒アイコンをクリック。ロック中は、あるエディタでスクロール/ズームすると他のエディタ（Dopesheet、Graph Editor、NLA等）も連動します。
 
@@ -233,7 +219,7 @@ Dopesheet/Timelineヘッダーに追加される再生速度コントロール�
 
 **File → Run Scripts** メニューから、blendファイル内に保存されたテキストを直接実行できます。
 
-![Run Scripts](images/run_scripts.png)
+<img src="images/run_scripts.png" width="50%">
 
 Text Editorを開かなくても、blendファイル内のPythonスクリプトを実行可能。リグUIの実行などに便利です。
 
@@ -241,7 +227,7 @@ Text Editorを開かなくても、blendファイル内のPythonスクリプト�
 
 再生速度コントローラーの隣にある**Clean Animation Preview**ボタンで、不要な表示要素を一時的に非表示にしてアニメーションをプレビューできます。
 
-![Clean Animation Preview](images/clean_animation_preview.gif)
+<img src="images/clean_animation_preview.gif" width="70%">
 
 ボーン名、軸表示、メッシュなどを一括非表示にして、クリーンな状態でアニメーションを確認できます。
 
@@ -255,7 +241,7 @@ Text Editorを開かなくても、blendファイル内のPythonスクリプト�
 
 ボーンの回転量・移動量を3Dビュー上に視覚的に表示します。
 
-![Pose Visualizer](images/pose_visualizer.gif)
+<img src="images/pose_visualizer.gif" width="70%">
 
 円弧で回転量、矢印で移動量を可視化。カラースキームはHeat（変化が大きいほど赤）、Cool（青）、Grayscaleから選択可能。
 
@@ -268,7 +254,7 @@ Text Editorを開かなくても、blendファイル内のPythonスクリプト�
 | `/` | 選択ボーンのコレクションをソロ |
 | `Alt + /` | ソロ解除 |
 
-![Bone Collection Solo](images/bone_collection_solo.gif)
+<img src="images/bone_collection_solo.gif" width="70%">
 
 ---
 
