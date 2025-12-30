@@ -49,6 +49,7 @@ jobs:
                     --exclude='.gitignore' \
                     --exclude='.DS_Store' \
                     --exclude='Thumbs.db' \
+                    --exclude='build' \
                     ./ build/graph_monkey/
 
           # Create zip
