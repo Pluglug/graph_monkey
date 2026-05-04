@@ -88,6 +88,7 @@ Thumbs.db
 *.bak
 
 # Development files (not for release)
+_dev_note/
 old/
 docs/debug/
 docs/design notes/

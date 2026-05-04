@@ -21,6 +21,7 @@ from gpu_extras.batch import batch_for_shader
 from mathutils import Vector
 from bpy.props import IntProperty
 from pathlib import Path
+from time import perf_counter
 
 from ..addon import get_prefs
 from ..keymap_manager import KeymapDefinition, keymap_registry
@@ -176,6 +177,86 @@ def rounded_rect_outline_tris(left, bottom, right, top, line_width, radius):
     return verts
 
 
+def clamp01(value):
+    return max(0.0, min(1.0, value))
+
+
+def ease_out_cubic(t):
+    t = clamp01(t)
+    return 1.0 - (1.0 - t) ** 3
+
+
+def ease_out_quad(t):
+    t = clamp01(t)
+    return 1.0 - (1.0 - t) * (1.0 - t)
+
+
+def rounded_rect_outline_segments(left, bottom, right, top, line_width, radius):
+    """Build explicit thick rounded-rectangle ring segments."""
+    width = right - left
+    height = top - bottom
+    line_width = max(0.0, min(float(line_width), width / 2.0, height / 2.0))
+    if line_width <= 0.0:
+        return []
+
+    outer = rounded_rect_path(left, bottom, right, top, radius)
+    inner = rounded_rect_path(
+        left + line_width,
+        bottom + line_width,
+        right - line_width,
+        top - line_width,
+        max(0.0, radius - line_width),
+    )
+
+    segments = []
+    for i in range(len(outer)):
+        j = (i + 1) % len(outer)
+        if (outer[j] - outer[i]).length_squared <= 0.0:
+            continue
+        segments.append((outer[i], outer[j], inner[i], inner[j]))
+    return segments
+
+
+def rounded_rect_outline_tris_partial(left, bottom, right, top, line_width, radius, progress):
+    """Build partial contained rounded-rectangle outline triangles."""
+    progress = clamp01(progress)
+    if progress <= 0.0:
+        return []
+    if progress >= 1.0:
+        return rounded_rect_outline_tris(left, bottom, right, top, line_width, radius)
+
+    segments = rounded_rect_outline_segments(left, bottom, right, top, line_width, radius)
+    visible = progress * len(segments)
+    full_count = int(visible)
+    partial = visible - full_count
+
+    verts = []
+    for outer_a, outer_b, inner_a, inner_b in segments[:full_count]:
+        verts += [
+            outer_a,
+            outer_b,
+            inner_b,
+            outer_a,
+            inner_b,
+            inner_a,
+        ]
+
+    if full_count < len(segments) and partial > 0.0:
+        outer_a, outer_b, inner_a, inner_b = segments[full_count]
+        outer_mid = outer_a.lerp(outer_b, partial)
+        inner_mid = inner_a.lerp(inner_b, partial)
+        verts += [
+            outer_a,
+            outer_mid,
+            inner_mid,
+            outer_a,
+            inner_mid,
+            inner_a,
+        ]
+
+    return verts
+
+
 def round_to_ceil_even(f):
     import math
 
@@ -271,12 +352,20 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         # Find current active index (first selected fcurve)
         self.org_idx = self._find_active_index()
         self.current_idx = self.org_idx
+        self.anim_duration = 0.16
+        self.pulse_duration = 0.28
+        self.anim_start_time = perf_counter() - self.pulse_duration
+        self.last_animated_idx = self.current_idx
+        self._timer = None
 
         self.setup(context)
 
         self.current_area = context.area
         self._handle = bpy.types.SpaceGraphEditor.draw_handler_add(
             self._draw_callback, (context,), "WINDOW", "POST_PIXEL"
+        )
+        self._timer = context.window_manager.event_timer_add(
+            1.0 / 60.0, window=context.window
         )
 
         context.window_manager.modal_handler_add(self)
@@ -433,7 +522,19 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         self.needs_scroll = len(self.fcurves) > self.max_display
 
     def modal(self, context, event):
-        context.area.tag_redraw()
+        if event.type == "TIMER":
+            if getattr(event, "timer", None) is not self._timer:
+                return {"PASS_THROUGH"}
+            if (
+                self._is_animating()
+                and context.area == self.current_area
+                and context.area is not None
+            ):
+                context.area.tag_redraw()
+            return {"RUNNING_MODAL"}
+
+        if context.area is not None:
+            context.area.tag_redraw()
         self.mouse = Vector((event.mouse_region_x, event.mouse_region_y))
 
         # Cancel
@@ -550,6 +651,8 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
             to_fc.select = True
 
         self.current_idx = new_idx
+        self.anim_start_time = perf_counter()
+        self.last_animated_idx = new_idx
         log.debug(f"Changed to channel {new_idx}: {to_fc.data_path}")
 
         # Live focus on channel change
@@ -631,9 +734,13 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
             log.debug(f"Solo: {target_fc.data_path}")
 
         # Also select the target
+        old_idx = self.current_idx
         for fc in self.fcurves:
             fc.select = fc == target_fc
         self.current_idx = self.fcurves.index(target_fc)
+        if self.current_idx != old_idx:
+            self.anim_start_time = perf_counter()
+            self.last_animated_idx = self.current_idx
 
     def _restore_original_state(self):
         """Restore original selection, hide, and keyframe selection state on cancel"""
@@ -696,6 +803,7 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         if context.area != self.current_area:
             return
 
+        now = perf_counter()
         font_id = 0
         shader = gpu.shader.from_builtin("UNIFORM_COLOR")
         gpu.state.blend_set("ALPHA")
@@ -708,6 +816,7 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         muted_rects = []
         color_bars = []
         active_outline_vertices = []
+        active_bounds = None
 
         ui_scale = context.preferences.system.ui_scale
         active_width = float(round_to_ceil_even(4.0 * ui_scale))
@@ -750,13 +859,27 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
 
             # Current channel border (the one mouse is over / selected)
             if is_current:
-                active_outline_vertices = rounded_rect_outline_tris(
+                active_bounds = (
                     corner.x,
                     corner.y,
                     corner.x + self.px_w,
                     corner.y + self.px_h,
+                )
+                elapsed = now - self.anim_start_time
+                reveal_t = 1.0
+                if (
+                    self.last_animated_idx == self.current_idx
+                    and elapsed < self.anim_duration
+                ):
+                    reveal_t = ease_out_cubic(elapsed / self.anim_duration)
+                active_outline_vertices = rounded_rect_outline_tris_partial(
+                    active_bounds[0],
+                    active_bounds[1],
+                    active_bounds[2],
+                    active_bounds[3],
                     active_width,
                     active_radius,
+                    reveal_t,
                 )
 
         # Define colors with user-configured alpha
@@ -788,6 +911,39 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         shader.uniform_float("color", self.lines_color)
         self.batch_lines.draw(shader)
 
+        # Draw selection pulse before the final active border and text/icons.
+        if active_bounds and self.last_animated_idx == self.current_idx:
+            elapsed = now - self.anim_start_time
+            if 0.0 <= elapsed < self.pulse_duration:
+                pulse_t = clamp01(elapsed / self.pulse_duration)
+                for pulse_idx in range(2):
+                    delay = pulse_idx * 0.18
+                    phase = clamp01((pulse_t - delay) / max(0.001, 1.0 - delay))
+                    if phase <= 0.0:
+                        continue
+                    eased = ease_out_quad(phase)
+                    expand = (4.0 + pulse_idx * 3.0) * ui_scale * eased
+                    alpha = (1.0 - eased) * (0.25 - pulse_idx * 0.05)
+                    if alpha <= 0.0:
+                        continue
+                    pulse_width = max(1.0, active_width * (1.0 - 0.35 * eased))
+                    pulse_vertices = rounded_rect_outline_tris(
+                        active_bounds[0] - expand,
+                        active_bounds[1] - expand,
+                        active_bounds[2] + expand,
+                        active_bounds[3] + expand,
+                        pulse_width,
+                        active_radius + expand,
+                    )
+                    if pulse_vertices:
+                        shader.uniform_float(
+                            "color", (*self.active_channel_color[:3], alpha)
+                        )
+                        batch_pulse = batch_for_shader(
+                            shader, "TRIS", {"pos": pulse_vertices}
+                        )
+                        batch_pulse.draw(shader)
+
         # Draw active border
         if active_outline_vertices:
             shader.uniform_float("color", self.active_channel_color)
@@ -805,6 +961,9 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         # Draw scroll indicators
         if self.needs_scroll:
             self._draw_scroll_indicators(context, font_id)
+
+    def _is_animating(self):
+        return perf_counter() - self.anim_start_time < self.pulse_duration
 
     def _draw_texts(self, context, font_id):
         """Draw channel names and icon indicators"""
@@ -925,8 +1084,19 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
 
     def stop_mod(self, context):
         """Clean up and stop the modal operator"""
-        bpy.types.SpaceGraphEditor.draw_handler_remove(self._handle, "WINDOW")
-        context.area.tag_redraw()
+        handle = getattr(self, "_handle", None)
+        if handle is not None:
+            bpy.types.SpaceGraphEditor.draw_handler_remove(handle, "WINDOW")
+            self._handle = None
+
+        timer = getattr(self, "_timer", None)
+        if timer is not None:
+            context.window_manager.event_timer_remove(timer)
+            self._timer = None
+
+        area = getattr(context, "area", None) or getattr(self, "current_area", None)
+        if area is not None:
+            area.tag_redraw()
 
 
 # --- Settings PropertyGroup ---
