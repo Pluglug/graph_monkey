@@ -121,6 +121,61 @@ def rectangle_tris_from_coords(quad_list):
     ]
 
 
+def rounded_rect_path(left, bottom, right, top, radius, segments=4):
+    """Build a counter-clockwise rounded-rectangle path in bottom-left pixel coords."""
+    from math import cos, pi, sin
+
+    width = right - left
+    height = top - bottom
+    radius = max(0.0, min(float(radius), width / 2.0, height / 2.0))
+    segments = max(1, int(segments))
+
+    corners = (
+        (right - radius, bottom + radius, -pi / 2.0, 0.0),
+        (right - radius, top - radius, 0.0, pi / 2.0),
+        (left + radius, top - radius, pi / 2.0, pi),
+        (left + radius, bottom + radius, pi, pi * 1.5),
+    )
+
+    path = []
+    for cx, cy, start, end in corners:
+        for step in range(segments + 1):
+            angle = start + (end - start) * (step / segments)
+            path.append(Vector((cx + cos(angle) * radius, cy + sin(angle) * radius)))
+    return path
+
+
+def rounded_rect_outline_tris(left, bottom, right, top, line_width, radius):
+    """Build contained thick rounded-rectangle outline triangles."""
+    width = right - left
+    height = top - bottom
+    line_width = max(0.0, min(float(line_width), width / 2.0, height / 2.0))
+    if line_width <= 0.0:
+        return []
+
+    outer = rounded_rect_path(left, bottom, right, top, radius)
+    inner = rounded_rect_path(
+        left + line_width,
+        bottom + line_width,
+        right - line_width,
+        top - line_width,
+        max(0.0, radius - line_width),
+    )
+
+    verts = []
+    for i in range(len(outer)):
+        j = (i + 1) % len(outer)
+        verts += [
+            outer[i],
+            outer[j],
+            inner[j],
+            outer[i],
+            inner[j],
+            inner[i],
+        ]
+    return verts
+
+
 def round_to_ceil_even(f):
     import math
 
@@ -652,10 +707,14 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         hidden_rects = []
         muted_rects = []
         color_bars = []
-        active_case = []
+        active_outline_vertices = []
 
-        active_width = float(
-            round_to_ceil_even(4.0 * context.preferences.system.ui_scale)
+        ui_scale = context.preferences.system.ui_scale
+        active_width = float(round_to_ceil_even(4.0 * ui_scale))
+        active_radius = min(
+            max(2.0, active_width / max(ui_scale, 0.001)),
+            self.px_w / 4.0,
+            self.px_h / 4.0,
         )
 
         # Build rectangles for each displayed fcurve
@@ -691,23 +750,14 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
 
             # Current channel border (the one mouse is over / selected)
             if is_current:
-                px_offset = int(active_width / 2)
-                border_points = [
-                    corner + Vector((px_offset, 0)),
-                    corner + Vector((self.px_w - px_offset, 0)),
-                    corner + Vector((self.px_w, px_offset)),
-                    corner + Vector((self.px_w, self.px_h - px_offset)),
-                    corner + Vector((self.px_w - px_offset, self.px_h)),
-                    corner + Vector((px_offset, self.px_h)),
-                    corner + Vector((0, self.px_h - px_offset)),
-                    corner + Vector((0, px_offset)),
-                ]
-                active_case = []
-                for i in range(len(border_points)):
-                    active_case += [
-                        border_points[i],
-                        border_points[(i + 1) % len(border_points)],
-                    ]
+                active_outline_vertices = rounded_rect_outline_tris(
+                    corner.x,
+                    corner.y,
+                    corner.x + self.px_w,
+                    corner.y + self.px_h,
+                    active_width,
+                    active_radius,
+                )
 
         # Define colors with user-configured alpha
         bg_color = (0.1, 0.1, 0.1, self.bg_alpha)
@@ -739,10 +789,11 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         self.batch_lines.draw(shader)
 
         # Draw active border
-        if active_case:
-            gpu.state.line_width_set(active_width)
+        if active_outline_vertices:
             shader.uniform_float("color", self.active_channel_color)
-            batch_active = batch_for_shader(shader, "LINES", {"pos": active_case})
+            batch_active = batch_for_shader(
+                shader, "TRIS", {"pos": active_outline_vertices}
+            )
             batch_active.draw(shader)
 
         gpu.state.line_width_set(1.0)
