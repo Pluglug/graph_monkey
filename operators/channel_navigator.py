@@ -146,6 +146,62 @@ def rounded_rect_path(left, bottom, right, top, radius, segments=4):
     return path
 
 
+def rounded_rect_fill_tris(left, bottom, right, top, radius):
+    """Build filled rounded-rectangle triangles."""
+    path = rounded_rect_path(left, bottom, right, top, radius)
+    if len(path) < 3:
+        return []
+
+    center = Vector(((left + right) * 0.5, (bottom + top) * 0.5))
+    verts = []
+    for i in range(len(path)):
+        j = (i + 1) % len(path)
+        verts += [center, path[i], path[j]]
+    return verts
+
+
+def left_rounded_rect_fill_tris(left, bottom, right, top, radius, segments=4):
+    """Build filled strip triangles with rounded left corners and a square right edge."""
+    from math import cos, pi, sin
+
+    width = right - left
+    height = top - bottom
+    radius = max(0.0, min(float(radius), width, height / 2.0))
+    segments = max(1, int(segments))
+
+    path = [
+        Vector((right, bottom)),
+        Vector((right, top)),
+    ]
+    for step in range(segments + 1):
+        angle = pi / 2.0 + (pi / 2.0) * (step / segments)
+        path.append(
+            Vector(
+                (
+                    left + radius + cos(angle) * radius,
+                    top - radius + sin(angle) * radius,
+                )
+            )
+        )
+    for step in range(segments + 1):
+        angle = pi + (pi / 2.0) * (step / segments)
+        path.append(
+            Vector(
+                (
+                    left + radius + cos(angle) * radius,
+                    bottom + radius + sin(angle) * radius,
+                )
+            )
+        )
+
+    center = Vector(((left + right) * 0.5, (bottom + top) * 0.5))
+    verts = []
+    for i in range(len(path)):
+        j = (i + 1) % len(path)
+        verts += [center, path[i], path[j]]
+    return verts
+
+
 def rounded_rect_outline_tris(left, bottom, right, top, line_width, radius):
     """Build contained thick rounded-rectangle outline triangles."""
     width = right - left
@@ -184,77 +240,6 @@ def clamp01(value):
 def ease_out_cubic(t):
     t = clamp01(t)
     return 1.0 - (1.0 - t) ** 3
-
-
-def ease_out_quad(t):
-    t = clamp01(t)
-    return 1.0 - (1.0 - t) * (1.0 - t)
-
-
-def rounded_rect_outline_segments(left, bottom, right, top, line_width, radius):
-    """Build explicit thick rounded-rectangle ring segments."""
-    width = right - left
-    height = top - bottom
-    line_width = max(0.0, min(float(line_width), width / 2.0, height / 2.0))
-    if line_width <= 0.0:
-        return []
-
-    outer = rounded_rect_path(left, bottom, right, top, radius)
-    inner = rounded_rect_path(
-        left + line_width,
-        bottom + line_width,
-        right - line_width,
-        top - line_width,
-        max(0.0, radius - line_width),
-    )
-
-    segments = []
-    for i in range(len(outer)):
-        j = (i + 1) % len(outer)
-        if (outer[j] - outer[i]).length_squared <= 0.0:
-            continue
-        segments.append((outer[i], outer[j], inner[i], inner[j]))
-    return segments
-
-
-def rounded_rect_outline_tris_partial(left, bottom, right, top, line_width, radius, progress):
-    """Build partial contained rounded-rectangle outline triangles."""
-    progress = clamp01(progress)
-    if progress <= 0.0:
-        return []
-    if progress >= 1.0:
-        return rounded_rect_outline_tris(left, bottom, right, top, line_width, radius)
-
-    segments = rounded_rect_outline_segments(left, bottom, right, top, line_width, radius)
-    visible = progress * len(segments)
-    full_count = int(visible)
-    partial = visible - full_count
-
-    verts = []
-    for outer_a, outer_b, inner_a, inner_b in segments[:full_count]:
-        verts += [
-            outer_a,
-            outer_b,
-            inner_b,
-            outer_a,
-            inner_b,
-            inner_a,
-        ]
-
-    if full_count < len(segments) and partial > 0.0:
-        outer_a, outer_b, inner_a, inner_b = segments[full_count]
-        outer_mid = outer_a.lerp(outer_b, partial)
-        inner_mid = inner_a.lerp(inner_b, partial)
-        verts += [
-            outer_a,
-            outer_mid,
-            inner_mid,
-            outer_a,
-            inner_mid,
-            inner_a,
-        ]
-
-    return verts
 
 
 def round_to_ceil_even(f):
@@ -352,10 +337,8 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         # Find current active index (first selected fcurve)
         self.org_idx = self._find_active_index()
         self.current_idx = self.org_idx
-        self.anim_duration = 0.16
-        self.pulse_duration = 0.28
-        self.anim_start_time = perf_counter() - self.pulse_duration
-        self.last_animated_idx = self.current_idx
+        self.focus_anim_duration = 0.18
+        self.focus_anim_start_time = perf_counter() - self.focus_anim_duration
         self._timer = None
 
         self.setup(context)
@@ -469,16 +452,18 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         # Clamp to region bounds
         region_w, region_h = context.region.width, context.region.height
         margin = int(10 * ui_scale)
+        horizontal_margin = margin + int(self.px_w * 0.05 + 4 * ui_scale)
+        vertical_margin = margin + int(4 * ui_scale)
 
-        if self.left < margin:
-            self.left = margin
-        if self.left + self.px_w > region_w - margin:
-            self.left = region_w - margin - self.px_w
+        if self.left < horizontal_margin:
+            self.left = horizontal_margin
+        if self.left + self.px_w > region_w - horizontal_margin:
+            self.left = region_w - horizontal_margin - self.px_w
 
-        if self.bottom < margin:
-            self.bottom = margin
-        if self.bottom + total_height > region_h - margin:
-            self.bottom = region_h - margin - total_height
+        if self.bottom < vertical_margin:
+            self.bottom = vertical_margin
+        if self.bottom + total_height > region_h - vertical_margin:
+            self.bottom = region_h - vertical_margin - total_height
 
         self.right = self.left + self.px_w
         self.top = self.bottom + total_height
@@ -501,22 +486,6 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
 
         # Text position (after hide icon)
         self.text_x = self.hide_zone_x + self.icon_size + int(6 * ui_scale)
-
-        # Build static line batch
-        lines = []
-        for i in range(self.display_count + 1):
-            y = self.bottom + i * self.px_h
-            lines += [(self.left, y), (self.right, y)]
-        # Vertical lines
-        lines += [
-            (self.left, self.bottom),
-            (self.left, self.top),
-            (self.right, self.bottom),
-            (self.right, self.top),
-        ]
-
-        shader = gpu.shader.from_builtin("UNIFORM_COLOR")
-        self.batch_lines = batch_for_shader(shader, "LINES", {"pos": lines})
 
         # Scroll indicator setup
         self.needs_scroll = len(self.fcurves) > self.max_display
@@ -651,8 +620,7 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
             to_fc.select = True
 
         self.current_idx = new_idx
-        self.anim_start_time = perf_counter()
-        self.last_animated_idx = new_idx
+        self._restart_focus_animation(new_idx)
         log.debug(f"Changed to channel {new_idx}: {to_fc.data_path}")
 
         # Live focus on channel change
@@ -739,8 +707,7 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
             fc.select = fc == target_fc
         self.current_idx = self.fcurves.index(target_fc)
         if self.current_idx != old_idx:
-            self.anim_start_time = perf_counter()
-            self.last_animated_idx = self.current_idx
+            self._restart_focus_animation(self.current_idx)
 
     def _restore_original_state(self):
         """Restore original selection, hide, and keyframe selection state on cancel"""
@@ -798,16 +765,38 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         except Exception as e:
             log.warning(f"Failed to focus: {e}")
 
+    def _focus_pop_amount(self, now=None):
+        """Return a subtle draw-only pop amount during focus transitions."""
+        if now is None:
+            now = perf_counter()
+
+        duration = max(0.001, self.focus_anim_duration)
+        t = clamp01((now - self.focus_anim_start_time) / duration)
+        if t >= 1.0:
+            return 0.0
+
+        from math import pi, sin
+
+        return sin(pi * t) * (1.0 - 0.35 * t)
+
+    def _current_focus_amount(self, fcurve_idx):
+        """Return visual emphasis amount for the active row only."""
+        return 1.0 if fcurve_idx == self.current_idx else 0.0
+
+    def _restart_focus_animation(self, new_idx):
+        """Restart draw-only focus pop timing."""
+        self.focus_anim_start_time = perf_counter()
+
     def _draw_callback(self, context):
         """Draw the navigator UI"""
         if context.area != self.current_area:
             return
 
         now = perf_counter()
+        focus_pop = self._focus_pop_amount(now)
         font_id = 0
         shader = gpu.shader.from_builtin("UNIFORM_COLOR")
         gpu.state.blend_set("ALPHA")
-        gpu.state.line_width_set(1.0)
 
         shader.bind()
 
@@ -815,16 +804,37 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         hidden_rects = []
         muted_rects = []
         color_bars = []
+        focus_highlights = []
+        row_frame_vertices = []
         active_outline_vertices = []
-        active_bounds = None
+        active_outline_color = self.active_channel_color
 
         ui_scale = context.preferences.system.ui_scale
+        frame_width = max(0.75, 0.85 * ui_scale)
+        item_gap = min(frame_width + 1.0 * ui_scale, max(0.0, self.px_h - 1.0))
+        item_inset_y = item_gap * 0.5
         active_width = float(round_to_ceil_even(4.0 * ui_scale))
         active_radius = min(
             max(2.0, active_width / max(ui_scale, 0.001)),
             self.px_w / 4.0,
             self.px_h / 4.0,
         )
+        frame_radius = min(
+            max(1.25, active_radius * 0.45),
+            self.px_w / 8.0,
+            max(0.0, self.px_h - item_gap) / 4.0,
+        )
+
+        def scale_rect(coords, center, scale_x, scale_y):
+            return [
+                Vector(
+                    (
+                        center.x + (coord.x - center.x) * scale_x,
+                        center.y + (coord.y - center.y) * scale_y,
+                    )
+                )
+                for coord in coords
+            ]
 
         # Build rectangles for each displayed fcurve
         for display_idx in range(self.display_count):
@@ -834,52 +844,115 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
 
             fcurve_idx = self._display_idx_to_fcurve_idx(display_idx)
             is_current = fcurve_idx == self.current_idx
+            focus = self._current_focus_amount(fcurve_idx)
+            scale_x = 1.0 + (0.04 + 0.014 * focus_pop) * focus
+            # Avoid vertical focus scale because hit rows remain unscaled.
+            scale_y = 1.0
 
             corner = Vector((self.left, self.bottom + self.px_h * display_idx))
-            case_coords = [v + corner for v in self.case]
-
+            row_center = corner + Vector((self.px_w / 2.0, self.px_h / 2.0))
+            visual_case_coords = [
+                corner + Vector((0.0, item_inset_y)),
+                corner + Vector((0.0, self.px_h - item_inset_y)),
+                corner + Vector((self.px_w, self.px_h - item_inset_y)),
+                corner + Vector((self.px_w, item_inset_y)),
+            ]
+            case_coords = scale_rect(
+                visual_case_coords, row_center, scale_x, scale_y
+            )
+            row_bound = (
+                min(coord.x for coord in case_coords),
+                min(coord.y for coord in case_coords),
+                max(coord.x for coord in case_coords),
+                max(coord.y for coord in case_coords),
+            )
+            row_frame_vertices += rounded_rect_outline_tris(
+                row_bound[0],
+                row_bound[1],
+                row_bound[2],
+                row_bound[3],
+                frame_width,
+                frame_radius,
+            )
             # Color bar on left (dimmed if hidden/muted)
             alpha = 0.3 if (fc.hide or fc.mute) else 0.9
             fc_color = get_fcurve_display_color(fc, alpha=alpha)
-            color_bar = [
-                corner,
-                corner + Vector((0, self.px_h)),
-                corner + Vector((self.color_bar_width, self.px_h)),
-                corner + Vector((self.color_bar_width, 0)),
-            ]
-            color_bars.append((rectangle_tris_from_coords(color_bar), fc_color))
+            color_bar_coords = scale_rect(
+                [
+                    corner + Vector((0.0, item_inset_y)),
+                    corner + Vector((0.0, self.px_h - item_inset_y)),
+                    corner
+                    + Vector((self.color_bar_width, self.px_h - item_inset_y)),
+                    corner + Vector((self.color_bar_width, item_inset_y)),
+                ],
+                row_center,
+                scale_x,
+                scale_y,
+            )
+            color_bar_bound = (
+                min(coord.x for coord in color_bar_coords),
+                min(coord.y for coord in color_bar_coords),
+                max(coord.x for coord in color_bar_coords),
+                max(coord.y for coord in color_bar_coords),
+            )
+            color_bars.append(
+                (
+                    left_rounded_rect_fill_tris(
+                        color_bar_bound[0],
+                        color_bar_bound[1],
+                        color_bar_bound[2],
+                        color_bar_bound[3],
+                        frame_radius,
+                    ),
+                    fc_color,
+                )
+            )
 
             # Background based on state (all use self.bg_alpha)
+            row_fill_vertices = rounded_rect_fill_tris(
+                row_bound[0],
+                row_bound[1],
+                row_bound[2],
+                row_bound[3],
+                frame_radius,
+            )
             if fc.mute:
-                muted_rects += rectangle_tris_from_coords(case_coords)
+                muted_rects += row_fill_vertices
             elif fc.hide:
-                hidden_rects += rectangle_tris_from_coords(case_coords)
+                hidden_rects += row_fill_vertices
             else:
-                normal_rects += rectangle_tris_from_coords(case_coords)
+                normal_rects += row_fill_vertices
+
+            if focus > 0.0:
+                highlight_alpha = 0.05 * focus
+                focus_highlights.append(
+                    (
+                        rounded_rect_fill_tris(
+                            row_bound[0],
+                            row_bound[1],
+                            row_bound[2],
+                            row_bound[3],
+                            frame_radius,
+                        ),
+                        (*self.active_channel_color[:3], highlight_alpha),
+                    )
+                )
 
             # Current channel border (the one mouse is over / selected)
             if is_current:
-                active_bounds = (
-                    corner.x,
-                    corner.y,
-                    corner.x + self.px_w,
-                    corner.y + self.px_h,
+                active_outline_color = fc_color
+                active_outset = min(
+                    active_width * 0.75,
+                    self.px_h * 0.10,
+                    3.0 * ui_scale,
                 )
-                elapsed = now - self.anim_start_time
-                reveal_t = 1.0
-                if (
-                    self.last_animated_idx == self.current_idx
-                    and elapsed < self.anim_duration
-                ):
-                    reveal_t = ease_out_cubic(elapsed / self.anim_duration)
-                active_outline_vertices = rounded_rect_outline_tris_partial(
-                    active_bounds[0],
-                    active_bounds[1],
-                    active_bounds[2],
-                    active_bounds[3],
+                active_outline_vertices = rounded_rect_outline_tris(
+                    row_bound[0] - active_outset,
+                    row_bound[1] - active_outset,
+                    row_bound[2] + active_outset,
+                    row_bound[3] + active_outset,
                     active_width,
-                    active_radius,
-                    reveal_t,
+                    frame_radius + active_outset,
                 )
 
         # Define colors with user-configured alpha
@@ -900,75 +973,49 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
         batch_muted = batch_for_shader(shader, "TRIS", {"pos": muted_rects})
         batch_muted.draw(shader)
 
+        # Small draw-only focus lift under the animated row geometry.
+        for highlight_coords, highlight_color in focus_highlights:
+            shader.uniform_float("color", highlight_color)
+            batch_highlight = batch_for_shader(
+                shader, "TRIS", {"pos": highlight_coords}
+            )
+            batch_highlight.draw(shader)
+
         # Draw color bars
         for bar_coords, bar_color in color_bars:
             shader.uniform_float("color", bar_color)
             batch_bar = batch_for_shader(shader, "TRIS", {"pos": bar_coords})
             batch_bar.draw(shader)
 
-        # Draw lines
-        gpu.state.line_width_set(2.0)
+        # Draw normal item frames
         shader.uniform_float("color", self.lines_color)
-        self.batch_lines.draw(shader)
-
-        # Draw selection pulse before the final active border and text/icons.
-        if active_bounds and self.last_animated_idx == self.current_idx:
-            elapsed = now - self.anim_start_time
-            if 0.0 <= elapsed < self.pulse_duration:
-                pulse_t = clamp01(elapsed / self.pulse_duration)
-                for pulse_idx in range(2):
-                    delay = pulse_idx * 0.18
-                    phase = clamp01((pulse_t - delay) / max(0.001, 1.0 - delay))
-                    if phase <= 0.0:
-                        continue
-                    eased = ease_out_quad(phase)
-                    expand = (4.0 + pulse_idx * 3.0) * ui_scale * eased
-                    alpha = (1.0 - eased) * (0.25 - pulse_idx * 0.05)
-                    if alpha <= 0.0:
-                        continue
-                    pulse_width = max(1.0, active_width * (1.0 - 0.35 * eased))
-                    pulse_vertices = rounded_rect_outline_tris(
-                        active_bounds[0] - expand,
-                        active_bounds[1] - expand,
-                        active_bounds[2] + expand,
-                        active_bounds[3] + expand,
-                        pulse_width,
-                        active_radius + expand,
-                    )
-                    if pulse_vertices:
-                        shader.uniform_float(
-                            "color", (*self.active_channel_color[:3], alpha)
-                        )
-                        batch_pulse = batch_for_shader(
-                            shader, "TRIS", {"pos": pulse_vertices}
-                        )
-                        batch_pulse.draw(shader)
+        batch_frames = batch_for_shader(shader, "TRIS", {"pos": row_frame_vertices})
+        batch_frames.draw(shader)
 
         # Draw active border
         if active_outline_vertices:
-            shader.uniform_float("color", self.active_channel_color)
+            shader.uniform_float("color", active_outline_color)
             batch_active = batch_for_shader(
                 shader, "TRIS", {"pos": active_outline_vertices}
             )
             batch_active.draw(shader)
 
-        gpu.state.line_width_set(1.0)
         gpu.state.blend_set("NONE")
 
         # Draw text and icons
-        self._draw_texts(context, font_id)
+        self._draw_texts(context, font_id, focus_pop)
 
         # Draw scroll indicators
         if self.needs_scroll:
             self._draw_scroll_indicators(context, font_id)
 
     def _is_animating(self):
-        return perf_counter() - self.anim_start_time < self.pulse_duration
+        return perf_counter() - self.focus_anim_start_time < self.focus_anim_duration
 
-    def _draw_texts(self, context, font_id):
+    def _draw_texts(self, context, font_id, focus_pop=0.0):
         """Draw channel names and icon indicators"""
+        ui_scale = context.preferences.system.ui_scale
         mid_height = int(self.px_h / 2)
-        text_y_offset = int(self.text_size / 2.5)
         icon_y_offset = int(self.icon_size / 2)
 
         # Collect icons to draw
@@ -988,13 +1035,20 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
 
             fcurve_idx = self._display_idx_to_fcurve_idx(display_idx)
             is_current = fcurve_idx == self.current_idx
+            focus = self._current_focus_amount(fcurve_idx)
+            content_spread = int(round((2.0 + 1.0 * focus_pop) * ui_scale * focus))
+            focused_text_size = self.text_size + int(round(focus))
+            text_y_offset = int(focused_text_size / 2.5)
 
             y_base = self.bottom + display_idx * self.px_h + mid_height
 
             # Channel name
             channel_name, _ = gen_channel_info_line(fc)
             # Truncate if too long
-            max_chars = int((self.mute_zone_x - self.text_x) / (self.text_size * 0.6))
+            available_text_width = (self.mute_zone_x + content_spread) - (
+                self.text_x - content_spread
+            )
+            max_chars = max(4, int(available_text_width / (focused_text_size * 0.6)))
             if len(channel_name) > max_chars:
                 channel_name = channel_name[: max_chars - 3] + "..."
 
@@ -1008,9 +1062,11 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
             else:
                 text_color = self.text_color
 
-            blf.size(font_id, self.text_size)
+            blf.size(font_id, focused_text_size)
             blf.color(font_id, *text_color)
-            blf.position(font_id, self.text_x, y_base - text_y_offset, 0)
+            blf.position(
+                font_id, self.text_x - content_spread, y_base - text_y_offset, 0
+            )
             blf.draw(font_id, channel_name)
 
             # Collect icon positions
@@ -1018,21 +1074,21 @@ class GRAPH_OT_channel_navigator(bpy.types.Operator):
 
             # Mute icon
             mute_key = "mute_on" if fc.mute else "mute_off"
-            mute_coord = Vector((self.mute_zone_x, icon_y))
+            mute_coord = Vector((self.mute_zone_x + content_spread, icon_y))
             icons_to_draw[mute_key].append(
                 [v + mute_coord for v in self.icon_tex_coord]
             )
 
             # Lock icon
             lock_key = "lock_on" if fc.lock else "lock_off"
-            lock_coord = Vector((self.lock_zone_x, icon_y))
+            lock_coord = Vector((self.lock_zone_x + content_spread, icon_y))
             icons_to_draw[lock_key].append(
                 [v + lock_coord for v in self.icon_tex_coord]
             )
 
             # Hide icon
             hide_key = "hide_on" if fc.hide else "hide_off"
-            hide_coord = Vector((self.hide_zone_x, icon_y))
+            hide_coord = Vector((self.hide_zone_x - content_spread, icon_y))
             icons_to_draw[hide_key].append(
                 [v + hide_coord for v in self.icon_tex_coord]
             )
